@@ -1,0 +1,67 @@
+{
+  "video-generator": [
+    {
+      "id": "api-minimax",
+      "name": "Minimax",
+      "baseUrl": "https://api.minimax.io/v1",
+      "authType": "api-key",
+      "authHeader": "Authorization",
+      "authEnvVar": "MINIMAX_API_KEY",
+      "apiKey": "<YOUR_MINIMAX_API_KEY>",
+      "endpoints": []
+    }
+  ],
+  "video-editor": [
+    {
+      "id": "api-elevenlabs",
+      "name": "Elevenlabs",
+      "baseUrl": "",
+      "authType": "api-key",
+      "authHeader": "X-API-Key",
+      "authEnvVar": "ELEVENLABS_API_KEY",
+      "endpoints": [],
+      "apiKey": "<YOUR_ELEVENLABS_API_KEY>"
+    }
+  ],
+  "youtube-publisher": [
+    {
+      "id": "api-yt-client-id",
+      "name": "Youtube",
+      "baseUrl": "https://www.googleapis.com/youtube/v3",
+      "authType": "api-key",
+      "authEnvVar": "YOUTUBE_CLIENT_ID",
+      "apiKey": "<YOUR_YOUTUBE_CLIENT_ID>"
+    },
+    {
+      "id": "api-yt-secret",
+      "name": "YouTube Secret",
+      "authType": "api-key",
+      "authEnvVar": "YOUTUBE_CLIENT_SECRET",
+      "apiKey": "<YOUR_YOUTUBE_CLIENT_SECRET>"
+    },
+    {
+      "id": "api-yt-refresh",
+      "name": "YouTube Refresh Token",
+      "authType": "api-key",
+      "authEnvVar": "YOUTUBE_REFRESH_TOKEN",
+      "apiKey": "<YOUR_YOUTUBE_REFRESH_TOKEN>"
+    }
+  ],
+  "tiktok-publisher": [
+    {
+      "id": "api-tiktok-key",
+      "name": "TikTok",
+      "baseUrl": "https://open.tiktokapis.com/v2",
+      "authType": "api-key",
+      "authEnvVar": "TIKTOK_CLIENT_KEY",
+      "apiKey": "<YOUR_TIKTOK_CLIENT_KEY>"
+    },
+    {
+      "id": "api-tiktok-secret",
+      "name": "TikTok Secret",
+      "authType": "api-key",
+      "authEnvVar": "TIKTOK_CLIENT_SECRET",
+      "apiKey": "<YOUR_TIKTOK_CLIENT_SECRET>"
+    }
+  ]
+}

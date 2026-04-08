@@ -1,0 +1,83 @@
+[
+  {
+    "id": "wf-1774948113603",
+    "name": "Video publication Yourbodyexplained",
+    "description": "generate and publish videos daily",
+    "orchestrator": {
+      "model": "claude-opus-4-6",
+      "thinkingLevel": "medium",
+      "systemPrompt": "Tu es l'orchestrateur du pipeline de production vidÃ©o pour les chaÃ®nes \"Your Body Explained\".\n\n## ChaÃ®nes\n- YouTube : @YourBodyExplained\n- TikTok : @BodyExplained\n\n## Ton rÃ´le\nTu coordonnes 5 agents en sÃ©quence. Tu ne produis rien toi-mÃªme â€” tu transmets les donnÃ©es d'un agent Ã  l'autre.\n\n## Pipeline\n\n1. **Script-creator** â€” GÃ©nÃ¨re le script complet, les prompts MiniMax scÃ¨ne par scÃ¨ne, le titre YouTube, la description YouTube (mentionnant @YourBodyExplained), et la description TikTok (mentionnant @BodyExplained)\n   \n\n2. **video-generator** â€” ReÃ§oit les prompts scÃ¨ne par scÃ¨ne et gÃ©nÃ¨re les clips vidÃ©o via l'API MiniMax, assemble en une vidÃ©o brute\n\n3. **video-editor** â€” ReÃ§oit la vidÃ©o brute + le script, ajoute le voiceover (ElevenLabs), la musique de fond, et les sous-titres\n   \n\n4. En parallÃ¨le :\n   - **youtube-publisher** â€” Publie sur YouTube\n   - **tiktok-publisher** â€” Publie sur TikTok\n\n## RÃ¨gles\n- ExÃ©cuter le pipeline complet automatiquement sans interruption\n- Si un agent Ã©choue, reporter l'erreur et attendre les instructions\n- Ne jamais modifier le contenu produit par les agents â€” transmettre tel quel\n"
+    },
+    "agents": [
+      "Script-creator",
+      "video-generator",
+      "video-editor",
+      "youtube-publisher",
+      "tiktok-publisher"
+    ],
+    "links": [
+      {
+        "id": "lnk-script-to-video",
+        "sourceAgent": "Script-creator",
+        "targetAgent": "video-generator",
+        "trigger": {
+          "type": "event"
+        },
+        "taskTemplate": "Generate the video from this script. Extract the scene-by-scene prompts and generate each scene via MiniMax API, then assemble with ffmpeg.\n\n{output}",
+        "enabled": true
+      },
+      {
+        "id": "lnk-video-to-editor",
+        "sourceAgent": "video-generator",
+        "targetAgent": "video-editor",
+        "trigger": {
+          "type": "event"
+        },
+        "taskTemplate": "Add voiceover, background music, and subtitles to this raw video. Use the script text for the voiceover and subtitles. The pillar type determines the music style.\n\n{output}",
+        "enabled": true
+      },
+      {
+        "id": "lnk-editor-to-youtube",
+        "sourceAgent": "video-editor",
+        "targetAgent": "youtube-publisher",
+        "trigger": {
+          "type": "event"
+        },
+        "taskTemplate": "Publish this video to YouTube Shorts on @YourBodyExplained. Use the title, description, and video file path from the output below.\n\n{output}",
+        "enabled": true
+      },
+      {
+        "id": "lnk-editor-to-tiktok",
+        "sourceAgent": "video-editor",
+        "targetAgent": "tiktok-publisher",
+        "trigger": {
+          "type": "event"
+        },
+        "taskTemplate": "Publish this video to TikTok on @BodyExplained. Use the description and video file path from the output below.\n\n{output}",
+        "enabled": true
+      }
+    ],
+    "enabled": true,
+    "schedule": {
+      "enabled": true,
+      "cronExpression": "0 14 * * *",
+      "timezone": "Europe/Paris",
+      "task": "Generate and publish next daily video for Your Body Explained",
+      "lastRunAt": "2026-04-06T12:00:22.567Z",
+      "nextRunAt": "2026-04-07T12:00:22.569Z"
+    }
+  },
+  {
+    "id": "wf-1774974065286",
+    "name": "Scrappy polymarket",
+    "description": "Scraps polymarket tennis matches",
+    "orchestrator": {
+      "model": "claude-opus-4-6",
+      "thinkingLevel": "medium",
+      "systemPrompt": ""
+    },
+    "agents": [],
+    "links": [],
+    "enabled": true
+  }
+]
