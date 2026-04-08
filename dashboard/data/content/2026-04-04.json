@@ -1,0 +1,98 @@
+{
+  "date": "2026-04-04",
+  "video_number": 13,
+  "pillar": "Body Facts",
+  "topic": "Sleep Deprivation Mimics Being Drunk",
+  "status": "READY_TO_GENERATE",
+  "script": {
+    "hook": "24 hours without sleep makes you perform like you're legally drunk.",
+    "tension": "Your brain literally shuts down in pieces.",
+    "explanation": "Sleep deprivation impairs reaction time, decision-making, and coordination — identical to a blood alcohol level of 0.10%. That's over the legal limit.",
+    "punchline": "You're not tired. You're impaired. Follow for more."
+  },
+  "word_count": 48,
+  "script_with_timings": {
+    "00-03s_HOOK": "24 hours without sleep makes you perform like you're legally drunk.",
+    "03-06s_TENSION": "Your brain literally shuts down in pieces.",
+    "06-15s_EXPLANATION": "Sleep deprivation impairs reaction time, decision-making, and coordination — identical to a blood alcohol level of 0.10%. That's over the legal limit.",
+    "15-20s_PUNCHLINE": "You're not tired. You're impaired. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "5.5s",
+      "timing": "00-05s (HOOK)",
+      "visual_description": "HOOK — Athletic person struggling with exhaustion, disoriented movement suggesting impairment",
+      "prompt": "Cinematic close-up of a fit athletic man in his late 20s stumbling slightly in a dark gym, eyes half-closed, rubbing his face with one hand, heavy dark circles under his eyes, dramatic moody blue and cold lighting, shallow depth of field, exhausted and disoriented body language. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 2,
+      "duration": "5.5s",
+      "timing": "05-11s (TENSION + EXPLANATION part 1)",
+      "visual_description": "TENSION — Brain shutting down concept: person failing a simple coordination task",
+      "prompt": "Cinematic medium shot of a tired athletic man in a dark gym trying to catch a medicine ball thrown at him but fumbling it completely, ball bouncing off his chest, slow motion, his reflexes visibly delayed, dramatic cold blue desaturated lighting with harsh shadows, gym equipment blurred in background. Subject centered in frame, all action in the center third of the image, medium shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 3,
+      "duration": "5.5s",
+      "timing": "11-16s (EXPLANATION part 2)",
+      "visual_description": "EXPLANATION — Visual metaphor: comparison to alcohol impairment, breathalyzer or alcohol reference",
+      "prompt": "Cinematic close-up of a police breathalyzer device displaying 0.10 on its screen, held in a hand against a dark moody background, dramatic red and blue police-style lighting reflecting off the device, shallow depth of field, tense atmosphere, the number glowing ominously. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 4,
+      "duration": "5.5s",
+      "timing": "16-20s (PUNCHLINE + CTA)",
+      "visual_description": "PUNCHLINE — Powerful reveal: same person now sleeping peacefully, then cut to confident look at camera",
+      "prompt": "Cinematic medium close-up of a fit athletic man lying in bed in a dark room, eyes closed, peaceful deep sleep, soft warm amber light on his face contrasting with dark blue surroundings, then he opens his eyes and looks directly at camera with a serious knowing expression, powerful and confident energy. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position. Phrases of 5-8 words displayed at a time, minimum 2 seconds each.",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": ["24 hours", "legally drunk", "shuts down", "reaction time", "0.10%", "legal limit", "impaired"]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "00-03s",
+      "text": "NO SLEEP =\nLEGALLY DRUNK",
+      "style": "Massive bold white text with red accent on LEGALLY DRUNK, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "06-09s",
+      "text": "YOUR BRAIN\nSHUTS DOWN",
+      "style": "Massive bold yellow text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "11-14s",
+      "text": "BAC: 0.10%\nOVER THE LEGAL LIMIT",
+      "style": "Massive bold red text with white accent on 0.10%, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "16-19s",
+      "text": "YOU'RE NOT TIRED\nYOU'RE IMPAIRED ⚠️",
+      "style": "Massive bold white text with yellow glow on IMPAIRED, dark shadow, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Revelatory and serious tone — like dropping a truth bomb. Pause after 'legally drunk' for impact. Weight on 'impaired' at the end.",
+    "emphasis_words": ["24 hours", "legally drunk", "shuts down", "reaction time", "0.10%", "legal limit", "impaired"]
+  },
+  "music": {
+    "style": "Motivational, dark energy. Deep ominous bass pulse with tension-building strings. Slightly eerie undertone.",
+    "genre": "Dark cinematic tension / industrial hybrid",
+    "energy_curve": "Low ominous drone at hook → building unease through tension → intense pulse at 0.10% reveal → powerful resolute drop at punchline → clean cut"
+  },
+  "youtube": {
+    "title": "No Sleep = Legally Drunk 🧠🍺",
+    "description": "Your body is smarter than you think.\n\nJust 24 hours without sleep impairs your brain the same way alcohol does — your reaction time, decision-making, and coordination drop to the level of someone with a blood alcohol concentration of 0.10%. That's over the legal driving limit. You're not just tired. You're impaired.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #sleep #science #health #brain #sleepdeprivation #recovery #fyp"
+  },
+  "tiktok": {
+    "description": "24 hours without sleep = performing like you're LEGALLY DRUNK 🧠🍺 Blood alcohol equivalent of 0.10% — over the legal limit. Sleep isn't optional. #fitness #sleep #science #health #brain #recovery #learnontiktok #bodyfacts #fyp"
+  }
+}

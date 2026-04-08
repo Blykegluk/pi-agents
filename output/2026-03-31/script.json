@@ -1,0 +1,41 @@
+{
+  "date": "2026-03-31",
+  "topic": "Why Your Stomach Doesn't Digest Itself",
+  "duration_target": "60s",
+
+  "youtube_title": "Why Doesn't Your Stomach Eat Itself? 🤯 #shorts",
+  "youtube_description": "Your stomach acid is strong enough to dissolve metal — so why doesn't it destroy your own body? The answer is a tiny layer that saves your life every single second.\n\n🔬 Subscribe to @YourBodyExplained for daily body science!\n\n#anatomy #science #humanBody #biology #stomach #digestivesystem #bodyfacts #sciencefacts",
+  "tiktok_description": "Your stomach acid can dissolve metal… so why doesn't it eat through YOU? 🤯🔬 Follow @BodyExplained for daily body science! #bodyfacts #science #anatomy #stomach #biology #fyp #learnontiktok",
+
+  "script": {
+    "hook": "Your stomach acid is strong enough to dissolve a razor blade. So why doesn't it eat through your own body?",
+    "scene_1": "Right now, inside your stomach, there's hydrochloric acid — pH 1.5 to 3.5. That's strong enough to dissolve metal, destroy bacteria, and break down almost anything you eat.",
+    "scene_2": "But here's the secret weapon: your stomach lining produces a thick layer of mucus — about 1 millimeter thick. This mucus barrier is made of bicarbonate, which neutralizes the acid on contact.",
+    "scene_3": "And it gets crazier. Your stomach completely replaces its entire lining every 3 to 4 days. That's millions of new cells, built from scratch, just to keep you alive.",
+    "scene_4": "But when this system fails — from stress, bacteria like H. pylori, or too much aspirin — the acid breaks through. That's an ulcer. And it literally means your stomach is digesting itself.",
+    "outro": "Your body is fighting a war against itself every single second. And right now — it's winning."
+  },
+
+  "minimax_prompts": {
+    "scene_1": {
+      "prompt": "Cinematic medical animation of the interior of a human stomach. Camera slowly zooms into the stomach wall. Bright, glowing hydrochloric acid pool in green-yellow tones at the bottom. A small metal razor blade is dropped into the acid and begins dissolving with bubbling and fizzing effects. Dark red stomach wall texture visible. Dramatic lighting, volumetric fog. Photorealistic 3D render style, 4K quality. No text, no UI.",
+      "duration": 12
+    },
+    "scene_2": {
+      "prompt": "Extreme close-up medical animation of the stomach lining cross-section. A thick translucent mucus layer (white-blue glow) coats the pink stomach wall cells. Below the mucus, tiny bicarbonate particles (shown as glowing white dots) rise upward and neutralize incoming green acid droplets with a soft flash on contact. Smooth camera pan from left to right. Cinematic lighting, photorealistic 3D render, 4K. No text.",
+      "duration": 12
+    },
+    "scene_3": {
+      "prompt": "Time-lapse medical animation of stomach lining cell regeneration. Old cells detach and float away while vibrant new pink cells rapidly grow and fill in from below. Camera slowly pulls back to reveal the full stomach interior being rebuilt. Soft blue and pink bioluminescent lighting. Fast-forward organic growth effect. Cinematic 3D medical animation, 4K quality. No text.",
+      "duration": 10
+    },
+    "scene_4": {
+      "prompt": "Dramatic medical animation showing stomach acid breaking through a weakened mucus barrier. The protective mucus layer cracks and dissolves in one spot. Bright green acid seeps through and contacts the raw pink stomach wall, causing a red glowing inflammation and tissue erosion — forming an ulcer crater. Camera slowly zooms into the damage. Dark, dramatic lighting with red warning tones. Cinematic 3D render, 4K. No text.",
+      "duration": 12
+    },
+    "scene_5_outro": {
+      "prompt": "Wide cinematic shot of a transparent human torso silhouette. Inside, the stomach glows with a pulsing warm light, showing the healthy mucus barrier holding strong against swirling green acid. Camera slowly orbits around the body. Ethereal blue and gold lighting. Triumphant, awe-inspiring mood. Photorealistic medical 3D animation, 4K. No text.",
+      "duration": 8
+    }
+  }
+}

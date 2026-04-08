@@ -1,0 +1,99 @@
+{
+  "date": "2026-04-06",
+  "video_number": 15,
+  "pillar": "Body Facts",
+  "topic": "Your Bones Are Stronger Than Steel",
+  "status": "READY_TO_GENERATE",
+  "script": {
+    "hook": "Your bones are stronger than steel.",
+    "tension": "But you're making them weaker every day.",
+    "explanation": "Without resistance, your body strips calcium from bones. Astronauts lose 2% bone density per month in zero gravity. Your skeleton needs load to stay strong.",
+    "punchline": "Lift heavy. Your bones depend on it. Follow for more."
+  },
+  "word_count": 49,
+  "script_full_text": "Your bones are stronger than steel. But you're making them weaker every day. Without resistance, your body strips calcium from bones. Astronauts lose 2% bone density per month in zero gravity. Your skeleton needs load to stay strong. Lift heavy. Your bones depend on it. Follow for more.",
+  "script_with_timings": {
+    "00-03s_HOOK": "Your bones are stronger than steel.",
+    "03-06s_TENSION": "But you're making them weaker every day.",
+    "06-15s_EXPLANATION": "Without resistance, your body strips calcium from bones. Astronauts lose 2% bone density per month in zero gravity. Your skeleton needs load to stay strong.",
+    "15-20s_PUNCHLINE": "Lift heavy. Your bones depend on it. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "5.5s",
+      "timing": "00-05s (HOOK)",
+      "visual_description": "HOOK — Close-up of a powerful deadlift grip, bones under heavy load, dramatic gym",
+      "prompt": "Cinematic extreme close-up of two strong athletic hands gripping a heavy loaded barbell on the floor, chalked hands, veins visible, knuckles white from grip tension, dark dramatic gym with moody amber and warm orange lighting, shallow depth of field, heavy weight plates visible, powerful atmosphere of raw strength. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 2,
+      "duration": "5.5s",
+      "timing": "05-11s (TENSION + EXPLANATION part 1)",
+      "visual_description": "TENSION — Person sitting sedentary on couch, contrasting the strength visual",
+      "prompt": "Cinematic medium close-up of a young man in his late 20s sitting slouched on a dark couch in a dimly lit living room, looking at his phone with poor posture, soft blue screen light on his face, lazy sedentary atmosphere, moody cold blue and grey color grading, conveying inactivity and weakness. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 3,
+      "duration": "5.5s",
+      "timing": "11-16s (EXPLANATION part 2 — astronaut fact)",
+      "visual_description": "EXPLANATION — Astronaut floating weightless, visual metaphor for zero gravity bone loss",
+      "prompt": "Cinematic medium shot of an astronaut in a white spacesuit floating weightlessly inside a space station, arms gently drifting, bright white and cold blue sterile lighting, small circular windows visible in background, the astronaut appears relaxed but vulnerable, conveying the idea of muscle and bone loss in microgravity, clean futuristic interior. Subject centered in frame, all action in the center third of the image, medium shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 4,
+      "duration": "5.5s",
+      "timing": "16-22s (PUNCHLINE + CTA)",
+      "visual_description": "PUNCHLINE — Powerful deadlift lockout, full confidence, looking at camera",
+      "prompt": "Cinematic medium close-up of a fit muscular man in his late 20s standing tall at the top of a heavy deadlift lockout, barbell at hip level, chest out, looking directly at camera with fierce confidence, dramatic dark gym with intense warm red and amber backlighting, sweat glistening, powerful triumphant energy, motivational atmosphere. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position. Phrases of 5-8 words displayed at a time, minimum 2 seconds each.",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": ["stronger than steel", "weaker", "strips calcium", "2%", "zero gravity", "Lift heavy"]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "00-03s",
+      "text": "BONES > STEEL 🦴",
+      "style": "Massive bold white text with yellow accent on STEEL, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "03-06s",
+      "text": "BUT YOU'RE\nMAKING THEM WEAKER",
+      "style": "Massive bold red text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "11-14s",
+      "text": "ASTRONAUTS LOSE 2%\nBONE DENSITY / MONTH",
+      "style": "Massive bold white text with red accent on 2%, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "16-19s",
+      "text": "LIFT HEAVY. 🦴💪",
+      "style": "Massive bold yellow text with white glow, dark shadow, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Confident revelatory tone. Pause after 'steel' for impact. Grave tone on 'weaker every day'. Dramatic weight on 'zero gravity'. Commanding on 'Lift heavy'.",
+    "emphasis_words": ["stronger than steel", "weaker", "strips calcium", "2%", "zero gravity", "load", "Lift heavy", "depend on it"]
+  },
+  "music": {
+    "style": "Motivational, dark energy. Deep bass drone building to powerful percussive hit at 'Lift heavy'.",
+    "genre": "Dark cinematic motivational / epic hybrid",
+    "energy_curve": "Low powerful drone at hook → tension build with subtle percussion through sedentary scene → atmospheric synth during astronaut scene → heavy percussive drop at punchline → clean cut"
+  },
+  "youtube": {
+    "title": "Your Bones Are Stronger Than Steel 🦴",
+    "description": "Your body is smarter than you think.\n\nPound for pound, your bones are stronger than steel — but without resistance training, your body actively strips calcium from them. Astronauts lose 2% bone density per month in zero gravity. Your skeleton literally needs you to lift heavy to stay unbreakable.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #bones #strength #gym #health #science #deadlift #anatomy #fyp"
+  },
+  "tiktok": {
+    "description": "Your bones are STRONGER than steel 🦴 But without lifting, your body strips calcium from them. Astronauts lose 2% bone density PER MONTH. Lift heavy. #fitness #bones #strength #gym #health #science #learnontiktok #bodyfacts #fyp"
+  }
+}

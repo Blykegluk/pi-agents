@@ -1,0 +1,145 @@
+{
+  "date": "2026-04-02",
+  "video_number": 11,
+  "pillar": "Hidden Signals",
+  "topic": "Your Grip Strength Predicts Your Lifespan",
+  "status": "PENDING_VALIDATION",
+  "script": {
+    "hook": "Doctors can predict how long you'll live — by how hard you squeeze.",
+    "tension": "It sounds ridiculous. But your grip strength is one of the most reliable biomarkers of overall health — and it's backed by massive studies.",
+    "explanation": "A 2015 study in The Lancet tracked over 140,000 people across 17 countries. They found that every 5-kilogram drop in grip strength increased the risk of death by 16 percent. Grip strength reflects your total body muscle mass, nervous system health, and cardiovascular fitness all at once. It's not about your hands — it's a window into your entire system.",
+    "punchline": "Weak grip, shorter life. Strength isn't optional — it's survival. Follow for more."
+  },
+  "script_with_timings": {
+    "00-03s_HOOK": "Doctors can predict how long you'll live — by how hard you squeeze.",
+    "03-07s_TENSION": "It sounds ridiculous. But your grip strength is one of the most reliable biomarkers of overall health — backed by massive studies.",
+    "07-20s_EXPLANATION": "A Lancet study tracked 140,000 people across 17 countries. Every 5-kilogram drop in grip strength increased the risk of death by 16 percent. Grip strength reflects your total muscle mass, nervous system health, and cardiovascular fitness — all at once. It's not about your hands. It's a window into your entire system.",
+    "20-28s_PUNCHLINE": "Weak grip, shorter life. Strength isn't optional — it's survival. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "3s",
+      "visual_description": "HOOK — Dramatic grip close-up",
+      "prompt": "Extreme close-up cinematic shot of a muscular male hand gripping a dynamometer grip strength testing device with maximum force, veins popping, tendons visible, dramatic dark moody lighting with blue and red accents, shallow depth of field, centered vertical 9:16 composition, 4K"
+    },
+    {
+      "scene": 2,
+      "duration": "2s",
+      "visual_description": "TENSION — Medical authority",
+      "prompt": "Cinematic medium shot of a doctor in a white coat handing a grip strength dynamometer to an athletic male patient in his 30s in a modern clinical setting, serious atmosphere, cool blue-toned lighting, centered vertical 9:16 framing, 4K"
+    },
+    {
+      "scene": 3,
+      "duration": "2s",
+      "visual_description": "TENSION — Scale of the study",
+      "prompt": "Cinematic aerial shot of a massive diverse crowd of thousands of people seen from above, representing study participants, cool blue cinematic color grade, dramatic scope, centered vertical 9:16 composition, 4K"
+    },
+    {
+      "scene": 4,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — The Lancet study reveal",
+      "prompt": "Close-up cinematic shot of a medical research journal page showing bar charts and mortality data, a finger tracing a downward curve on a graph, warm desk lamp lighting on dark background, shallow depth of field, academic atmosphere, centered vertical composition, 4K"
+    },
+    {
+      "scene": 5,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Full body muscle connection",
+      "prompt": "Cinematic wide shot of a muscular athletic man performing a heavy deadlift in a dark gym, chalk dust floating in the air, dramatic red and blue rim lighting, powerful grip visible on the barbell, intense focused expression, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 6,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Nervous system visualization",
+      "prompt": "Medical 3D animation of the human nervous system lighting up from the brain through the spinal cord down to the hand and fingers, electric blue neural impulses traveling along nerve pathways, dark background, bioluminescent glow, scientific visualization, centered vertical, 4K"
+    },
+    {
+      "scene": 7,
+      "duration": "2s",
+      "visual_description": "EXPLANATION — Heart cardiovascular tie-in",
+      "prompt": "Medical 3D animation of a beating human heart with visible arteries and blood flow, glowing red and blue vessels, healthy powerful contractions, dark cinematic background, scientific visualization style, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 8,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Window into the system",
+      "prompt": "Cinematic close-up of a fit man hand slowly opening and closing with power, camera pulling back to reveal his full athletic physique in a dark gym, blue and red cinematic lighting, representing the hand as a mirror of total body health, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 9,
+      "duration": "2s",
+      "visual_description": "PUNCHLINE — Grip training survival",
+      "prompt": "Cinematic low-angle shot of a fit athletic man doing heavy farmer walks carrying two heavy dumbbells in a dark gym, veins in forearms visible, powerful determined expression, dramatic moody lighting with warm amber accents, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 10,
+      "duration": "2s",
+      "visual_description": "PUNCHLINE — End card confidence",
+      "prompt": "Medium cinematic shot of the same athletic man looking directly at camera, holding a closed powerful fist up beside his face, confident knowing expression, dark gym background with blue-red rim lighting, charismatic energy, centered vertical 9:16, 4K"
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position",
+    "keyword_highlight": {
+      "color": "red #FF3333 and yellow #FFD700 alternating",
+      "scale": "150% of base size",
+      "words": [
+        "predict",
+        "grip strength",
+        "140,000 people",
+        "16 percent",
+        "death",
+        "entire system",
+        "survival"
+      ]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "1-3s",
+      "text": "HOW LONG WILL YOU LIVE?",
+      "style": "Massive bold red text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "8-10s",
+      "text": "140,000 PEOPLE STUDIED",
+      "style": "Massive bold yellow text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "12-14s",
+      "text": "-5KG = +16% DEATH RISK",
+      "style": "Massive bold white text with red accent on 16%, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "22-24s",
+      "text": "STRENGTH = SURVIVAL",
+      "style": "Massive bold white text, red glow effect, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Tension-building, revelatory. Let the numbers land with weight.",
+    "emphasis_words": [
+      "predict",
+      "grip strength",
+      "140,000 people",
+      "16 percent",
+      "death",
+      "entire system",
+      "survival"
+    ]
+  },
+  "music": {
+    "style": "Tension-building, urgent but not scary. Dark cinematic strings with subtle bass pulse.",
+    "genre": "Dark cinematic tension / orchestral hybrid",
+    "energy_curve": "Mysterious intro > building tension at study reveal > powerful crescendo at punchline > resolute ending"
+  },
+  "youtube": {
+    "title": "Doctors Predict Your Lifespan With ONE Test",
+    "description": "Your body is smarter than you think.\n\nA massive Lancet study of 140,000 people found that every 5kg drop in grip strength increases your risk of death by 16%. Your grip isn't just about your hands — it reflects your total muscle mass, nervous system, and cardiovascular health. It's a window into your entire body.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #gripstrength #longevity #health #science #strength #lifespan #fyp"
+  },
+  "tiktok": {
+    "description": "Your GRIP STRENGTH predicts how long you'll live. 140,000 people studied — every 5kg drop = 16% higher death risk. #fitness #gripstrength #longevity #health #science #strength #learnontiktok #fyp"
+  }
+}

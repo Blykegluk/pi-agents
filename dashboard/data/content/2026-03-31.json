@@ -1,0 +1,48 @@
+{
+  "date": "2026-03-31",
+  "topic": "Why Your Stomach Doesn't Digest Itself",
+  "script": {
+    "hook": "Your stomach acid is strong enough to dissolve metal... so why doesn't it eat through your own body?",
+    "body": "Every day, your stomach produces about 2 liters of hydrochloric acid — with a pH as low as 1.5. That's strong enough to dissolve a razor blade. But your stomach has a secret weapon: a thick layer of mucus, renewed every two weeks, that acts as an armor between the acid and your stomach wall. Specialized cells called mucous neck cells constantly pump out this protective gel. If this barrier ever fails — from stress, bacteria like H. pylori, or too much ibuprofen — that's when you get an ulcer. Your body is literally fighting a chemical war against itself every single day... and winning.",
+    "cta": "Follow for more body secrets you never learned in school."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "3s",
+      "prompt": "Extreme close-up cinematic shot of a glass vial of bright green hydrochloric acid slowly dissolving a small metal razor blade, bubbles rising, dark laboratory background, dramatic lighting, photorealistic, 4K"
+    },
+    {
+      "scene": 2,
+      "duration": "4s",
+      "prompt": "Medical 3D animation style: cross-section of a human stomach interior, pink fleshy walls, churning yellowish-green gastric acid pool at the bottom, camera slowly pushing in, cinematic lighting, photorealistic anatomy, 4K"
+    },
+    {
+      "scene": 3,
+      "duration": "5s",
+      "prompt": "Microscopic cinematic view of stomach lining cells secreting thick translucent mucus gel layer, mucous neck cells visible, protective barrier forming over pink tissue, bioluminescent lighting, scientific visualization, 4K"
+    },
+    {
+      "scene": 4,
+      "duration": "4s",
+      "prompt": "Medical animation: transparent protective mucus shield layer over stomach wall being attacked by glowing acid droplets that bounce off, dramatic slow motion, shield glowing blue, cinematic medical visualization, 4K"
+    },
+    {
+      "scene": 5,
+      "duration": "4s",
+      "prompt": "Microscopic view of spiral-shaped H. pylori bacteria burrowing into damaged stomach lining, red inflamed tissue, small ulcer crater forming, dramatic medical visualization, dark moody lighting, 4K"
+    },
+    {
+      "scene": 6,
+      "duration": "3s",
+      "prompt": "Wide cinematic shot of full human stomach cross-section glowing with protective blue mucus layer intact, healthy tissue, radiant warm lighting from within, triumphant medical visualization, beautiful anatomy, 4K"
+    }
+  ],
+  "youtube": {
+    "title": "Your Stomach Acid Can Dissolve Metal 🤯 #shorts",
+    "description": "Your stomach acid is strong enough to dissolve a razor blade... so why doesn't it destroy your own body? 🧪\n\nEvery day, your stomach produces 2 liters of hydrochloric acid with a pH as low as 1.5. But a secret mucus armor protects you — until it doesn't.\n\nLearn more body secrets on @YourBodyExplained\n\n#anatomy #humanBody #science #health #biology #stomach #digestive #YourBodyExplained #shorts"
+  },
+  "tiktok": {
+    "description": "Your stomach acid can dissolve metal... so why doesn't it eat itself? 🤯🧪 Follow @BodyExplained for more body secrets! #anatomy #humanBody #science #health #biology #learnontiktok #bodyfacts"
+  }
+}

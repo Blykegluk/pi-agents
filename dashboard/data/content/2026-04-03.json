@@ -1,0 +1,97 @@
+{
+  "date": "2026-04-03",
+  "video_number": 12,
+  "pillar": "Body Facts",
+  "topic": "Your Brain Burns 20% of Your Daily Calories",
+  "status": "READY_TO_GENERATE",
+  "script": {
+    "hook": "Your brain weighs 2% of your body — but burns 20% of your calories.",
+    "tension": "That tiny organ is the hungriest part of your entire body.",
+    "explanation": "Your brain runs on glucose — about 120 grams per day. It powers 86 billion neurons firing nonstop, even while you sleep. Hard thinking doesn't burn significantly more — your brain is always running at max capacity, just redirecting resources.",
+    "punchline": "Your biggest calorie burner isn't your muscles. It's between your ears. Follow for more."
+  },
+  "script_with_timings": {
+    "00-03s_HOOK": "Your brain weighs 2% of your body — but burns 20% of your calories.",
+    "03-06s_TENSION": "That tiny organ is the hungriest part of your entire body.",
+    "06-15s_EXPLANATION": "Your brain runs on glucose — about 120 grams per day. It powers 86 billion neurons firing nonstop, even while you sleep. Hard thinking doesn't burn significantly more — your brain is always running at max capacity, just redirecting resources.",
+    "15-20s_PUNCHLINE": "Your biggest calorie burner isn't your muscles. It's between your ears. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "5s",
+      "timing": "00-05s (HOOK + TENSION)",
+      "visual_description": "HOOK — Athletic person exhausted after intense workout, then dramatic transition to brain concept",
+      "prompt": "Cinematic close-up of a fit athletic man in his late 20s sitting on a gym bench catching his breath after a hard workout, sweat dripping, then he touches his temple with one finger as if having a realization, dramatic warm amber and orange gym lighting, shallow depth of field. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 2,
+      "duration": "5s",
+      "timing": "05-10s (EXPLANATION part 1)",
+      "visual_description": "EXPLANATION — Glucose/fuel concept with real food visuals",
+      "prompt": "Cinematic overhead shot of a dark table with a precisely measured pile of white sugar on a small kitchen scale showing 120 grams, surrounded by brain-fuel foods like bananas and orange juice, dramatic moody top-down lighting with warm golden tones, shallow depth of field. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 3,
+      "duration": "5s",
+      "timing": "10-15s (EXPLANATION part 2)",
+      "visual_description": "EXPLANATION — Brain never stops, even during sleep",
+      "prompt": "Cinematic medium shot of a fit athletic man peacefully sleeping in a dark bedroom, subtle blue moonlight on his face, a soft warm glow emanating around his head suggesting intense brain activity even at rest, serene but powerful atmosphere. Subject centered in frame, all action in the center third of the image, medium shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 4,
+      "duration": "5s",
+      "timing": "15-20s (PUNCHLINE + CTA)",
+      "visual_description": "PUNCHLINE — Confident reveal, man pointing to his head",
+      "prompt": "Cinematic medium close-up of a confident fit athletic man in a dark gym pointing to his temple with a knowing smirk, looking directly at camera, dramatic red and orange rim lighting behind him, powerful motivational energy, dark contrasty background. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position. Phrases of 5-8 words displayed at a time, minimum 2 seconds each.",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": ["2%", "20%", "120 grams", "86 billion", "nonstop", "max capacity", "between your ears"]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "00-03s",
+      "text": "2% OF YOUR BODY\n20% OF YOUR CALORIES",
+      "style": "Massive bold white text with yellow accent on percentages, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "07-09s",
+      "text": "120g OF GLUCOSE\nEVERY. SINGLE. DAY.",
+      "style": "Massive bold yellow text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "11-13s",
+      "text": "86 BILLION NEURONS\nNEVER STOP FIRING",
+      "style": "Massive bold white text with red accent on 86 BILLION, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "16-18s",
+      "text": "YOUR BIGGEST\nCALORIE BURNER 🧠",
+      "style": "Massive bold white text with yellow glow, dark shadow, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Revelatory tone — like sharing a secret. Pause after '20% of your calories' for impact.",
+    "emphasis_words": ["2%", "20%", "hungriest", "120 grams", "86 billion", "nonstop", "max capacity", "between your ears"]
+  },
+  "music": {
+    "style": "Motivational, dark energy. Deep bass pulse with cinematic strings building throughout.",
+    "genre": "Dark cinematic motivational / epic hybrid",
+    "energy_curve": "Mysterious low pulse at hook → building momentum through explanation → powerful drop at punchline → clean ending"
+  },
+  "youtube": {
+    "title": "Your Brain Burns More Calories Than You Think 🧠",
+    "description": "Your body is smarter than you think.\n\nYour brain makes up just 2% of your body weight but consumes 20% of your daily calories. It burns through 120 grams of glucose every day, powering 86 billion neurons that never stop firing — even while you sleep. Hard thinking doesn't burn more — your brain is always at max capacity.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #brain #calories #science #health #nutrition #neuroscience #fyp"
+  },
+  "tiktok": {
+    "description": "Your brain is 2% of your body but burns 20% of your calories 🧠🔥 86 billion neurons that NEVER stop firing. #fitness #brain #calories #science #health #neuroscience #learnontiktok #bodyfacts #fyp"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "date": "2026-04-05",
+  "video_number": 14,
+  "pillar": "Body Facts",
+  "topic": "Dehydration Drops Your Strength by 25%",
+  "status": "READY_TO_GENERATE",
+  "script": {
+    "hook": "Losing just 2% of your body water drops your strength by 25%.",
+    "tension": "You don't even feel thirsty yet.",
+    "explanation": "Dehydration thickens your blood, slows nutrient delivery, and kills muscle contractions. Two percent is just one missed water bottle during training.",
+    "punchline": "If you're not drinking, you're not performing. Follow for more."
+  },
+  "word_count": 49,
+  "script_with_timings": {
+    "00-03s_HOOK": "Losing just 2% of your body water drops your strength by 25%.",
+    "03-06s_TENSION": "You don't even feel thirsty yet.",
+    "06-15s_EXPLANATION": "Dehydration thickens your blood, slows nutrient delivery, and kills muscle contractions. Two percent is just one missed water bottle during training.",
+    "15-20s_PUNCHLINE": "If you're not drinking, you're not performing. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "5.5s",
+      "timing": "00-05s (HOOK)",
+      "visual_description": "HOOK — Athlete failing a lift due to weakness, dramatic gym setting",
+      "prompt": "Cinematic close-up of a fit athletic man in his late 20s struggling to push a barbell on a bench press, arms shaking, face strained with effort, sweat on his forehead, dramatic dark gym lighting with warm amber and orange tones, shallow depth of field, he fails the rep and racks the weight. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 2,
+      "duration": "5.5s",
+      "timing": "05-11s (TENSION + EXPLANATION part 1)",
+      "visual_description": "TENSION — Water bottle visual metaphor, almost empty, gym context",
+      "prompt": "Cinematic extreme close-up of a nearly empty clear water bottle sitting on a dark gym floor, only a thin layer of water remaining at the bottom, dramatic moody blue and teal lighting, condensation droplets on the outside of the bottle, shallow depth of field with blurred gym equipment in background, ominous atmosphere. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 3,
+      "duration": "5.5s",
+      "timing": "11-16s (EXPLANATION part 2)",
+      "visual_description": "EXPLANATION — Athlete pouring water, slow-motion pour showing the importance",
+      "prompt": "Cinematic slow-motion medium shot of a muscular athletic man pouring water from a large bottle over his head and face in a dark gym, water cascading down in slow motion, dramatic cold blue and white lighting with backlit water droplets sparkling, intense refreshing atmosphere, steam or mist in the air. Subject centered in frame, all action in the center third of the image, medium shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 4,
+      "duration": "5.5s",
+      "timing": "16-22s (PUNCHLINE + CTA)",
+      "visual_description": "PUNCHLINE — Confident athlete drinking water purposefully, looking at camera",
+      "prompt": "Cinematic medium close-up of a fit athletic man taking a powerful deliberate drink from a large water bottle in a dark gym, then lowering the bottle and looking directly at camera with a serious confident expression, dramatic warm amber and red rim lighting, water droplets on his chin, powerful motivational energy. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position. Phrases of 5-8 words displayed at a time, minimum 2 seconds each.",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": ["2%", "25%", "thirsty", "thickens your blood", "muscle contractions", "not performing"]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "00-03s",
+      "text": "2% WATER LOSS =\n25% STRENGTH GONE",
+      "style": "Massive bold white text with red accent on 25%, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "03-06s",
+      "text": "YOU DON'T EVEN\nFEEL THIRSTY YET",
+      "style": "Massive bold yellow text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "09-12s",
+      "text": "BLOOD THICKENS\nMUSCLES FAIL",
+      "style": "Massive bold red text with white accent, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "16-19s",
+      "text": "NOT DRINKING =\nNOT PERFORMING 💧",
+      "style": "Massive bold white text with blue glow on NOT PERFORMING, dark shadow, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Punchy revelatory tone. Pause after '25%' for shock value. Weight on 'not performing' at the end.",
+    "emphasis_words": ["2%", "25%", "thirsty", "thickens", "kills", "one missed water bottle", "not performing"]
+  },
+  "music": {
+    "style": "Motivational, dark energy. Deep bass pulse with percussive hits on key reveals.",
+    "genre": "Dark cinematic motivational / trap hybrid",
+    "energy_curve": "Ominous bass at hook → tension build through explanation → powerful percussive drop at punchline → clean cut"
+  },
+  "youtube": {
+    "title": "You're Weaker Than You Think — Here's Why 💧",
+    "description": "Your body is smarter than you think.\n\nLosing just 2% of your body water — that's one missed water bottle — drops your strength by up to 25%. Your blood thickens, nutrient delivery slows, and your muscles can't contract properly. You don't even feel thirsty yet, but your body is already underperforming.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #hydration #water #strength #gym #health #science #dehydration #fyp"
+  },
+  "tiktok": {
+    "description": "Just 2% dehydration = 25% LESS STRENGTH 💧 One missed water bottle and your muscles can't even contract properly. Drink up. #fitness #hydration #water #gym #strength #health #science #learnontiktok #bodyfacts #fyp"
+  }
+}

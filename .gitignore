@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Videos (large binary files)
+Videos/
+
+# Temp files
+*.log
+.DS_Store
+
+# Environment
+.env*
+dashboard/.env*
+
+# Next.js
+dashboard/.next/
+dashboard/out/
+dashboard/build/
+
+# Build artifacts
+*.tsbuildinfo
+
+# OS
+Thumbs.db

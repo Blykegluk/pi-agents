@@ -1,0 +1,114 @@
+{
+  "date": "2026-04-07",
+  "video_number": 16,
+  "pillar": "Body Facts",
+  "topic": "Your Stomach Acid Can Dissolve Metal",
+  "status": "READY_TO_GENERATE",
+  "script": {
+    "hook": "Your stomach acid can dissolve a razor blade.",
+    "tension": "More corrosive than battery acid.",
+    "explanation": "It runs at pH 1.5. Strong enough to break down bone and metal. Your stomach lining replaces itself every three days just to survive.",
+    "punchline": "Your body destroys and rebuilds itself nonstop. Follow for more."
+  },
+  "word_count": 47,
+  "script_full_text": "Your stomach acid can dissolve a razor blade. More corrosive than battery acid. It runs at pH 1.5. Strong enough to break down bone and metal. Your stomach lining replaces itself every three days just to survive. Your body destroys and rebuilds itself nonstop. Follow for more.",
+  "script_with_timings": {
+    "00-03s_HOOK": "Your stomach acid can dissolve a razor blade.",
+    "03-06s_TENSION": "More corrosive than battery acid.",
+    "06-15s_EXPLANATION": "It runs at pH 1.5. Strong enough to break down bone and metal. Your stomach lining replaces itself every three days just to survive.",
+    "15-20s_PUNCHLINE": "Your body destroys and rebuilds itself nonstop. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "5.5s",
+      "timing": "00-05s (HOOK)",
+      "visual_description": "HOOK \u00e2\u20ac\u201d Extreme close-up of a razor blade dissolving in acid liquid, dramatic lighting",
+      "prompt": "Cinematic extreme close-up of a shiny metal razor blade slowly being lowered into a glass beaker filled with bright greenish-yellow corrosive liquid, bubbles forming on the metal surface, the metal edge visibly corroding and dissolving, dark laboratory background with dramatic warm amber and toxic green lighting, steam wisps rising, shallow depth of field. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 2,
+      "duration": "5.5s",
+      "timing": "05-11s (TENSION + EXPLANATION part 1)",
+      "visual_description": "TENSION \u00e2\u20ac\u201d Car battery acid comparison, dramatic corroded battery terminal close-up",
+      "prompt": "Cinematic extreme close-up of a corroded car battery terminal with thick blue-green corrosion buildup and acid residue, dark garage or workshop background with cold blue and harsh white lighting, the corrosion looks aggressive and dangerous, shallow depth of field, ominous industrial atmosphere conveying chemical power. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 3,
+      "duration": "5.5s",
+      "timing": "11-16s (EXPLANATION part 2 \u00e2\u20ac\u201d stomach lining renewal)",
+      "visual_description": "EXPLANATION \u00e2\u20ac\u201d Person eating a steak, juicy bite close-up, food being consumed = digestion metaphor",
+      "prompt": "Cinematic close-up of a fit young man in his late 20s taking a big powerful bite of a thick juicy grilled steak, the meat tearing between his teeth, warm amber and rich red lighting from above like a high-end restaurant, juices visible on the steak, dramatic shallow depth of field, the act of eating conveying raw digestive power. Subject centered in frame, all action in the center third of the image, close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    },
+    {
+      "scene": 4,
+      "duration": "5.5s",
+      "timing": "16-22s (PUNCHLINE + CTA)",
+      "visual_description": "PUNCHLINE \u00e2\u20ac\u201d Same person looking at camera, touching stomach area, confident knowing look",
+      "prompt": "Cinematic medium close-up of a fit athletic man in his late 20s standing against a dark background, one hand placed flat over his stomach area, looking directly at camera with a confident slightly amazed expression, dramatic warm red and amber side lighting creating strong contrast, dark cinematic mood, the gesture conveying hidden internal power. Subject centered in frame, all action in the center third of the image, medium close-up shot, nothing important on left or right edges. No CGI, no animation, no 3D render, photorealistic only. Natural human anatomy, correct number of fingers, realistic body proportions. 4K cinematic."
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position. Phrases of 5-8 words displayed at a time, minimum 2 seconds each.",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": [
+        "dissolve a razor blade",
+        "battery acid",
+        "pH 1.5",
+        "bone and metal",
+        "every three days",
+        "destroys and rebuilds"
+      ]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "00-03s",
+      "text": "YOUR STOMACH\nDISSOLVES METAL \u00f0\u0178\u201d\u00a5",
+      "style": "Massive bold white text with yellow accent on DISSOLVES METAL, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "03-06s",
+      "text": "WORSE THAN\nBATTERY ACID \u00e2\u0161\u00a1",
+      "style": "Massive bold red text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "09-13s",
+      "text": "pH 1.5\nBREAKS DOWN BONE",
+      "style": "Massive bold white text with red accent on pH 1.5, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "16-19s",
+      "text": "DESTROY \u00e2\u2020\u2019 REBUILD\nNONSTOP \u00f0\u0178\u201d\u201e",
+      "style": "Massive bold yellow text with white glow, dark shadow, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Dramatic revelatory tone. Pause after 'razor blade' for shock. Weight on 'battery acid'. Awed tone on 'every three days'. Powerful close on 'nonstop'.",
+    "emphasis_words": [
+      "dissolve a razor blade",
+      "battery acid",
+      "pH 1.5",
+      "bone and metal",
+      "three days",
+      "destroys and rebuilds",
+      "nonstop"
+    ]
+  },
+  "music": {
+    "style": "Motivational, dark energy. Deep ominous synth drone with acidic texture, building to a powerful percussive revelation.",
+    "genre": "Dark cinematic motivational / industrial hybrid",
+    "energy_curve": "Ominous toxic drone at hook \u00e2\u2020\u2019 tension build with metallic percussion \u00e2\u2020\u2019 heavy atmospheric synth during eating scene \u00e2\u2020\u2019 powerful bass drop at 'destroys and rebuilds' \u00e2\u2020\u2019 clean cut"
+  },
+  "youtube": {
+    "title": "Your Stomach Acid Can Dissolve a Razor Blade \u00f0\u0178\u201d\u00a5",
+    "description": "Your body is smarter than you think.\n\nYour stomach acid is more corrosive than battery acid \u00e2\u20ac\u201d running at pH 1.5, strong enough to dissolve bone and metal. To survive its own acid, your stomach lining completely replaces itself every 3 days. Your body is constantly destroying and rebuilding itself.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #stomachacid #anatomy #health #science #body #digestion #fyp"
+  },
+  "tiktok": {
+    "description": "Your stomach acid can DISSOLVE A RAZOR BLADE \u00f0\u0178\u201d\u00a5 It's stronger than battery acid at pH 1.5. Your stomach lining replaces itself every 3 DAYS just to survive. #fitness #anatomy #health #science #body #learnontiktok #bodyfacts #fyp"
+  }
+}

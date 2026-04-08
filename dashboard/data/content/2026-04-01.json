@@ -1,0 +1,133 @@
+{
+  "date": "2026-04-01",
+  "video_number": 10,
+  "pillar": "Nutrition Myths",
+  "topic": "The Protein Timing Window Is a Myth",
+  "status": "APPROVED_GENERATING",
+  "script": {
+    "hook": "You DON'T need to chug a protein shake within 30 minutes of your workout.",
+    "tension": "The 'anabolic window' — the idea that you MUST eat protein right after training or your gains disappear — has been repeated so many times it feels like law. But science says otherwise.",
+    "explanation": "A 2013 meta-analysis in the Journal of the International Society of Sports Nutrition looked at 23 studies. The result? Total daily protein intake matters way more than timing. Your body doesn't shut off muscle repair after 30 minutes. It stays elevated for 24 to 48 hours. The only people who might benefit from fast post-workout protein are those training completely fasted — and even then, the effect is small.",
+    "punchline": "Stop stressing about the clock. Just hit your daily protein. Follow for more."
+  },
+  "script_with_timings": {
+    "00-03s_HOOK": "You DON'T need to chug a protein shake within 30 minutes of your workout.",
+    "03-07s_TENSION": "The 'anabolic window' — the idea that your gains disappear if you don't eat fast enough — has been repeated so many times it feels like law.",
+    "07-20s_EXPLANATION": "A 2013 meta-analysis looked at 23 studies. The result? Total daily protein matters way more than timing. Your body doesn't shut off muscle repair after 30 minutes. It stays elevated for 24 to 48 hours. The only people who might benefit are those training completely fasted — and even then, the effect is small.",
+    "20-28s_PUNCHLINE": "Stop stressing about the clock. Just hit your daily protein. Follow for more."
+  },
+  "scenes": [
+    {
+      "scene": 1,
+      "duration": "3s",
+      "visual_description": "HOOK — Urgent, attention-grabbing",
+      "prompt": "Close-up cinematic shot of a muscular man in a gym frantically shaking a protein shaker bottle immediately after a workout, sweat on his face, dramatic warm gym lighting, urgent energy, motion blur on the shaking, vertical 9:16 composition centered, 4K"
+    },
+    {
+      "scene": 2,
+      "duration": "2s",
+      "visual_description": "TENSION — The myth visualized",
+      "prompt": "Cinematic close-up of a stopwatch timer counting down from 30 minutes, red numbers ticking, dramatic dark background with subtle red glow, anxiety-inducing atmosphere, shallow depth of field, centered vertical composition, 4K"
+    },
+    {
+      "scene": 3,
+      "duration": "2s",
+      "visual_description": "TENSION — Gym culture myth",
+      "prompt": "Medium shot of a fit athletic woman in her late 20s sitting on a gym bench looking stressed at her phone timer while holding a protein shake, modern gym background blurred, cinematic moody lighting, centered vertical 9:16 framing, 4K"
+    },
+    {
+      "scene": 4,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Science reveal",
+      "prompt": "Cinematic overhead shot of a scientific research paper spread on a dark wooden desk, warm desk lamp lighting, a hand pointing at a bar chart showing study results, shallow depth of field, academic atmosphere, centered vertical composition, 4K"
+    },
+    {
+      "scene": 5,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Muscle repair continues",
+      "prompt": "Medical 3D visualization of muscle fibers rebuilding and repairing in slow motion, glowing blue protein molecules attaching to torn muscle strands, bioluminescent lighting, dark background, beautiful scientific animation style, centered, 4K"
+    },
+    {
+      "scene": 6,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — 24-48 hours window",
+      "prompt": "Cinematic time-lapse style shot: a fit man going through his day — eating a meal at a table, then sleeping in bed, then eating breakfast — showing the passage of 24-48 hours, warm natural lighting, montage feel with smooth transitions, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 7,
+      "duration": "3s",
+      "visual_description": "EXPLANATION — Fasted training exception",
+      "prompt": "Wide cinematic shot of a muscular man running on a treadmill in an empty gym early morning, pre-dawn blue lighting through windows, stomach area subtly highlighted to suggest fasted state, moody cinematic atmosphere, centered vertical composition, 4K"
+    },
+    {
+      "scene": 8,
+      "duration": "3s",
+      "visual_description": "PUNCHLINE — Calm confidence",
+      "prompt": "Close-up cinematic shot of a fit athletic man calmly preparing a balanced meal with grilled chicken and vegetables in a modern kitchen, confident relaxed expression, warm golden lighting, shallow depth of field, centered vertical 9:16, 4K"
+    },
+    {
+      "scene": 9,
+      "duration": "3s",
+      "visual_description": "PUNCHLINE — End card energy",
+      "prompt": "Medium shot of the same fit man eating his meal, looking directly at camera with a knowing smile, modern kitchen background, warm cinematic lighting, charismatic energy, centered vertical 9:16 framing, 4K"
+    }
+  ],
+  "captions_overlay": {
+    "style": "Bold white text, thick black outline, lower third position",
+    "keyword_highlight": {
+      "color": "yellow (#FFD700)",
+      "scale": "150% of base size",
+      "words": [
+        "DON'T",
+        "30 minutes",
+        "anabolic window",
+        "23 studies",
+        "daily protein",
+        "24 to 48 hours",
+        "myth"
+      ]
+    },
+    "animation": "pop/scale-up on each new phrase"
+  },
+  "text_overlays": [
+    {
+      "timestamp": "3-5s",
+      "text": "THE \"ANABOLIC WINDOW\"",
+      "style": "Massive bold white text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "8-10s",
+      "text": "23 STUDIES ANALYZED",
+      "style": "Massive bold yellow text, dark shadow, center screen, punch zoom-in animation"
+    },
+    {
+      "timestamp": "14-16s",
+      "text": "24-48 HOURS",
+      "style": "Massive bold white text with red accent on numbers, center screen, punch zoom-in animation"
+    }
+  ],
+  "voiceover": {
+    "voice": "Male, deep, warm, natural. American accent. Podcast host / Netflix narrator style.",
+    "pace": "Slightly slower than normal speech. Confident, authoritative but conversational.",
+    "emphasis_words": [
+      "DON'T",
+      "anabolic window",
+      "23 studies",
+      "way more",
+      "24 to 48 hours",
+      "daily protein"
+    ]
+  },
+  "music": {
+    "style": "Confident, slightly cheeky beat. Mid-tempo. Subtle but present.",
+    "genre": "Cinematic lo-fi hip hop with confident swagger",
+    "energy_curve": "Start tension-building → reveal moment at 8s → settle into confident groove → end strong"
+  },
+  "youtube": {
+    "title": "You DON'T Need Protein Within 30 Minutes 💪",
+    "description": "Your body is smarter than you think.\n\nThe \"anabolic window\" — the idea that you must eat protein within 30 minutes of your workout — is one of the biggest myths in fitness. A meta-analysis of 23 studies found that total daily protein intake matters far more than timing. Your body keeps repairing muscle for 24-48 hours.\n\nFollow @YourBodyExplainedHQ for daily science-backed fitness facts.\n\n#shorts #fitness #protein #nutrition #gym #muscle #sciencebased #health #fyp"
+  },
+  "tiktok": {
+    "description": "The 30-minute protein window is a MYTH 🧬💪 Your body repairs muscle for 24-48 hours — just hit your daily protein. #fitness #protein #nutrition #gym #muscle #sciencebased #learnontiktok #bodyfacts #fyp"
+  }
+}
