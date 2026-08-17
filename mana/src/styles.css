@@ -1,0 +1,686 @@
+/* Mana — design « outil de gestion qui rapporte » : sérieux et chaleureux, mobile-first. */
+
+:root {
+  --creme: #faf6ef;
+  --carte: #ffffff;
+  --encre: #26241f;
+  --encre-2: #6f6a5e;
+  --vert: #1e5b4a;
+  --vert-fonce: #17443a;
+  --vert-pale: #e4efe9;
+  --ambre: #d98e1b;
+  --ambre-pale: #fbf1dd;
+  --rouge: #b3462e;
+  --trait: #e7dfd1;
+  --radius: 14px;
+  --ombre: 0 1px 3px rgba(38, 36, 31, 0.08), 0 4px 14px rgba(38, 36, 31, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--creme);
+  color: var(--encre);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- En-tête ---------- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--vert-fonce);
+  color: #fff;
+  padding: 12px 16px calc(12px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header .brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.header .brand h1 {
+  font-size: 20px;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.header .brand span {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.header button {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* ---------- Contenu ---------- */
+main {
+  flex: 1;
+  padding: 16px 16px calc(84px + env(safe-area-inset-bottom));
+}
+
+h2 {
+  font-size: 20px;
+  margin: 4px 0 12px;
+}
+
+h3 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.muted {
+  color: var(--encre-2);
+  font-size: 13.5px;
+}
+
+.card {
+  background: var(--carte);
+  border: 1px solid var(--trait);
+  border-radius: var(--radius);
+  box-shadow: var(--ombre);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.card.accent {
+  background: var(--vert-fonce);
+  color: #fff;
+  border-color: var(--vert-fonce);
+}
+
+.card.accent .muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ---------- Formulaires ---------- */
+label.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+label.field > span {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+label.field .aide {
+  display: block;
+  font-weight: 400;
+  color: var(--encre-2);
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+input[type='text'],
+input[type='number'],
+input[type='tel'],
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: 1px solid var(--trait);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--encre);
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--vert);
+  outline-offset: 1px;
+}
+
+input:disabled {
+  background: #f2ede3;
+  color: var(--encre-2);
+}
+
+.suffixe {
+  position: relative;
+}
+
+.suffixe input {
+  padding-right: 52px;
+}
+
+.suffixe > em {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-style: normal;
+  color: var(--encre-2);
+  font-size: 14px;
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--vert);
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-row .suffixe {
+  flex: none;
+}
+
+.range-row input[type='number'] {
+  width: 96px;
+  flex: none;
+  padding-right: 30px;
+  text-align: right;
+}
+
+.range-row .suffixe > em {
+  right: 9px;
+  font-size: 12.5px;
+}
+
+/* ---------- Boutons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font-size: 15.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: var(--vert);
+  color: #fff;
+}
+
+.btn-primary:active {
+  background: var(--vert-fonce);
+}
+
+.btn-ambre {
+  background: var(--ambre);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--vert);
+  border: 1px solid var(--trait);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--rouge);
+  border: 1px solid var(--trait);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 13.5px;
+  border-radius: 10px;
+}
+
+/* ---------- Montants cliquables (formule au clic) ---------- */
+button.amt {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-bottom: 1.5px dotted currentColor;
+}
+
+/* ---------- Bottom sheet formules ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 20, 16, 0.45);
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  background: var(--carte);
+  border-radius: 18px 18px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+  width: 100%;
+  max-width: 640px;
+  animation: slideup 0.22s ease;
+}
+
+@keyframes slideup {
+  from {
+    transform: translateY(30%);
+    opacity: 0.4;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.sheet-handle {
+  width: 42px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--trait);
+  margin: 6px auto 14px;
+}
+
+.sheet-lines p {
+  margin: 6px 0;
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sheet-lines .sheet-result {
+  font-weight: 700;
+  color: var(--vert);
+  border-top: 1px solid var(--trait);
+  padding-top: 8px;
+}
+
+.sheet .btn {
+  margin-top: 14px;
+  width: 100%;
+}
+
+/* ---------- Navigation basse ---------- */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #fffdf8;
+  border-top: 1px solid var(--trait);
+  display: flex;
+  justify-content: center;
+}
+
+.tabbar-inner {
+  display: flex;
+  width: 100%;
+  max-width: 640px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tabbar button {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 9px 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--encre-2);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-family: inherit;
+}
+
+.tabbar button .ico {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tabbar button.active {
+  color: var(--vert);
+}
+
+/* ---------- Simulateur ---------- */
+.hero {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+.hero h2 {
+  font-size: 24px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.resultat-hero {
+  text-align: center;
+  padding: 22px 16px;
+}
+
+.resultat-hero .gros {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  display: block;
+  margin: 6px 0 2px;
+}
+
+.resultat-hero .accroche {
+  font-size: 15px;
+  color: var(--ambre);
+  font-weight: 700;
+}
+
+.detail-lignes {
+  margin-top: 10px;
+}
+
+.detail-lignes .ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--trait);
+  font-size: 14.5px;
+}
+
+.detail-lignes .ligne:last-child {
+  border-bottom: none;
+}
+
+.detail-lignes .ligne strong {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.card.accent .detail-lignes .ligne {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.badge {
+  display: inline-block;
+  background: var(--ambre-pale);
+  color: #8a5a10;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.badge.vert {
+  background: var(--vert-pale);
+  color: var(--vert-fonce);
+}
+
+/* ---------- Jauge ---------- */
+.gauge {
+  text-align: center;
+}
+
+.gauge svg {
+  width: min(280px, 80%);
+  display: block;
+  margin: 0 auto;
+}
+
+.gauge-value {
+  font-size: 30px;
+  font-weight: 800;
+  fill: var(--encre);
+}
+
+.gauge-sub {
+  font-size: 11px;
+  fill: var(--encre-2);
+}
+
+.gauge-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--encre-2);
+  margin-top: -4px;
+}
+
+.gauge-caption {
+  font-size: 12.5px;
+  color: var(--encre-2);
+  margin: 8px 0 0;
+}
+
+/* ---------- Compteurs impact ---------- */
+.impact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.impact .tuile {
+  background: var(--vert-pale);
+  border-radius: 12px;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.impact .tuile strong {
+  display: block;
+  font-size: 18px;
+}
+
+.impact .tuile span {
+  font-size: 11.5px;
+  color: var(--encre-2);
+}
+
+/* ---------- Chips magasin / semaine ---------- */
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.chip {
+  border: 1.5px solid var(--trait);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--encre-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.chip.active {
+  border-color: var(--vert);
+  color: var(--vert);
+  background: var(--vert-pale);
+}
+
+.semaine-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.semaine-nav .btn {
+  flex: none;
+  width: 44px;
+  padding: 10px 0;
+}
+
+.semaine-nav .titre {
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  flex: 1;
+}
+
+.semaine-nav .titre small {
+  display: block;
+  font-weight: 500;
+  color: var(--encre-2);
+}
+
+/* ---------- Tableaux ---------- */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--trait);
+  border-radius: 12px;
+  background: #fff;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 720px;
+  font-size: 13px;
+}
+
+th,
+td {
+  padding: 9px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--trait);
+  white-space: nowrap;
+}
+
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+th {
+  background: var(--vert-pale);
+  color: var(--vert-fonce);
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---------- Divers ---------- */
+.info-banner {
+  background: var(--ambre-pale);
+  border: 1px solid #f0ddb8;
+  color: #6d4a0e;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 14px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.justif-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.justif-list .pj {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vert-pale);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 12.5px;
+}
+
+.justif-list .pj button {
+  background: none;
+  border: none;
+  color: var(--rouge);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+
+.empty {
+  text-align: center;
+  color: var(--encre-2);
+  padding: 28px 12px;
+}
+
+.empty .ico {
+  font-size: 34px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+footer.legal {
+  padding: 4px 4px 12px;
+  font-size: 11.5px;
+  color: var(--encre-2);
+  text-align: center;
+}
+
+hr.sep {
+  border: none;
+  border-top: 1px solid var(--trait);
+  margin: 14px 0;
+}
+
+@media (min-width: 480px) {
+  .hero h2 {
+    font-size: 28px;
+  }
+  .resultat-hero .gros {
+    font-size: 48px;
+  }
+}
