@@ -53,6 +53,8 @@ export interface Magasin {
   enseigne?: string
   /** Coût de revient moyen fruits & légumes, €/kg */
   coutKgFL: number
+  /** Rythme de saisie des pertes choisi par le magasin (hebdomadaire par défaut). */
+  frequenceSaisie?: 'hebdomadaire' | 'quotidienne'
   collecteurs: Collecteur[]
   creeLe: string
   versionsParametres: VersionParametres[]
@@ -63,7 +65,9 @@ export interface Saisie {
   magasinId: string
   /** Semaine ISO, ex. "2026-W33" */
   semaine: string
-  /** 'don' = saisie hebdomadaire normale ; 'correction' = dons refusés retranchés a posteriori (montants négatifs). */
+  /** Jour précis (AAAA-MM-JJ) pour les magasins en saisie quotidienne — absent en saisie hebdomadaire. */
+  jour?: string
+  /** 'don' = saisie normale ; 'correction' = dons refusés retranchés a posteriori (montants négatifs). */
   type: 'don' | 'correction'
   /** Montant prix de vente de la démarque "don" — produits emballés (€) */
   pvEmballes: number

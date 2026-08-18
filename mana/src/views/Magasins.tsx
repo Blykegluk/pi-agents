@@ -389,6 +389,7 @@ function FormulaireMagasin({
   const [nom, setNom] = useState(initial?.nom ?? '')
   const [enseigne, setEnseigne] = useState(initial?.enseigne ?? '')
   const [coutKgFL, setCoutKgFL] = useState(initial?.coutKgFL ?? 2.2)
+  const [frequence, setFrequence] = useState<'hebdomadaire' | 'quotidienne'>(initial?.frequenceSaisie ?? 'hebdomadaire')
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
     initial?.collecteurs?.length ? initial.collecteurs : [{ nom: '', contact: '', jours: '' }],
   )
@@ -412,6 +413,7 @@ function FormulaireMagasin({
       nom: nom.trim(),
       enseigne: enseigne.trim() || undefined,
       coutKgFL,
+      frequenceSaisie: frequence,
       collecteurs: collecteurs.filter((c) => c.nom.trim()),
       creeLe: initial?.creeLe ?? maintenant,
       versionsParametres: versions,
@@ -430,13 +432,27 @@ function FormulaireMagasin({
           <span>Enseigne (facultatif)</span>
           <input type="text" value={enseigne} onChange={(e) => setEnseigne(e.target.value)} placeholder="Ex. Bio&Local" />
         </label>
-        <label className="field" style={{ marginBottom: 0 }}>
+        <label className="field">
           <span>Coût de revient moyen F&amp;L</span>
           <div className="suffixe">
             <input type="number" inputMode="decimal" min={0} step={0.1} value={coutKgFL} onChange={(e) => setCoutKgFL(Number(e.target.value))} />
             <em>€/kg</em>
           </div>
           <span className="aide">Préréglé à 2,20 €/kg. Source : total des achats F&amp;L annuels ÷ tonnage acheté, ou échantillonnage sur 2 semaines.</span>
+        </label>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span>Fréquence de saisie des pertes</span>
+          <div className="chips" style={{ marginBottom: 0 }}>
+            <button type="button" className={`chip ${frequence === 'hebdomadaire' ? 'active' : ''}`} onClick={() => setFrequence('hebdomadaire')}>
+              Hebdomadaire (recommandé)
+            </button>
+            <button type="button" className={`chip ${frequence === 'quotidienne' ? 'active' : ''}`} onClick={() => setFrequence('quotidienne')}>
+              Quotidienne
+            </button>
+          </div>
+          <span className="aide">
+            En quotidien, chaque journée s’ajoute au cumul de la semaine — le calcul fiscal reste hebdomadaire. Modifiable à tout moment.
+          </span>
         </label>
       </div>
 

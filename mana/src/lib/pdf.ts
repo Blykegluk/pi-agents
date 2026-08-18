@@ -81,7 +81,7 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
     }
     const enAlerte = agg.saisiesEnAlerte.has(s.id)
     const vals = [
-      `${weekLabel(s.semaine)}${s.type === 'correction' ? ' (corr.)' : ''}${enAlerte ? ' *' : ''}`,
+      `${weekLabel(s.semaine)}${s.jour ? ` · ${s.jour.slice(8, 10)}/${s.jour.slice(5, 7)}` : ''}${s.type === 'correction' ? ' (corr.)' : ''}${enAlerte ? ' *' : ''}`,
       magasinDe(s.magasinId),
       fmtEUR(s.pvEmballes, 2),
       fmtPct(s.margePctAppliquee),

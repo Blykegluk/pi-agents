@@ -2,12 +2,34 @@ import { useEffect, useMemo, useState } from 'react'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { baseSemaine, coutEmballes, coutFL } from '../lib/calc'
 import { fmtEUR, fmtNum, fmtPct } from '../lib/format'
-import { addWeeks, compareWeekIds, currentWeekId, weekLabel } from '../lib/iso'
+import { addWeeks, compareWeekIds, currentWeekId, isoWeekOf, weekId, weekLabel } from '../lib/iso'
 import { Amount } from '../components/Formula'
 import { IconSaisie } from '../components/Icons'
 import { uid } from '../lib/storage'
 import { lireFichiers } from '../lib/fichiers'
-import { aggParSociete } from '../lib/selectors'
+import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
+
+// --- Saisie quotidienne : petits utilitaires de dates locales (AAAA-MM-JJ) ---
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const dateDuJour = (id: string) => {
+  const [y, m, d] = id.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+const jourAujourdhui = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+const addJours = (id: string, n: number) => {
+  const [y, m, d] = id.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + n)
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+}
+const labelJour = (id: string) =>
+  dateDuJour(id).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+const semaineDuJour = (id: string) => {
+  const { year, week } = isoWeekOf(dateDuJour(id))
+  return weekId(year, week)
+}
 
 /** Saisie hebdomadaire (spec §4.2) + corrections « dons refusés » (complément §3). */
 export function SaisieView({
@@ -24,6 +46,7 @@ export function SaisieView({
   const magasins = state.magasins
   const [magasinId, setMagasinId] = useState(magasins[0]?.id ?? '')
   const [semaine, setSemaine] = useState(addWeeks(currentWeekId(), -1)) // par défaut : la semaine écoulée
+  const [jour, setJour] = useState(jourAujourdhui())
   const [modeCorrection, setModeCorrection] = useState(false)
 
   const magasin = magasins.find((m) => m.id === magasinId) ?? magasins[0]
@@ -33,16 +56,34 @@ export function SaisieView({
     [state, societe, exercice],
   )
 
+  // Saisie quotidienne (choix du magasin) — les corrections restent au niveau de la semaine
+  const quotidien = magasin?.frequenceSaisie === 'quotidienne' && !modeCorrection
+  const semaineEffective = quotidien ? semaineDuJour(jour) : semaine
+
   const existante = useMemo(
-    () => state.saisies.find((s) => s.magasinId === magasin?.id && s.semaine === semaine && s.type === 'don'),
-    [state.saisies, magasin, semaine],
+    () =>
+      quotidien
+        ? state.saisies.find((s) => s.magasinId === magasin?.id && s.jour === jour && s.type === 'don')
+        : state.saisies.find((s) => s.magasinId === magasin?.id && s.semaine === semaine && !s.jour && s.type === 'don'),
+    [state.saisies, magasin, semaine, jour, quotidien],
   )
   const corrections = useMemo(
     () =>
       state.saisies
-        .filter((s) => s.magasinId === magasin?.id && s.semaine === semaine && s.type === 'correction')
+        .filter((s) => s.magasinId === magasin?.id && s.semaine === semaineEffective && s.type === 'correction')
         .sort((a, b) => a.horodatage.localeCompare(b.horodatage)),
-    [state.saisies, magasin, semaine],
+    [state.saisies, magasin, semaineEffective],
+  )
+  /** Cumul de la semaine (toutes saisies « don »), hors saisie en cours d'édition. */
+  const cumulSemaineAutres = useMemo(
+    () =>
+      state.saisies
+        .filter(
+          (s) =>
+            s.magasinId === magasin?.id && s.semaine === semaineEffective && s.type === 'don' && s.id !== existante?.id,
+        )
+        .reduce((t, s) => t + baseDeLaSaisie(s), 0),
+    [state.saisies, magasin, semaineEffective, existante],
   )
 
   const [pv, setPv] = useState('')
@@ -65,7 +106,7 @@ export function SaisieView({
       setJustificatifs(existante?.justificatifs ?? [])
     }
     setConfirmation(false)
-  }, [existante, magasinId, semaine, modeCorrection])
+  }, [existante, magasinId, semaine, jour, modeCorrection])
 
   if (!magasin || !societe) {
     return (
@@ -84,7 +125,7 @@ export function SaisieView({
   const cFL = coutFL(kgNum, magasin.coutKgFL)
   const base = baseSemaine(pvNum, societe.margePct, kgNum, magasin.coutKgFL)
 
-  const semainePassee = compareWeekIds(semaine, currentWeekId()) < 0
+  const semainePassee = compareWeekIds(semaineEffective, currentWeekId()) < 0
   const correctionValide = modeCorrection
     ? semainePassee && (pvNum < 0 || kgNum < 0) && pvNum <= 0 && kgNum <= 0 && justificatifs.length > 0
     : true
@@ -100,7 +141,8 @@ export function SaisieView({
     onSave({
       id: modeCorrection ? uid() : (existante?.id ?? uid()),
       magasinId: magasin.id,
-      semaine,
+      semaine: semaineEffective,
+      jour: quotidien ? jour : undefined,
       type: modeCorrection ? 'correction' : 'don',
       pvEmballes: pvNum,
       kgFL: kgNum,
@@ -144,21 +186,38 @@ export function SaisieView({
         </div>
       )}
 
-      <div className="semaine-nav">
-        <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, -1))} aria-label="Semaine précédente">
-          ‹
-        </button>
-        <div className="titre">
-          {weekLabel(semaine)}
-          <small>
-            {existante ? 'Saisie enregistrée — modifiable' : 'Aucune saisie pour cette semaine'}
-            {corrections.length > 0 ? ` · ${corrections.length} correction${corrections.length > 1 ? 's' : ''}` : ''}
-          </small>
+      {quotidien ? (
+        <div className="semaine-nav">
+          <button className="btn btn-ghost" onClick={() => setJour(addJours(jour, -1))} aria-label="Jour précédent">
+            ‹
+          </button>
+          <div className="titre">
+            {labelJour(jour)}
+            <small>
+              {weekLabel(semaineEffective)} · {existante ? 'journée saisie — modifiable' : 'aucune saisie ce jour'}
+            </small>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setJour(addJours(jour, 1))} aria-label="Jour suivant">
+            ›
+          </button>
         </div>
-        <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, 1))} aria-label="Semaine suivante">
-          ›
-        </button>
-      </div>
+      ) : (
+        <div className="semaine-nav">
+          <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, -1))} aria-label="Semaine précédente">
+            ‹
+          </button>
+          <div className="titre">
+            {weekLabel(semaine)}
+            <small>
+              {existante ? 'Saisie enregistrée — modifiable' : 'Aucune saisie pour cette semaine'}
+              {corrections.length > 0 ? ` · ${corrections.length} correction${corrections.length > 1 ? 's' : ''}` : ''}
+            </small>
+          </div>
+          <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, 1))} aria-label="Semaine suivante">
+            ›
+          </button>
+        </div>
+      )}
 
       {!modeCorrection && (
         <div className="info-banner">
@@ -259,11 +318,11 @@ export function SaisieView({
             </Amount>
           </div>
           <div className="ligne">
-            <span>Total de la semaine (base fiscale)</span>
+            <span>{quotidien ? 'Total de la journée (base fiscale)' : 'Total de la semaine (base fiscale)'}</span>
             <Amount
-              titre="Base de la semaine"
+              titre={quotidien ? 'Base de la journée' : 'Base de la semaine'}
               lignes={[
-                'base_semaine = coût_emballés + coût_FL',
+                'base = coût_emballés + coût_FL',
                 `= ${fmtEUR(cEmb, 2)} + ${fmtEUR(cFL, 2)}`,
                 `= ${fmtEUR(base, 2)}`,
                 `Réduction d’impôt correspondante (hors plafond) : 60 % × ${fmtEUR(base, 2)} = ${fmtEUR(0.6 * base, 2)}`,
@@ -272,6 +331,21 @@ export function SaisieView({
               <strong style={{ fontSize: 18 }} className="montant-serif">{fmtEUR(base, 2)}</strong>
             </Amount>
           </div>
+          {quotidien && (
+            <div className="ligne">
+              <span>Cumul de la semaine (avec cette saisie)</span>
+              <Amount
+                titre="Cumul de la semaine"
+                lignes={[
+                  `Autres journées de la semaine : ${fmtEUR(cumulSemaineAutres, 2)}`,
+                  `+ cette saisie : ${fmtEUR(base, 2)}`,
+                  `= ${fmtEUR(cumulSemaineAutres + base, 2)} — le calcul fiscal reste hebdomadaire`,
+                ]}
+              >
+                <strong>{fmtEUR(cumulSemaineAutres + base, 2)}</strong>
+              </Amount>
+            </div>
+          )}
         </div>
       </div>
 
@@ -310,7 +384,7 @@ export function SaisieView({
           className="btn btn-danger btn-block"
           style={{ marginTop: 10 }}
           onClick={() => {
-            if (confirm('Supprimer la saisie de cette semaine ?')) onDelete(existante.id)
+            if (confirm(quotidien ? 'Supprimer la saisie de ce jour ?' : 'Supprimer la saisie de cette semaine ?')) onDelete(existante.id)
           }}
         >
           Supprimer cette saisie

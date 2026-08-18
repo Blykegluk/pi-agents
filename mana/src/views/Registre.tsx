@@ -55,7 +55,7 @@ export function Registre({
     if (!agg) return
     const sep = ';'
     const head = [
-      'Semaine ISO', 'Type', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
+      'Semaine ISO', 'Jour', 'Type', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
       'Poids F&L (kg)', 'Coût F&L (EUR/kg)', 'Coût F&L (EUR)', 'Base semaine (EUR)', 'Horodatage', 'Justificatifs', 'Alerte 2,5 % CA', 'Note',
     ].join(sep)
     const rows = [...agg.saisies]
@@ -64,7 +64,7 @@ export function Registre({
         const m = magasinDe(s.magasinId)
         const num = (n: number) => n.toFixed(2).replace('.', ',')
         return [
-          s.semaine, s.type === 'correction' ? 'Correction' : 'Don', m?.nom ?? '', societe.raisonSociale,
+          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don', m?.nom ?? '', societe.raisonSociale,
           num(s.pvEmballes), String(s.margePctAppliquee).replace('.', ','),
           num(coutEmballes(s.pvEmballes, s.margePctAppliquee)), String(s.kgFL).replace('.', ','),
           num(s.coutKgFLApplique), num(coutFL(s.kgFL, s.coutKgFLApplique)), num(baseDeLaSaisie(s)),
@@ -140,7 +140,10 @@ export function Registre({
               <tbody>
                 {lignes.map((s) => (
                   <tr key={s.id} className={agg.saisiesEnAlerte.has(s.id) ? 'ligne-alerte' : undefined}>
-                    <td>{weekLabel(s.semaine)}</td>
+                    <td>
+                      {weekLabel(s.semaine)}
+                      {s.jour ? ` · ${s.jour.slice(8, 10)}/${s.jour.slice(5, 7)}` : ''}
+                    </td>
                     <td>{s.type === 'correction' ? <span className="badge alerte">correction</span> : 'don'}</td>
                     <td>{magasinDe(s.magasinId)?.nom}</td>
                     <td className="num">{fmtEUR(s.pvEmballes, 2)}</td>
