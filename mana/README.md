@@ -30,6 +30,19 @@ npm run preview    # sert le build de production
 - **Dashboard** : jauge de plafond par société (élément signature), réduction acquise, projection fin d'année (rythme des 4 dernières semaines), gain net vs facture Mana, compteurs impact (repas, kg, CO₂).
 - **Registre & documents** : registre horodaté (CSV + PDF), note de méthode datée/versionnée, état annuel de valorisation pour l'expert-comptable — PDF générés côté client (jsPDF).
 
+## Module Facturation & vérification du CA (complément de spec)
+
+- **Facturation mensuelle au succès** : 15 % de la base des dons documentés du mois (= 25 % de la réduction de 60 %),
+  facture PDF par société à terme échu (TVA 20 %, numérotation `MANA-AAAA-NNN`, mention SEPA B2B), **arrêt automatique
+  au plafond** avec proratisation du dernier mois.
+- **Vérification du CA** : SIREN obligatoire vérifié via l'API Recherche d'Entreprises (api.gouv.fr), CA/marge
+  verrouillés par un justificatif (liasse 2052 ou attestation d'expert-comptable), plafond calculé jamais éditable,
+  garde-fou d'alerte au-delà de 2,5 % du CA. Code structuré pour brancher l'API INPI (`src/lib/entreprise.ts`).
+- **Régularisation annuelle** : écran de clôture d'exercice (upload de la liasse définitive → facture complémentaire
+  ou avoir avec détail du calcul) ; corrections « dons refusés » en négatif sur une semaine passée.
+- **Transparence** : bloc « Votre contrat en clair » sur le dashboard (gain net vs commissions, date estimée
+  d'atteinte du plafond).
+
 Au premier lancement, un **jeu de démonstration** est préchargé : 2 magasins
 (CA 1,97 M€ / marge 33,6 % et CA 1,68 M€ / marge 28,9 %) avec 6 semaines de saisies.
 `⚙ → Réinitialiser la démo` pour le recharger.

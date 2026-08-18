@@ -1,29 +1,60 @@
 import { useState } from 'react'
-import type { Collecteur, Magasin } from '../types'
+import type { Collecteur, Justificatif, Magasin, Societe } from '../types'
 import { plafondAnnuel } from '../lib/calc'
-import { fmtEUR, fmtPct } from '../lib/format'
+import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
+import { IconMagasins } from '../components/Icons'
 import { uid } from '../lib/storage'
+import { lireFichiers } from '../lib/fichiers'
+import { normaliserSiren, sirenValide, verifierSiren } from '../lib/entreprise'
 
-/** Onboarding magasin (spec §4.1) — une fois, < 5 minutes. */
-export function Magasins({
+/**
+ * Onboarding en deux temps (spec §4.1 + complément §2) :
+ * 1. la Société — SIREN vérifié, CA/marge liés à un justificatif, plafond calculé ;
+ * 2. le Magasin — paramètres de terrain (coût F&L, collecteurs).
+ */
+export function MagasinsView({
+  societes,
   magasins,
-  onSave,
-  onDelete,
+  onSaveSociete,
+  onDeleteSociete,
+  onSaveMagasin,
+  onDeleteMagasin,
 }: {
+  societes: Societe[]
   magasins: Magasin[]
-  onSave: (m: Magasin) => void
-  onDelete: (id: string) => void
+  onSaveSociete: (s: Societe) => void
+  onDeleteSociete: (id: string) => void
+  onSaveMagasin: (m: Magasin) => void
+  onDeleteMagasin: (id: string) => void
 }) {
-  const [edition, setEdition] = useState<Magasin | 'nouveau' | null>(null)
+  const [edition, setEdition] = useState<
+    | { type: 'societe'; societe: Societe | null }
+    | { type: 'magasin'; societeId: string; magasin: Magasin | null }
+    | null
+  >(null)
 
-  if (edition) {
+  if (edition?.type === 'societe') {
+    return (
+      <FormulaireSociete
+        initial={edition.societe}
+        onCancel={() => setEdition(null)}
+        onSave={(s, estNouvelle) => {
+          onSaveSociete(s)
+          setEdition(estNouvelle ? { type: 'magasin', societeId: s.id, magasin: null } : null)
+        }}
+      />
+    )
+  }
+  if (edition?.type === 'magasin') {
+    const societe = societes.find((s) => s.id === edition.societeId)
     return (
       <FormulaireMagasin
-        initial={edition === 'nouveau' ? null : edition}
+        societe={societe}
+        initial={edition.magasin}
         onCancel={() => setEdition(null)}
         onSave={(m) => {
-          onSave(m)
+          onSaveMagasin(m)
           setEdition(null)
         }}
       />
@@ -32,143 +63,355 @@ export function Magasins({
 
   return (
     <div>
-      <h2>Mes magasins</h2>
-      {magasins.length === 0 && (
+      <h2>Sociétés &amp; magasins</h2>
+      {societes.length === 0 && (
         <div className="card empty">
-          <span className="ico">🏪</span>
-          Aucun magasin pour l’instant.
+          <span className="ico">
+            <IconMagasins />
+          </span>
+          Aucune société pour l’instant.
           <br />
-          L’onboarding prend moins de 5 minutes.
+          L’onboarding prend moins de 5 minutes (SIREN + justificatif de CA).
         </div>
       )}
-      {magasins.map((m) => (
-        <div className="card" key={m.id}>
-          <h3>{m.nom}</h3>
-          <p className="muted" style={{ margin: '2px 0 10px' }}>
-            {m.societe}
-            {m.enseigne ? ` · ${m.enseigne}` : ''}
-            {m.siren ? ` · SIREN ${m.siren}` : ''}
-          </p>
-          <div className="detail-lignes">
-            <div className="ligne">
-              <span>CA HT dernier exercice</span>
-              <strong>{fmtEUR(m.caHT)}</strong>
-            </div>
-            <div className="ligne">
-              <span>Plafond annuel de dons</span>
-              <Amount
-                titre="Plafond annuel (par société)"
-                lignes={[
-                  'max(20 000 € ; 0,5 % × CA HT)',
-                  `0,5 % × ${fmtEUR(m.caHT)} = ${fmtEUR(0.005 * m.caHT)}`,
-                  `= ${fmtEUR(plafondAnnuel(m.caHT))}`,
-                ]}
-              >
-                <strong>{fmtEUR(plafondAnnuel(m.caHT))}</strong>
-              </Amount>
-            </div>
-            <div className="ligne">
-              <span>Marge brute (coefficient de valorisation)</span>
-              <Amount
-                titre="Coefficient de coût de revient"
-                lignes={[
-                  `coût de revient = prix de vente × (1 − marge)`,
-                  `= PV × (1 − ${fmtPct(m.margePct)}) = PV × ${(1 - m.margePct / 100).toLocaleString('fr-FR', { maximumFractionDigits: 3 })}`,
-                ]}
-              >
-                <strong>{fmtPct(m.margePct)}</strong>
-              </Amount>
-            </div>
-            <div className="ligne">
-              <span>Coût de revient moyen F&amp;L</span>
-              <strong>{fmtEUR(m.coutKgFL, 2)}/kg</strong>
-            </div>
-            <div className="ligne">
-              <span>Success fee Mana</span>
-              <strong>{fmtPct(m.successFeePct, 0)}</strong>
-            </div>
-            {m.collecteurs.length > 0 && (
-              <div className="ligne">
-                <span>Collecteur{m.collecteurs.length > 1 ? 's' : ''}</span>
-                <span style={{ textAlign: 'right' }}>
-                  {m.collecteurs.map((c) => (
-                    <span key={c.nom}>
-                      <strong>{c.nom}</strong>
-                      <br />
-                      <small className="muted">{c.jours}</small>
-                      <br />
-                    </span>
-                  ))}
+      {societes.map((s) => {
+        const sesMagasins = magasins.filter((m) => m.societeId === s.id)
+        return (
+          <div className="card" key={s.id}>
+            <h3>{s.raisonSociale}</h3>
+            <p className="muted" style={{ margin: '2px 0 8px' }}>
+              SIREN {s.siren}
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              {s.verification.apiStatut === 'verifie' ? (
+                <span className="verif-badge">✓ Société vérifiée (registre national)</span>
+              ) : (
+                <span className="verif-badge attente">SIREN non vérifié</span>
+              )}
+              {s.verification.caVerifieLe ? (
+                <span className="verif-badge">
+                  ✓ CA vérifié le {fmtDate(s.verification.caVerifieLe)} — source : {s.verification.caSource}
                 </span>
+              ) : (
+                <span className="verif-badge attente">CA en attente de justificatif</span>
+              )}
+            </div>
+            <div className="detail-lignes">
+              <div className="ligne">
+                <span>CA HT vérifié</span>
+                <strong>{fmtEUR(s.caHT)}</strong>
               </div>
-            )}
+              <div className="ligne">
+                <span>Plafond annuel de dons (calculé, non modifiable)</span>
+                <Amount
+                  titre="Plafond annuel (par société)"
+                  lignes={[
+                    'max(20 000 € ; 0,5 % × CA HT vérifié)',
+                    `0,5 % × ${fmtEUR(s.caHT)} = ${fmtEUR(0.005 * s.caHT)}`,
+                    `= ${fmtEUR(plafondAnnuel(s.caHT))}`,
+                  ]}
+                >
+                  <strong>{fmtEUR(plafondAnnuel(s.caHT))}</strong>
+                </Amount>
+              </div>
+              <div className="ligne">
+                <span>Marge brute (liasse)</span>
+                <strong>{fmtPct(s.margePct)}</strong>
+              </div>
+              <div className="ligne">
+                <span>Commission Mana</span>
+                <Amount
+                  titre="Commission Mana"
+                  lignes={[
+                    `${s.successFeePct.toLocaleString('fr-FR')} % de la réduction d'impôt de 60 %`,
+                    `= ${(s.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons documentés`,
+                    'Facturée chaque mois échu ; s’arrête automatiquement au plafond.',
+                  ]}
+                >
+                  <strong>{(s.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base</strong>
+                </Amount>
+              </div>
+            </div>
+
+            {sesMagasins.map((m) => (
+              <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                  <div>
+                    <strong style={{ fontSize: 14.5 }}>{m.nom}</strong>
+                    <div className="muted">
+                      {m.enseigne ? `${m.enseigne} · ` : ''}F&amp;L {fmtEUR(m.coutKgFL, 2)}/kg
+                      {m.collecteurs.length > 0 ? ` · ${m.collecteurs.map((c) => c.nom).join(', ')}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
+                      Modifier
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => {
+                        if (confirm(`Supprimer « ${m.nom} » et ses saisies ?`)) onDeleteMagasin(m.id)
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="row-actions" style={{ marginTop: 12 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: null })}>
+                + Ajouter un magasin
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'societe', societe: s })}>
+                Modifier la société
+              </button>
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={() => {
+                  if (confirm(`Supprimer « ${s.raisonSociale} », ses magasins et toutes leurs saisies ?`)) onDeleteSociete(s.id)
+                }}
+              >
+                Supprimer
+              </button>
+            </div>
           </div>
-          <div className="row-actions" style={{ marginTop: 12 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setEdition(m)}>
-              Modifier
-            </button>
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => {
-                if (confirm(`Supprimer « ${m.nom} » et toutes ses saisies ?`)) onDelete(m.id)
-              }}
-            >
-              Supprimer
-            </button>
-          </div>
-        </div>
-      ))}
-      <button className="btn btn-primary btn-block" onClick={() => setEdition('nouveau')}>
-        + Ajouter un magasin
+        )
+      })}
+      <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
+        + Ajouter une société
       </button>
     </div>
   )
 }
 
-function FormulaireMagasin({
+function FormulaireSociete({
   initial,
   onSave,
   onCancel,
 }: {
+  initial: Societe | null
+  onSave: (s: Societe, estNouvelle: boolean) => void
+  onCancel: () => void
+}) {
+  const [raisonSociale, setRaisonSociale] = useState(initial?.raisonSociale ?? '')
+  const [siren, setSiren] = useState(initial?.siren ?? '')
+  const [caHT, setCaHT] = useState(initial?.caHT ?? 0)
+  const [margePct, setMargePct] = useState(initial?.margePct ?? 30)
+  const [successFeePct, setSuccessFeePct] = useState(initial?.successFeePct ?? 25)
+  const [verification, setVerification] = useState(initial?.verification ?? { apiStatut: 'non_verifie' as const })
+  const [nouvellePiece, setNouvellePiece] = useState<Justificatif | null>(null)
+  const [sourcePiece, setSourcePiece] = useState<'liasse' | 'attestation'>('liasse')
+  const [verifEnCours, setVerifEnCours] = useState(false)
+  const [messageVerif, setMessageVerif] = useState('')
+
+  // Le CA et la marge sont liés au justificatif : modifiables uniquement
+  // à la création ou en téléversant une nouvelle pièce.
+  const caModifiable = !initial || nouvellePiece !== null
+  const pieceOK = initial ? true : nouvellePiece !== null
+  const valide = raisonSociale.trim() && sirenValide(siren) && caHT > 0 && margePct > 0 && margePct < 100 && pieceOK
+
+  async function lancerVerification() {
+    setVerifEnCours(true)
+    setMessageVerif('')
+    const r = await verifierSiren(siren)
+    setVerifEnCours(false)
+    if (r.ok) {
+      setMessageVerif(`✓ Société trouvée : ${r.raisonSociale}`)
+      if (!raisonSociale.trim() && r.raisonSociale) setRaisonSociale(r.raisonSociale)
+      setVerification((v) => ({
+        ...v,
+        apiStatut: 'verifie',
+        raisonSocialeAPI: r.raisonSociale,
+        apiVerifieLe: new Date().toISOString(),
+      }))
+    } else {
+      setMessageVerif(r.erreur ?? 'Vérification impossible.')
+      setVerification((v) => ({
+        ...v,
+        apiStatut: r.erreur?.includes('introuvable') ? 'introuvable' : 'indisponible',
+      }))
+    }
+  }
+
+  async function choisirPiece(files: FileList | null) {
+    const [pj] = await lireFichiers(files)
+    if (pj) setNouvellePiece(pj)
+  }
+
+  function enregistrer() {
+    if (!valide) return
+    const maintenant = new Date().toISOString()
+    const verif = { ...verification }
+    if (nouvellePiece) {
+      verif.caVerifieLe = maintenant
+      verif.caSource =
+        sourcePiece === 'liasse' ? 'Liasse fiscale 2052 (téléversée)' : 'Attestation de CA de l’expert-comptable (téléversée)'
+    }
+    onSave(
+      {
+        id: initial?.id ?? uid(),
+        raisonSociale: raisonSociale.trim(),
+        siren: normaliserSiren(siren),
+        caHT,
+        margePct,
+        successFeePct,
+        verification: verif,
+        justificatifCA: nouvellePiece ?? initial?.justificatifCA,
+        creeLe: initial?.creeLe ?? maintenant,
+      },
+      !initial,
+    )
+  }
+
+  return (
+    <div>
+      <h2>{initial ? 'Modifier la société' : 'Nouvelle société'}</h2>
+
+      <div className="card">
+        <h3>Identité (vérifiée au registre national)</h3>
+        <label className="field">
+          <span>SIREN *</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={siren}
+              onChange={(e) => setSiren(e.target.value)}
+              placeholder="9 chiffres"
+              style={{ flex: 1 }}
+            />
+            <button className="btn btn-ghost" onClick={lancerVerification} disabled={verifEnCours || !sirenValide(siren)} style={{ opacity: sirenValide(siren) ? 1 : 0.5 }}>
+              {verifEnCours ? '…' : 'Vérifier'}
+            </button>
+          </div>
+          {messageVerif && <span className="aide" style={{ color: messageVerif.startsWith('✓') ? 'var(--vert)' : 'var(--rouge)' }}>{messageVerif}</span>}
+          <span className="aide">Vérification gratuite via l’API Recherche d’Entreprises (api.gouv.fr).</span>
+        </label>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span>Raison sociale *</span>
+          <input type="text" value={raisonSociale} onChange={(e) => setRaisonSociale(e.target.value)} placeholder="Ex. SARL Delmas Distribution" />
+        </label>
+      </div>
+
+      <div className="card">
+        <h3>CA &amp; marge (liés à un justificatif)</h3>
+        <p className="muted">
+          Le CA n’est jamais un champ libre : il est adossé à la liasse fiscale (formulaire 2052) ou à une attestation
+          d’expert-comptable. Le plafond de dons en découle automatiquement.
+        </p>
+        {initial && !nouvellePiece && (
+          <div className="info-banner">
+            CA et marge sont verrouillés par le justificatif du {initial.verification.caVerifieLe ? fmtDate(initial.verification.caVerifieLe) : '—'}.
+            Téléversez une nouvelle pièce ci-dessous pour les modifier.
+          </div>
+        )}
+        <label className="field">
+          <span>Justificatif {initial ? '(nouvelle pièce)' : '*'}</span>
+          <div className="chips" style={{ marginBottom: 8 }}>
+            <button type="button" className={`chip ${sourcePiece === 'liasse' ? 'active' : ''}`} onClick={() => setSourcePiece('liasse')}>
+              Liasse fiscale 2052
+            </button>
+            <button type="button" className={`chip ${sourcePiece === 'attestation' ? 'active' : ''}`} onClick={() => setSourcePiece('attestation')}>
+              Attestation expert-comptable
+            </button>
+          </div>
+          <input type="file" accept="image/*,application/pdf" onChange={(e) => choisirPiece(e.target.files)} />
+          {nouvellePiece && (
+            <span className="justif-list">
+              <span className="pj">
+                📎 {nouvellePiece.nom}
+                <button onClick={(e) => { e.preventDefault(); setNouvellePiece(null) }} aria-label="Retirer">✕</button>
+              </span>
+            </span>
+          )}
+          <span className="aide">Si les comptes de la société ne sont pas publics (confidentialité), ce justificatif est obligatoire.</span>
+        </label>
+        <label className="field">
+          <span>CA HT du dernier exercice *</span>
+          <div className="suffixe">
+            <input type="number" inputMode="numeric" min={0} step={10000} value={caHT || ''} disabled={!caModifiable} onChange={(e) => setCaHT(Number(e.target.value))} />
+            <em>€ HT</em>
+          </div>
+          {caHT > 0 && (
+            <span className="aide">
+              Plafond annuel de dons : <strong>{fmtEUR(plafondAnnuel(caHT))}</strong> — max(20 000 € ; 0,5 % × CA HT). Calculé, jamais éditable.
+            </span>
+          )}
+        </label>
+        <label className="field">
+          <span>Marge brute de la liasse *</span>
+          <div className="suffixe">
+            <input type="number" inputMode="decimal" min={0} max={99} step={0.1} value={margePct || ''} disabled={!caModifiable} onChange={(e) => setMargePct(Number(e.target.value))} />
+            <em>%</em>
+          </div>
+          <span className="aide">
+            Coefficient de valorisation : coût de revient = prix de vente × (1 − marge). Règle prudente : caler sur la
+            liasse ou arrondir <strong>au-dessus</strong>.
+          </span>
+        </label>
+        <label className="field" style={{ marginBottom: 0 }}>
+          <span>Success fee Mana</span>
+          <div className="suffixe">
+            <input type="number" inputMode="decimal" min={0} max={100} step={1} value={successFeePct} onChange={(e) => setSuccessFeePct(Number(e.target.value))} />
+            <em>% de la réduction</em>
+          </div>
+          <span className="aide">
+            Soit {(successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons documentés, facturés au mois échu. 0 € d’abonnement.
+          </span>
+        </label>
+      </div>
+
+      <div className="row-actions">
+        <button className="btn btn-primary" disabled={!valide} style={{ opacity: valide ? 1 : 0.5, flex: 1 }} onClick={enregistrer}>
+          {initial ? 'Enregistrer' : 'Enregistrer et ajouter un magasin'}
+        </button>
+        <button className="btn btn-ghost" onClick={onCancel}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function FormulaireMagasin({
+  societe,
+  initial,
+  onSave,
+  onCancel,
+}: {
+  societe: Societe | undefined
   initial: Magasin | null
   onSave: (m: Magasin) => void
   onCancel: () => void
 }) {
   const [nom, setNom] = useState(initial?.nom ?? '')
-  const [societe, setSociete] = useState(initial?.societe ?? '')
-  const [siren, setSiren] = useState(initial?.siren ?? '')
   const [enseigne, setEnseigne] = useState(initial?.enseigne ?? '')
-  const [caHT, setCaHT] = useState(initial?.caHT ?? 0)
-  const [margePct, setMargePct] = useState(initial?.margePct ?? 30)
   const [coutKgFL, setCoutKgFL] = useState(initial?.coutKgFL ?? 2.2)
-  const [successFeePct, setSuccessFeePct] = useState(initial?.successFeePct ?? 25)
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
     initial?.collecteurs?.length ? initial.collecteurs : [{ nom: '', contact: '', jours: '' }],
   )
 
-  const valide = nom.trim() && societe.trim() && caHT > 0 && margePct > 0 && margePct < 100
+  if (!societe) return null
+  const valide = nom.trim().length > 0
 
   function enregistrer() {
-    if (!valide) return
+    if (!valide || !societe) return
     const maintenant = new Date().toISOString()
     const versions = [...(initial?.versionsParametres ?? [])]
     const derniere = versions[versions.length - 1]
     if (!derniere) {
-      versions.push({ version: 1, date: maintenant, margePct, coutKgFL })
-    } else if (derniere.margePct !== margePct || derniere.coutKgFL !== coutKgFL) {
-      // Changement de coefficient → nouvelle version de la note de méthode
-      versions.push({ version: derniere.version + 1, date: maintenant, margePct, coutKgFL })
+      versions.push({ version: 1, date: maintenant, margePct: societe.margePct, coutKgFL })
+    } else if (derniere.coutKgFL !== coutKgFL || derniere.margePct !== societe.margePct) {
+      versions.push({ version: derniere.version + 1, date: maintenant, margePct: societe.margePct, coutKgFL })
     }
     onSave({
       id: initial?.id ?? uid(),
+      societeId: societe.id,
       nom: nom.trim(),
-      societe: societe.trim(),
-      siren: siren.trim() || undefined,
       enseigne: enseigne.trim() || undefined,
-      caHT,
-      margePct,
       coutKgFL,
-      successFeePct,
       collecteurs: collecteurs.filter((c) => c.nom.trim()),
       creeLe: initial?.creeLe ?? maintenant,
       versionsParametres: versions,
@@ -177,53 +420,17 @@ function FormulaireMagasin({
 
   return (
     <div>
-      <h2>{initial ? 'Modifier le magasin' : 'Nouveau magasin'}</h2>
+      <h2>{initial ? 'Modifier le magasin' : `Nouveau magasin — ${societe.raisonSociale}`}</h2>
       <div className="card">
         <label className="field">
           <span>Nom du magasin *</span>
           <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex. Marché Frais Centre-Ville" />
         </label>
         <label className="field">
-          <span>Société *</span>
-          <input type="text" value={societe} onChange={(e) => setSociete(e.target.value)} placeholder="Ex. SARL Delmas Distribution" />
-          <span className="aide">Le plafond fiscal de dons s’apprécie par société.</span>
-        </label>
-        <label className="field">
-          <span>SIREN (facultatif)</span>
-          <input type="text" inputMode="numeric" value={siren} onChange={(e) => setSiren(e.target.value)} placeholder="123 456 789" />
-        </label>
-        <label className="field">
           <span>Enseigne (facultatif)</span>
           <input type="text" value={enseigne} onChange={(e) => setEnseigne(e.target.value)} placeholder="Ex. Bio&Local" />
         </label>
-      </div>
-
-      <div className="card">
-        <h3>Paramètres de valorisation</h3>
-        <label className="field">
-          <span>CA HT du dernier exercice *</span>
-          <div className="suffixe">
-            <input type="number" inputMode="numeric" min={0} step={10000} value={caHT || ''} onChange={(e) => setCaHT(Number(e.target.value))} />
-            <em>€ HT</em>
-          </div>
-          {caHT > 0 && (
-            <span className="aide">
-              Plafond annuel de dons calculé : <strong>{fmtEUR(plafondAnnuel(caHT))}</strong> — max(20 000 € ; 0,5 % × CA HT).
-            </span>
-          )}
-        </label>
-        <label className="field">
-          <span>Marge brute de la liasse fiscale *</span>
-          <div className="suffixe">
-            <input type="number" inputMode="decimal" min={0} max={99} step={0.1} value={margePct || ''} onChange={(e) => setMargePct(Number(e.target.value))} />
-            <em>%</em>
-          </div>
-          <span className="aide">
-            Coefficient de valorisation : coût de revient = prix de vente × (1 − marge). Règle prudente : caler sur la
-            liasse, ou arrondir la marge <strong>au-dessus</strong> (jamais en dessous) — méthode défendable en cas de contrôle.
-          </span>
-        </label>
-        <label className="field">
+        <label className="field" style={{ marginBottom: 0 }}>
           <span>Coût de revient moyen F&amp;L</span>
           <div className="suffixe">
             <input type="number" inputMode="decimal" min={0} step={0.1} value={coutKgFL} onChange={(e) => setCoutKgFL(Number(e.target.value))} />
@@ -231,29 +438,13 @@ function FormulaireMagasin({
           </div>
           <span className="aide">Préréglé à 2,20 €/kg. Source : total des achats F&amp;L annuels ÷ tonnage acheté, ou échantillonnage sur 2 semaines.</span>
         </label>
-        <label className="field">
-          <span>Taux de la réduction d’impôt</span>
-          <div className="suffixe">
-            <input type="number" value={60} disabled />
-            <em>%</em>
-          </div>
-          <span className="aide">Fixé par l’article 238 bis du CGI — non modifiable.</span>
-        </label>
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span>Success fee Mana</span>
-          <div className="suffixe">
-            <input type="number" inputMode="decimal" min={0} max={100} step={1} value={successFeePct} onChange={(e) => setSuccessFeePct(Number(e.target.value))} />
-            <em>%</em>
-          </div>
-          <span className="aide">Part de l’économie d’impôt réellement générée. 0 € d’abonnement : pas d’économie, pas de facture.</span>
-        </label>
       </div>
 
       <div className="card">
         <h3>Collecteur(s) partenaire(s)</h3>
         <p className="muted">Banque Alimentaire, Restos du Cœur, Linkee, Le Chaînon Manquant… Informatif.</p>
         {collecteurs.map((c, i) => (
-          <div key={i} style={{ borderTop: i > 0 ? '1px solid var(--trait)' : undefined, paddingTop: i > 0 ? 12 : 0 }}>
+          <div key={i} style={{ borderTop: i > 0 ? '1px solid var(--trait-doux)' : undefined, paddingTop: i > 0 ? 12 : 0 }}>
             <label className="field">
               <span>Nom de l’association</span>
               <input type="text" value={c.nom} onChange={(e) => setCollecteurs(collecteurs.map((x, j) => (j === i ? { ...x, nom: e.target.value } : x)))} placeholder="Ex. Banque Alimentaire du Rhône" />

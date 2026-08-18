@@ -12,24 +12,6 @@ export interface VersionParametres {
   coutKgFL: number
 }
 
-export interface Magasin {
-  id: string
-  nom: string
-  societe: string
-  siren?: string
-  enseigne?: string
-  caHT: number
-  /** Marge brute de la liasse fiscale, en % (ex. 33,6) */
-  margePct: number
-  /** Coût de revient moyen fruits & légumes, €/kg */
-  coutKgFL: number
-  /** Success fee Mana, en % (préréglé 25) */
-  successFeePct: number
-  collecteurs: Collecteur[]
-  creeLe: string // ISO
-  versionsParametres: VersionParametres[]
-}
-
 export interface Justificatif {
   id: string
   nom: string
@@ -38,11 +20,51 @@ export interface Justificatif {
   dataUrl: string
 }
 
+/** Vérification du CA et de l'existence de la société — le CA n'est jamais un champ libre. */
+export interface VerificationSociete {
+  /** Vérification d'existence via l'API Recherche d'Entreprises (api.gouv.fr). */
+  apiStatut: 'verifie' | 'introuvable' | 'indisponible' | 'non_verifie'
+  raisonSocialeAPI?: string
+  apiVerifieLe?: string
+  /** Vérification du CA par justificatif (liasse 2052 ou attestation d'expert-comptable). */
+  caVerifieLe?: string
+  caSource?: string
+}
+
+/** Le plafond fiscal, la facturation et la vérification du CA s'apprécient PAR SOCIÉTÉ. */
+export interface Societe {
+  id: string
+  raisonSociale: string
+  siren: string
+  caHT: number
+  /** Marge brute de la liasse fiscale, en % — liée au justificatif CA. */
+  margePct: number
+  /** Success fee en % de la réduction d'impôt (25 par défaut) — soit 15 % de la base valorisée. */
+  successFeePct: number
+  verification: VerificationSociete
+  justificatifCA?: Justificatif
+  creeLe: string
+}
+
+export interface Magasin {
+  id: string
+  societeId: string
+  nom: string
+  enseigne?: string
+  /** Coût de revient moyen fruits & légumes, €/kg */
+  coutKgFL: number
+  collecteurs: Collecteur[]
+  creeLe: string
+  versionsParametres: VersionParametres[]
+}
+
 export interface Saisie {
   id: string
   magasinId: string
   /** Semaine ISO, ex. "2026-W33" */
   semaine: string
+  /** 'don' = saisie hebdomadaire normale ; 'correction' = dons refusés retranchés a posteriori (montants négatifs). */
+  type: 'don' | 'correction'
   /** Montant prix de vente de la démarque "don" — produits emballés (€) */
   pvEmballes: number
   /** Poids de fruits & légumes donnés (kg) */
@@ -56,8 +78,45 @@ export interface Saisie {
   coutKgFLApplique: number
 }
 
+export interface Facture {
+  id: string
+  /** Numérotation séquentielle : MANA-AAAA-NNN */
+  numero: string
+  societeId: string
+  exercice: number
+  /** 'AAAA-MM' pour une commission mensuelle ; 'AAAA' pour une régularisation de clôture. */
+  periode: string
+  type: 'commission' | 'complement' | 'avoir'
+  libelle: string
+  /** Base de dons facturée ce mois (négative pour un avoir). */
+  baseFacturable: number
+  tauxCommissionPct: number
+  montantHT: number
+  tauxTVAPct: number
+  montantTVA: number
+  montantTTC: number
+  emiseLe: string
+  /** Détail du calcul, ligne à ligne (transparence). */
+  detail: string[]
+}
+
+/** Clôture d'exercice : régularisation sur la liasse réelle. */
+export interface Cloture {
+  id: string
+  societeId: string
+  exercice: number
+  caReel: number
+  margeReellePct: number
+  justificatif?: Justificatif
+  effectueeLe: string
+  factureId?: string
+}
+
 export interface AppState {
-  schema: 1
+  schema: 2
+  societes: Societe[]
   magasins: Magasin[]
   saisies: Saisie[]
+  factures: Facture[]
+  clotures: Cloture[]
 }

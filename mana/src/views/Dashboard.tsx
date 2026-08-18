@@ -1,26 +1,28 @@
 import type { AppState } from '../types'
 import { aggParSociete } from '../lib/selectors'
-import { fmtEUR, fmtNum, fmtPct } from '../lib/format'
+import { fmtDate, fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
 import { Gauge } from '../components/Gauge'
+import { IconTableau } from '../components/Icons'
 import { CO2_PAR_KG, KG_PAR_REPAS, PV_MOYEN_EMBALLES_PAR_KG } from '../lib/calc'
 
-/** Dashboard (spec §4.4) — jauge du plafond, projection, transparence gain net / facture, impact. */
+/** Dashboard (spec §4.4 + complément §4) — jauge, projection, contrat en clair, impact. */
 export function Dashboard({ state, exercice }: { state: AppState; exercice: number }) {
   const aggs = aggParSociete(state, exercice)
 
-  if (state.magasins.length === 0) {
+  if (state.societes.length === 0) {
     return (
       <div className="card empty">
-        <span className="ico">📊</span>
-        Le tableau de bord s’affichera dès qu’un magasin sera créé et qu’une semaine sera saisie.
+        <span className="ico">
+          <IconTableau />
+        </span>
+        Le tableau de bord s’affichera dès qu’une société sera créée et qu’une semaine sera saisie.
       </div>
     )
   }
 
   const totalReduction = aggs.reduce((t, a) => t + a.resultat.reductionIS, 0)
-  const totalNet = aggs.reduce((t, a) => t + a.resultat.gainNetClient, 0)
-  const totalFacture = aggs.reduce((t, a) => t + a.resultat.factureMana, 0)
+  const totalCommissions = aggs.reduce((t, a) => t + a.commissionsHT, 0)
   const totalRepas = aggs.reduce((t, a) => t + a.repas, 0)
   const totalKg = aggs.reduce((t, a) => t + a.kgTotal, 0)
   const totalCO2 = aggs.reduce((t, a) => t + a.co2, 0)
@@ -38,20 +40,20 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
               <Amount
                 titre="Réduction consolidée"
                 lignes={[
-                  ...aggs.map((a) => `${a.societe} : ${fmtEUR(a.resultat.reductionIS, 2)}`),
+                  ...aggs.map((a) => `${a.societe.raisonSociale} : ${fmtEUR(a.resultat.reductionIS, 2)}`),
                   `= ${fmtEUR(totalReduction, 2)}`,
                 ]}
               >
-                <strong style={{ fontSize: 18 }}>{fmtEUR(totalReduction, 2)}</strong>
+                <strong style={{ fontSize: 18 }} className="montant-serif">{fmtEUR(totalReduction, 2)}</strong>
               </Amount>
             </div>
             <div className="ligne">
-              <span>Gain net clients</span>
-              <strong>{fmtEUR(totalNet, 2)}</strong>
+              <span>Commissions Mana facturées (HT)</span>
+              <strong>{fmtEUR(totalCommissions, 2)}</strong>
             </div>
             <div className="ligne">
-              <span>Honoraires Mana</span>
-              <strong>{fmtEUR(totalFacture, 2)}</strong>
+              <span>Gain net clients</span>
+              <strong>{fmtEUR(totalReduction - totalCommissions, 2)}</strong>
             </div>
           </div>
         </div>
@@ -61,16 +63,29 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
         const r = a.resultat
         const p = a.projection
         return (
-          <div className="card" key={a.societe}>
-            <h3>{a.societe}</h3>
+          <div className="card" key={a.societe.id}>
+            <h3>{a.societe.raisonSociale}</h3>
             <p className="muted" style={{ marginTop: 2 }}>
-              {a.magasins.map((m) => m.nom).join(' · ')}
+              {a.magasins.map((m) => m.nom).join(' · ') || 'Aucun magasin'}
             </p>
+
+            {a.plafondAtteint && (
+              <div className="info-banner vert" style={{ marginTop: 10 }}>
+                <strong>Plafond fiscal atteint — vos prochains dons ne sont plus facturés.</strong> Vous pouvez continuer
+                à documenter vos dons (conformité, impact) ; le compteur repart au 1<sup>er</sup> jour de l’exercice suivant.
+              </div>
+            )}
+            {a.alerteCA && !a.plafondAtteint && (
+              <div className="info-banner alerte" style={{ marginTop: 10 }}>
+                Volume de dons inhabituel par rapport au CA déclaré (&gt; 2,5 % du CA) — un justificatif complémentaire
+                sera demandé. Semaines concernées marquées au registre.
+              </div>
+            )}
 
             <Gauge
               valeur={r.baseBrute}
               max={r.plafond}
-              sousTitre={`Base de dons cumulée sur l'exercice / plafond de la société — max(20 000 € ; 0,5 % × ${fmtEUR(a.caHT)})`}
+              sousTitre={`Base de dons cumulée sur l'exercice / plafond de la société — max(20 000 € ; 0,5 % × ${fmtEUR(a.societe.caHT)})`}
             />
             {r.excedent > 0 && (
               <p style={{ textAlign: 'center' }}>
@@ -89,7 +104,7 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
                     `= 60 % × ${fmtEUR(r.basePlafonnee, 2)} = ${fmtEUR(r.reductionIS, 2)}`,
                   ]}
                 >
-                  <strong style={{ fontSize: 17 }}>{fmtEUR(r.reductionIS, 2)}</strong>
+                  <strong style={{ fontSize: 17 }} className="montant-serif">{fmtEUR(r.reductionIS, 2)}</strong>
                 </Amount>
               </div>
 
@@ -115,33 +130,42 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
                   </Amount>
                 </div>
               )}
+            </div>
 
-              <div className="ligne">
-                <span>Gain net client</span>
-                <Amount
-                  titre="Gain net client"
-                  lignes={[
-                    `Réduction d’IS − honoraires Mana (${fmtPct(a.successFeePct, 0)})`,
-                    `= ${fmtEUR(r.reductionIS, 2)} − ${fmtEUR(r.factureMana, 2)}`,
-                    `= ${fmtEUR(r.gainNetClient, 2)}`,
-                  ]}
-                >
-                  <strong>{fmtEUR(r.gainNetClient, 2)}</strong>
-                </Amount>
+            <div style={{ background: 'var(--sable)', borderRadius: 10, padding: '13px 15px', marginTop: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 4 }}>Votre contrat en clair</div>
+              <div className="detail-lignes" style={{ marginTop: 0 }}>
+                <div className="ligne">
+                  <span>Réduction d’impôt acquise</span>
+                  <strong>{fmtEUR(r.reductionIS, 2)}</strong>
+                </div>
+                <div className="ligne">
+                  <span>Commissions Mana facturées (HT)</span>
+                  <Amount
+                    titre="Commissions Mana"
+                    lignes={[
+                      `${fmtPct(a.societe.successFeePct, 0)} de la réduction, soit ${(a.societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base documentée`,
+                      ...a.factures.map((f) => `${f.numero} (${f.periode}) : ${fmtEUR(f.montantHT, 2)} HT`),
+                      `= ${fmtEUR(a.commissionsHT, 2)} HT`,
+                    ]}
+                  >
+                    <strong>− {fmtEUR(a.commissionsHT, 2)}</strong>
+                  </Amount>
+                </div>
+                <div className="ligne">
+                  <span>Votre gain net depuis le début de l’exercice</span>
+                  <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(r.reductionIS - a.commissionsHT, 2)}</strong>
+                </div>
+                {a.datePlafondEstimee && (
+                  <div className="ligne">
+                    <span>Plafond atteint (estimation, rythme actuel)</span>
+                    <strong>{fmtDate(a.datePlafondEstimee.toISOString())}</strong>
+                  </div>
+                )}
               </div>
-              <div className="ligne">
-                <span>Facture Mana ({fmtPct(a.successFeePct, 0)} de la réduction)</span>
-                <Amount
-                  titre="Facture Mana"
-                  lignes={[
-                    `facture_Mana = success_fee × réduction_IS`,
-                    `= ${fmtPct(a.successFeePct, 0)} × ${fmtEUR(r.reductionIS, 2)} = ${fmtEUR(r.factureMana, 2)}`,
-                    'Pas d’économie = pas de facture.',
-                  ]}
-                >
-                  <strong>{fmtEUR(r.factureMana, 2)}</strong>
-                </Amount>
-              </div>
+              <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
+                La facturation s’arrête automatiquement quand vos dons ne génèrent plus de réduction.
+              </p>
             </div>
 
             <hr className="sep" />

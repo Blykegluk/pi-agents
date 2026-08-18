@@ -1,22 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AppState, Magasin, Saisie } from './types'
+import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
-import { clearState, exportJSON, importJSON, loadState, saveState } from './lib/storage'
+import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, uid } from './lib/storage'
+import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
+import { montantsFacture, prochainNumero } from './lib/facturation'
 import { FormulaProvider } from './components/Formula'
+import { IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
 import { Simulateur } from './views/Simulateur'
-import { Magasins } from './views/Magasins'
+import { MagasinsView } from './views/Magasins'
 import { SaisieView } from './views/Saisie'
 import { Dashboard } from './views/Dashboard'
 import { Registre } from './views/Registre'
 
 type Tab = 'simulateur' | 'magasins' | 'saisie' | 'dashboard' | 'registre'
 
-const TABS: { id: Tab; label: string; ico: string }[] = [
-  { id: 'simulateur', label: 'Simulateur', ico: '🧮' },
-  { id: 'magasins', label: 'Magasins', ico: '🏪' },
-  { id: 'saisie', label: 'Saisie', ico: '✍️' },
-  { id: 'dashboard', label: 'Tableau', ico: '📊' },
-  { id: 'registre', label: 'Registre', ico: '📁' },
+const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
+  { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
+  { id: 'magasins', label: 'Magasins', icone: IconMagasins },
+  { id: 'saisie', label: 'Saisie', icone: IconSaisie },
+  { id: 'dashboard', label: 'Tableau', icone: IconTableau },
+  { id: 'registre', label: 'Registre', icone: IconRegistre },
 ]
 
 export default function App() {
@@ -32,6 +35,46 @@ export default function App() {
       alert('Espace de stockage local saturé : allégez les justificatifs (photos plus légères) ou exportez puis purgez les anciennes semaines.')
     }
   }, [state])
+
+  function saveSociete(societe: Societe) {
+    setState((s) => {
+      const precedente = s.societes.find((x) => x.id === societe.id)
+      const margeChangee = precedente && precedente.margePct !== societe.margePct
+      const maintenant = new Date().toISOString()
+      return {
+        ...s,
+        societes: precedente ? s.societes.map((x) => (x.id === societe.id ? societe : x)) : [...s.societes, societe],
+        // Changement de marge société → nouvelle version de la note de méthode de chaque magasin
+        magasins: margeChangee
+          ? s.magasins.map((m) => {
+              if (m.societeId !== societe.id) return m
+              const derniere = m.versionsParametres[m.versionsParametres.length - 1]
+              return {
+                ...m,
+                versionsParametres: [
+                  ...m.versionsParametres,
+                  { version: (derniere?.version ?? 0) + 1, date: maintenant, margePct: societe.margePct, coutKgFL: m.coutKgFL },
+                ],
+              }
+            })
+          : s.magasins,
+      }
+    })
+  }
+
+  function deleteSociete(id: string) {
+    setState((s) => {
+      const magasinIds = new Set(s.magasins.filter((m) => m.societeId === id).map((m) => m.id))
+      return {
+        ...s,
+        societes: s.societes.filter((x) => x.id !== id),
+        magasins: s.magasins.filter((m) => m.societeId !== id),
+        saisies: s.saisies.filter((x) => !magasinIds.has(x.magasinId)),
+        factures: s.factures.filter((f) => f.societeId !== id),
+        clotures: s.clotures.filter((c) => c.societeId !== id),
+      }
+    })
+  }
 
   function saveMagasin(m: Magasin) {
     setState((s) => ({
@@ -59,11 +102,100 @@ export default function App() {
     setState((s) => ({ ...s, saisies: s.saisies.filter((x) => x.id !== id) }))
   }
 
+  /** Émet les factures de commission des mois échus non facturés. Retourne le nombre émis. */
+  function genererFactures(societeId: string): number {
+    const agg = aggParSociete(state, exercice).find((a) => a.societe.id === societeId)
+    if (!agg) return 0
+    const nouvelles = facturesCommissionManquantes(agg, exercice, new Date(), state.factures.map((f) => f.numero))
+    if (nouvelles.length > 0) setState((s) => ({ ...s, factures: [...s.factures, ...nouvelles] }))
+    return nouvelles.length
+  }
+
+  /** Clôture d'exercice : régularisation sur la liasse réelle + mise à jour de la société. */
+  function cloturer(societeId: string, caReel: number, margeReellePct: number, justificatif: Justificatif | null) {
+    const agg = aggParSociete(state, exercice).find((a) => a.societe.id === societeId)
+    if (!agg) return
+    const r = calculerCloture(agg, caReel, margeReellePct)
+    const maintenant = new Date().toISOString()
+
+    let facture: Facture | null = null
+    if (Math.abs(r.deltaHT) >= 0.01) {
+      const { montantTVA, montantTTC } = montantsFacture(r.deltaHT)
+      facture = {
+        id: uid(),
+        numero: prochainNumero(state.factures.map((f) => f.numero), exercice),
+        societeId,
+        exercice,
+        periode: String(exercice),
+        type: r.deltaHT >= 0 ? 'complement' : 'avoir',
+        libelle: `Régularisation annuelle — exercice ${exercice} (liasse fiscale définitive)`,
+        baseFacturable: Math.round(((r.deltaHT * 100) / agg.societe.successFeePct / 0.6) * 100) / 100,
+        tauxCommissionPct: agg.societe.successFeePct * 0.6,
+        montantHT: r.deltaHT,
+        tauxTVAPct: 20,
+        montantTVA,
+        montantTTC,
+        emiseLe: maintenant,
+        detail: r.detail,
+      }
+    }
+
+    setState((s) => ({
+      ...s,
+      factures: facture ? [...s.factures, facture] : s.factures,
+      clotures: [
+        ...s.clotures,
+        {
+          id: uid(),
+          societeId,
+          exercice,
+          caReel,
+          margeReellePct,
+          justificatif: justificatif ?? undefined,
+          effectueeLe: maintenant,
+          factureId: facture?.id,
+        },
+      ],
+      // La liasse définitive devient la référence de la société
+      societes: s.societes.map((x) =>
+        x.id === societeId
+          ? {
+              ...x,
+              caHT: caReel,
+              margePct: margeReellePct,
+              justificatifCA: justificatif ?? x.justificatifCA,
+              verification: {
+                ...x.verification,
+                caVerifieLe: maintenant,
+                caSource: `Liasse fiscale 2052 — clôture ${exercice}`,
+              },
+            }
+          : x,
+      ),
+      magasins: s.magasins.map((m) => {
+        if (m.societeId !== societeId) return m
+        const derniere = m.versionsParametres[m.versionsParametres.length - 1]
+        if (derniere?.margePct === margeReellePct) return m
+        return {
+          ...m,
+          versionsParametres: [
+            ...m.versionsParametres,
+            { version: (derniere?.version ?? 0) + 1, date: maintenant, margePct: margeReellePct, coutKgFL: m.coutKgFL },
+          ],
+        }
+      }),
+    }))
+  }
+
   async function importer(file: File | null) {
     if (!file) return
     try {
       const imported = await importJSON(file)
-      if (confirm(`Importer ${imported.magasins.length} magasin(s) et ${imported.saisies.length} saisie(s) ? Les données actuelles seront remplacées.`)) {
+      if (
+        confirm(
+          `Importer ${imported.societes.length} société(s), ${imported.magasins.length} magasin(s) et ${imported.saisies.length} saisie(s) ? Les données actuelles seront remplacées.`,
+        )
+      ) {
         setState(imported)
         setReglages(false)
       }
@@ -76,31 +208,39 @@ export default function App() {
     <FormulaProvider>
       <header className="header">
         <div className="brand">
-          <h1>🌾 Mana</h1>
+          <LogoMana taille={26} />
+          <h1>mana</h1>
           <span>la manne cachée de vos invendus</span>
         </div>
         <button onClick={() => setReglages(true)} aria-label="Réglages et données">
-          ⚙
+          <IconReglages />
         </button>
       </header>
 
       <main>
         {tab === 'simulateur' && <Simulateur onCommencer={() => setTab('magasins')} />}
-        {tab === 'magasins' && <Magasins magasins={state.magasins} onSave={saveMagasin} onDelete={deleteMagasin} />}
-        {tab === 'saisie' && (
-          <SaisieView magasins={state.magasins} saisies={state.saisies} onSave={saveSaisie} onDelete={deleteSaisie} />
+        {tab === 'magasins' && (
+          <MagasinsView
+            societes={state.societes}
+            magasins={state.magasins}
+            onSaveSociete={saveSociete}
+            onDeleteSociete={deleteSociete}
+            onSaveMagasin={saveMagasin}
+            onDeleteMagasin={deleteMagasin}
+          />
         )}
+        {tab === 'saisie' && <SaisieView state={state} exercice={exercice} onSave={saveSaisie} onDelete={deleteSaisie} />}
         {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
-        {tab === 'registre' && <Registre state={state} exercice={exercice} />}
+        {tab === 'registre' && (
+          <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} />
+        )}
       </main>
 
       <nav className="tabbar">
         <div className="tabbar-inner">
           {TABS.map((t) => (
             <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-              <span className="ico" aria-hidden>
-                {t.ico}
-              </span>
+              <t.icone />
               {t.label}
             </button>
           ))}
@@ -139,7 +279,7 @@ export default function App() {
                 onClick={() => {
                   if (confirm('Effacer toutes les données de cet appareil ?')) {
                     clearState()
-                    setState({ schema: 1, magasins: [], saisies: [] })
+                    setState(etatVide())
                     setReglages(false)
                   }
                 }}

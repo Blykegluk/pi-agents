@@ -1,19 +1,25 @@
-/* Mana — design « outil de gestion qui rapporte » : sérieux et chaleureux, mobile-first. */
+/* Mana — direction « Comptoir » : éditorial chaleureux, papier crème et vert profond. Mobile-first. */
 
 :root {
-  --creme: #faf6ef;
-  --carte: #ffffff;
-  --encre: #26241f;
-  --encre-2: #6f6a5e;
-  --vert: #1e5b4a;
-  --vert-fonce: #17443a;
-  --vert-pale: #e4efe9;
-  --ambre: #d98e1b;
-  --ambre-pale: #fbf1dd;
+  --papier: #f8f3e9;
+  --carte: #fffdf7;
+  --encre: #2b2620;
+  --encre-2: #5c554a;
+  --encre-3: #8a8171;
+  --vert: #234f3e;
+  --vert-fonce: #1a3b2e;
+  --vert-texte-2: #b9cbbd;
+  --sable: #ede3cc;
+  --ambre: #d9a441;
+  --ambre-pale: #f3e4c6;
+  --ambre-texte: #8a5d1b;
   --rouge: #b3462e;
-  --trait: #e7dfd1;
-  --radius: 14px;
-  --ombre: 0 1px 3px rgba(38, 36, 31, 0.08), 0 4px 14px rgba(38, 36, 31, 0.06);
+  --trait: #e2d7c0;
+  --trait-doux: #efe6d2;
+  --radius: 12px;
+  --ombre: 0 1px 2px rgba(43, 38, 32, 0.06), 0 4px 16px rgba(43, 38, 32, 0.05);
+  --serif: 'Young Serif', Georgia, 'Times New Roman', serif;
+  --sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
 * {
@@ -27,9 +33,9 @@ body {
 }
 
 body {
-  background: var(--creme);
+  background: var(--papier);
   color: var(--encre);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--sans);
   font-size: 16px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -48,9 +54,10 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--vert-fonce);
-  color: #fff;
-  padding: 12px 16px calc(12px);
+  background: var(--papier);
+  border-bottom: 1px solid var(--trait);
+  color: var(--encre);
+  padding: 10px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -58,44 +65,57 @@ body {
 
 .header .brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  gap: 9px;
 }
 
 .header .brand h1 {
-  font-size: 20px;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 400;
   margin: 0;
-  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .header .brand span {
-  font-size: 12px;
-  opacity: 0.75;
+  font-size: 11.5px;
+  color: var(--encre-3);
 }
 
 .header button {
-  background: rgba(255, 255, 255, 0.12);
+  background: none;
   border: none;
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 16px;
+  color: var(--encre-2);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  border-radius: 10px;
+}
+
+.header button:active {
+  background: var(--sable);
 }
 
 /* ---------- Contenu ---------- */
 main {
   flex: 1;
-  padding: 16px 16px calc(84px + env(safe-area-inset-bottom));
+  padding: 16px 16px calc(88px + env(safe-area-inset-bottom));
 }
 
 h2 {
-  font-size: 20px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 23px;
   margin: 4px 0 12px;
 }
 
 h3 {
-  font-size: 16px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 16.5px;
   margin: 0 0 8px;
 }
 
@@ -114,13 +134,17 @@ h3 {
 }
 
 .card.accent {
-  background: var(--vert-fonce);
-  color: #fff;
-  border-color: var(--vert-fonce);
+  background: var(--vert);
+  color: var(--papier);
+  border-color: var(--vert);
 }
 
 .card.accent .muted {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--vert-texte-2);
+}
+
+.card.accent h3 {
+  color: var(--papier);
 }
 
 /* ---------- Formulaires ---------- */
@@ -132,16 +156,17 @@ label.field {
 label.field > span {
   display: block;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13.5px;
   margin-bottom: 5px;
 }
 
 label.field .aide {
   display: block;
   font-weight: 400;
-  color: var(--encre-2);
+  color: var(--encre-3);
   font-size: 12.5px;
   margin-top: 4px;
+  line-height: 1.45;
 }
 
 input[type='text'],
@@ -153,8 +178,8 @@ select {
   padding: 12px;
   font-size: 16px;
   border: 1px solid var(--trait);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 9px;
+  background: var(--papier);
   color: var(--encre);
   font-family: inherit;
 }
@@ -167,8 +192,8 @@ select:focus {
 }
 
 input:disabled {
-  background: #f2ede3;
-  color: var(--encre-2);
+  background: var(--sable);
+  color: var(--encre-3);
 }
 
 .suffixe {
@@ -185,8 +210,8 @@ input:disabled {
   top: 50%;
   transform: translateY(-50%);
   font-style: normal;
-  color: var(--encre-2);
-  font-size: 14px;
+  color: var(--encre-3);
+  font-size: 13.5px;
 }
 
 input[type='range'] {
@@ -223,17 +248,18 @@ input[type='range'] {
   justify-content: center;
   gap: 8px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 13px 18px;
-  font-size: 15.5px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  min-height: 48px;
 }
 
 .btn-primary {
   background: var(--vert);
-  color: #fff;
+  color: var(--papier);
 }
 
 .btn-primary:active {
@@ -242,7 +268,7 @@ input[type='range'] {
 
 .btn-ambre {
   background: var(--ambre);
-  color: #fff;
+  color: var(--encre);
 }
 
 .btn-ghost {
@@ -264,7 +290,8 @@ input[type='range'] {
 .btn-sm {
   padding: 8px 12px;
   font-size: 13.5px;
-  border-radius: 10px;
+  border-radius: 9px;
+  min-height: 40px;
 }
 
 /* ---------- Montants cliquables (formule au clic) ---------- */
@@ -278,11 +305,16 @@ button.amt {
   border-bottom: 1.5px dotted currentColor;
 }
 
+.montant-serif {
+  font-family: var(--serif);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Bottom sheet formules ---------- */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(23, 20, 16, 0.45);
+  background: rgba(30, 25, 18, 0.45);
   z-index: 60;
   display: flex;
   align-items: flex-end;
@@ -295,6 +327,8 @@ button.amt {
   padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
   width: 100%;
   max-width: 640px;
+  max-height: 85vh;
+  overflow-y: auto;
   animation: slideup 0.22s ease;
 }
 
@@ -342,7 +376,7 @@ button.amt {
   left: 0;
   right: 0;
   z-index: 30;
-  background: #fffdf8;
+  background: var(--carte);
   border-top: 1px solid var(--trait);
   display: flex;
   justify-content: center;
@@ -352,32 +386,30 @@ button.amt {
   display: flex;
   width: 100%;
   max-width: 640px;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 5px 8px calc(10px + env(safe-area-inset-bottom));
 }
 
 .tabbar button {
   flex: 1;
   background: none;
   border: none;
-  padding: 9px 2px 8px;
-  font-size: 10.5px;
+  min-height: 48px;
+  padding: 6px 2px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--encre-2);
+  color: var(--encre-3);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 4px;
   font-family: inherit;
-}
-
-.tabbar button .ico {
-  font-size: 20px;
-  line-height: 1;
 }
 
 .tabbar button.active {
   color: var(--vert);
+  font-weight: 700;
 }
 
 /* ---------- Simulateur ---------- */
@@ -387,9 +419,9 @@ button.amt {
 }
 
 .hero h2 {
-  font-size: 24px;
-  line-height: 1.2;
-  margin-bottom: 6px;
+  font-size: 28px;
+  line-height: 1.15;
+  margin-bottom: 8px;
 }
 
 .resultat-hero {
@@ -398,15 +430,17 @@ button.amt {
 }
 
 .resultat-hero .gros {
+  font-family: var(--serif);
   font-size: 40px;
-  font-weight: 800;
+  font-weight: 400;
   letter-spacing: -0.01em;
   display: block;
   margin: 6px 0 2px;
+  font-variant-numeric: tabular-nums;
 }
 
 .resultat-hero .accroche {
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--ambre);
   font-weight: 700;
 }
@@ -421,8 +455,8 @@ button.amt {
   align-items: baseline;
   gap: 12px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--trait);
-  font-size: 14.5px;
+  border-bottom: 1px solid var(--trait-doux);
+  font-size: 14px;
 }
 
 .detail-lignes .ligne:last-child {
@@ -435,22 +469,27 @@ button.amt {
 }
 
 .card.accent .detail-lignes .ligne {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(248, 243, 233, 0.16);
 }
 
 .badge {
   display: inline-block;
   background: var(--ambre-pale);
-  color: #8a5a10;
-  font-size: 12px;
+  color: var(--ambre-texte);
+  font-size: 11.5px;
   font-weight: 700;
   border-radius: 999px;
   padding: 3px 10px;
 }
 
 .badge.vert {
-  background: var(--vert-pale);
+  background: #e3ebe3;
   color: var(--vert-fonce);
+}
+
+.badge.alerte {
+  background: #f6ded4;
+  color: var(--rouge);
 }
 
 /* ---------- Jauge ---------- */
@@ -459,57 +498,66 @@ button.amt {
 }
 
 .gauge svg {
-  width: min(280px, 80%);
+  width: min(270px, 78%);
   display: block;
   margin: 0 auto;
 }
 
 .gauge-value {
-  font-size: 30px;
-  font-weight: 800;
+  font-family: var(--serif);
+  font-size: 31px;
   fill: var(--encre);
 }
 
 .gauge-sub {
-  font-size: 11px;
-  fill: var(--encre-2);
+  font-size: 10.5px;
+  fill: var(--encre-3);
+  font-family: var(--sans);
 }
 
 .gauge-legend {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
-  color: var(--encre-2);
+  font-size: 12.5px;
+  color: var(--encre-3);
   margin-top: -4px;
 }
 
+.gauge-legend strong {
+  color: var(--encre);
+  font-variant-numeric: tabular-nums;
+}
+
 .gauge-caption {
-  font-size: 12.5px;
-  color: var(--encre-2);
+  font-size: 12px;
+  color: var(--encre-3);
   margin: 8px 0 0;
 }
 
 /* ---------- Compteurs impact ---------- */
 .impact {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
 .impact .tuile {
-  background: var(--vert-pale);
-  border-radius: 12px;
-  padding: 12px 8px;
+  background: var(--sable);
+  border-radius: 10px;
+  padding: 13px 8px;
   text-align: center;
 }
 
 .impact .tuile strong {
   display: block;
+  font-family: var(--serif);
+  font-weight: 400;
   font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
 .impact .tuile span {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--encre-2);
 }
 
@@ -523,20 +571,21 @@ button.amt {
 
 .chip {
   border: 1.5px solid var(--trait);
-  background: #fff;
+  background: var(--carte);
   border-radius: 999px;
-  padding: 8px 14px;
-  font-size: 14px;
+  padding: 9px 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--encre-2);
   cursor: pointer;
   font-family: inherit;
+  min-height: 40px;
 }
 
 .chip.active {
   border-color: var(--vert);
   color: var(--vert);
-  background: var(--vert-pale);
+  background: #e3ebe3;
 }
 
 .semaine-nav {
@@ -549,7 +598,7 @@ button.amt {
 
 .semaine-nav .btn {
   flex: none;
-  width: 44px;
+  width: 46px;
   padding: 10px 0;
 }
 
@@ -563,7 +612,7 @@ button.amt {
 .semaine-nav .titre small {
   display: block;
   font-weight: 500;
-  color: var(--encre-2);
+  color: var(--encre-3);
 }
 
 /* ---------- Tableaux ---------- */
@@ -571,14 +620,14 @@ button.amt {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--trait);
-  border-radius: 12px;
-  background: #fff;
+  border-radius: 10px;
+  background: var(--carte);
 }
 
 table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 720px;
+  min-width: 760px;
   font-size: 13px;
 }
 
@@ -586,7 +635,7 @@ th,
 td {
   padding: 9px 10px;
   text-align: left;
-  border-bottom: 1px solid var(--trait);
+  border-bottom: 1px solid var(--trait-doux);
   white-space: nowrap;
 }
 
@@ -597,9 +646,10 @@ th.num {
 }
 
 th {
-  background: var(--vert-pale);
+  background: var(--sable);
   color: var(--vert-fonce);
-  font-size: 12px;
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
   position: sticky;
   top: 0;
 }
@@ -608,15 +658,32 @@ tr:last-child td {
   border-bottom: none;
 }
 
-/* ---------- Divers ---------- */
+tr.ligne-alerte td {
+  background: #fbf3e4;
+}
+
+/* ---------- Bannières ---------- */
 .info-banner {
   background: var(--ambre-pale);
-  border: 1px solid #f0ddb8;
+  border: 1px solid #ecd9ae;
   color: #6d4a0e;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 11px 14px;
   font-size: 13.5px;
   margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.info-banner.vert {
+  background: #e3ebe3;
+  border-color: #cbdccb;
+  color: var(--vert-fonce);
+}
+
+.info-banner.alerte {
+  background: #f6ded4;
+  border-color: #ecc4b4;
+  color: #7c2d12;
 }
 
 .row-actions {
@@ -636,9 +703,9 @@ tr:last-child td {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--vert-pale);
+  background: var(--sable);
   border-radius: 8px;
-  padding: 5px 9px;
+  padding: 6px 10px;
   font-size: 12.5px;
 }
 
@@ -648,7 +715,7 @@ tr:last-child td {
   color: var(--rouge);
   cursor: pointer;
   font-size: 14px;
-  padding: 0;
+  padding: 2px 4px;
 }
 
 .empty {
@@ -658,27 +725,84 @@ tr:last-child td {
 }
 
 .empty .ico {
-  font-size: 34px;
-  display: block;
-  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: var(--encre-3);
 }
 
 footer.legal {
   padding: 4px 4px 12px;
   font-size: 11.5px;
-  color: var(--encre-2);
+  color: var(--encre-3);
   text-align: center;
+  line-height: 1.5;
 }
 
 hr.sep {
   border: none;
-  border-top: 1px solid var(--trait);
+  border-top: 1px solid var(--trait-doux);
   margin: 14px 0;
+}
+
+/* ---------- Badge de vérification ---------- */
+.verif-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #e3ebe3;
+  color: var(--vert-fonce);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.verif-badge.attente {
+  background: var(--ambre-pale);
+  color: var(--ambre-texte);
+}
+
+/* ---------- Facture ---------- */
+.facture-ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--trait-doux);
+}
+
+.facture-ligne:last-child {
+  border-bottom: none;
+}
+
+.facture-ligne .infos {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.facture-ligne .infos strong {
+  font-size: 14px;
+}
+
+.facture-ligne .infos small {
+  color: var(--encre-3);
+  font-size: 12px;
+}
+
+.facture-ligne .montant {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 @media (min-width: 480px) {
   .hero h2 {
-    font-size: 28px;
+    font-size: 32px;
   }
   .resultat-hero .gros {
     font-size: 48px;

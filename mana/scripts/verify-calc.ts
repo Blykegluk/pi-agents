@@ -10,6 +10,7 @@ import {
   resultatAnnuel,
   simuler,
 } from '../src/lib/calc.ts'
+import { derouleFacturation, tauxCommissionPct } from '../src/lib/facturation.ts'
 
 let echecs = 0
 
@@ -47,6 +48,28 @@ attendre('base retenue (plafond 20 000)', s.basePlafonnee, 20_000)
 attendre('excédent reportable', s.excedent, 1_000)
 attendre('réduction_IS = 60 % × 20 000', s.reductionIS, 12_000)
 attendre('gain net = 12 000 − 25 %', s.gainNetClient, 9_000)
+
+console.log('\n— Exemple 5 : facturation au succès avec arrêt au plafond (complément de spec §1) —')
+// Société à 6 M€ de CA (plafond 30 000 €), 2 800 € de base documentée par mois
+const plafond6M = plafondAnnuel(6_000_000)
+attendre('plafond = max(20 000 ; 0,5 % × 6 000 000)', plafond6M, 30_000)
+const commissionPct = tauxCommissionPct(25) // 25 % de la réduction de 60 % = 15 % de la base
+if (commissionPct !== 15) {
+  echecs++
+  console.log(`✗ taux de commission attendu 15 %, obtenu ${commissionPct} %`)
+} else {
+  console.log('✓ taux de commission = 25 % × 60 % = 15 % de la base')
+}
+const basesMensuelles: [string, number][] = Array.from({ length: 12 }, (_, i) => [
+  `2026-${String(i + 1).padStart(2, '0')}`,
+  2_800,
+])
+const lignes = derouleFacturation(basesMensuelles, plafond6M, commissionPct)
+for (let m = 0; m < 10; m++) attendre(`facture du mois ${m + 1} : 15 % × 2 800`, lignes[m].montantHT, 420)
+attendre('facture du mois 11 (proratisée au plafond) : 15 % × 2 000', lignes[10].montantHT, 300)
+attendre('facture du mois 12 (plafond atteint → arrêt)', lignes[11].montantHT, 0)
+const totalFacture = lignes.reduce((t, l) => t + l.montantHT, 0)
+attendre('total facturé sur l’exercice = 15 % × 30 000', totalFacture, 4_500)
 
 console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)
 process.exit(echecs === 0 ? 0 : 1)

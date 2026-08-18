@@ -1,10 +1,10 @@
 import { jsPDF } from 'jspdf'
-import type { Magasin } from '../types'
+import type { Facture, Magasin, Societe } from '../types'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct, pdfSafe } from './format'
-import { TAUX_REDUCTION } from './calc'
 import { weekLabel } from './iso'
 import { baseDeLaSaisie, type AggSociete } from './selectors'
 import { coutEmballes, coutFL } from './calc'
+import { libelleMois } from './facturation'
 
 const MENTION_LEGALE =
   'Mana n’est pas un conseil fiscal ; ce document est destiné à validation par votre expert-comptable.'
@@ -14,7 +14,7 @@ function t(s: string): string {
 }
 
 function entete(doc: jsPDF, titre: string, sousTitre: string) {
-  doc.setFillColor(23, 68, 58)
+  doc.setFillColor(26, 59, 46)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
@@ -25,40 +25,40 @@ function entete(doc: jsPDF, titre: string, sousTitre: string) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.text(t(sousTitre), doc.internal.pageSize.getWidth() - 14, 14, { align: 'right' })
-  doc.setTextColor(38, 36, 31)
+  doc.setTextColor(43, 38, 32)
 }
 
-function piedDePage(doc: jsPDF) {
+function piedDePage(doc: jsPDF, mention: string = MENTION_LEGALE) {
   const pages = doc.getNumberOfPages()
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
     const w = doc.internal.pageSize.getWidth()
     const h = doc.internal.pageSize.getHeight()
     doc.setFontSize(7.5)
-    doc.setTextColor(120, 115, 105)
-    doc.text(t(MENTION_LEGALE), 14, h - 8)
+    doc.setTextColor(120, 113, 100)
+    doc.text(t(mention), 14, h - 8)
     doc.text(t(`Page ${i}/${pages}`), w - 14, h - 8, { align: 'right' })
-    doc.setTextColor(38, 36, 31)
+    doc.setTextColor(43, 38, 32)
   }
 }
 
 /** Registre des dons — tableau chronologique horodaté (format paysage). */
 export function pdfRegistre(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-  entete(doc, 'Registre des dons', `${agg.societe} — Exercice ${exercice}`)
+  entete(doc, 'Registre des dons', `${agg.societe.raisonSociale} — Exercice ${exercice}`)
 
   const cols = [
-    { x: 14, w: 40, label: 'Semaine' },
-    { x: 54, w: 42, label: 'Magasin' },
-    { x: 96, w: 24, label: 'PV emballés', right: true },
-    { x: 120, w: 16, label: 'Marge', right: true },
-    { x: 136, w: 26, label: 'Coût emballés', right: true },
-    { x: 162, w: 16, label: 'F&L (kg)', right: true },
-    { x: 178, w: 18, label: 'Coût/kg', right: true },
-    { x: 196, w: 20, label: 'Coût F&L', right: true },
-    { x: 216, w: 24, label: 'Base semaine', right: true },
-    { x: 240, w: 30, label: 'Horodatage', right: false },
-    { x: 270, w: 14, label: 'Justif.', right: true },
+    { x: 14, w: 38, label: 'Semaine' },
+    { x: 52, w: 40, label: 'Magasin' },
+    { x: 92, w: 24, label: 'PV emballés', right: true },
+    { x: 116, w: 16, label: 'Marge', right: true },
+    { x: 132, w: 26, label: 'Coût emballés', right: true },
+    { x: 158, w: 16, label: 'F&L (kg)', right: true },
+    { x: 174, w: 18, label: 'Coût/kg', right: true },
+    { x: 192, w: 20, label: 'Coût F&L', right: true },
+    { x: 212, w: 24, label: 'Base semaine', right: true },
+    { x: 236, w: 30, label: 'Horodatage', right: false },
+    { x: 266, w: 18, label: 'Justif.', right: true },
   ]
 
   let y = 32
@@ -67,20 +67,21 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
   for (const c of cols) doc.text(t(c.label), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right' } : undefined)
   doc.setFont('helvetica', 'normal')
   y += 2
-  doc.setDrawColor(23, 68, 58)
+  doc.setDrawColor(26, 59, 46)
   doc.line(14, y, 284, y)
   y += 5
 
   const magasinDe = (id: string) => agg.magasins.find((m) => m.id === id)?.nom ?? '—'
 
   for (const s of agg.saisies) {
-    if (y > 185) {
+    if (y > 182) {
       doc.addPage()
-      entete(doc, 'Registre des dons (suite)', `${agg.societe} — Exercice ${exercice}`)
+      entete(doc, 'Registre des dons (suite)', `${agg.societe.raisonSociale} — Exercice ${exercice}`)
       y = 32
     }
+    const enAlerte = agg.saisiesEnAlerte.has(s.id)
     const vals = [
-      weekLabel(s.semaine),
+      `${weekLabel(s.semaine)}${s.type === 'correction' ? ' (corr.)' : ''}${enAlerte ? ' *' : ''}`,
       magasinDe(s.magasinId),
       fmtEUR(s.pvEmballes, 2),
       fmtPct(s.margePctAppliquee),
@@ -99,9 +100,9 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
     })
     if (s.note) {
       y += 4
-      doc.setTextColor(120, 115, 105)
-      doc.text(t(`Note : ${s.note}`), 54, y, { maxWidth: 220 })
-      doc.setTextColor(38, 36, 31)
+      doc.setTextColor(120, 113, 100)
+      doc.text(t(`Note : ${s.note}`), 52, y, { maxWidth: 220 })
+      doc.setTextColor(43, 38, 32)
     }
     y += 6
   }
@@ -118,22 +119,34 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
   doc.text(
     t(
       'Méthode appliquée : coût de revient = prix de vente × (1 − marge brute de la liasse fiscale) pour les produits emballés ; ' +
-        'poids × coût de revient moyen au kg pour les fruits & légumes. Coefficients figés à la date de chaque saisie (colonne Marge et Coût/kg).',
+        'poids × coût de revient moyen au kg pour les fruits & légumes. Coefficients figés à la date de chaque saisie. ' +
+        'Les lignes « (corr.) » retranchent des dons refusés par l’association.',
     ),
     14,
     y,
     { maxWidth: 270 },
   )
+  if (agg.saisiesEnAlerte.size > 0) {
+    y += 8
+    doc.setTextColor(150, 90, 20)
+    doc.text(
+      t('* Volume de dons inhabituel par rapport au CA déclaré (base cumulée > 2,5 % du CA) — un justificatif complémentaire sera demandé.'),
+      14,
+      y,
+      { maxWidth: 270 },
+    )
+    doc.setTextColor(43, 38, 32)
+  }
 
   piedDePage(doc)
-  doc.save(`mana-registre-${slug(agg.societe)}-${exercice}.pdf`)
+  doc.save(`mana-registre-${slug(agg.societe.raisonSociale)}-${exercice}.pdf`)
 }
 
 /** Note de méthode — 1 page par magasin, datée et versionnée. */
-export function pdfNoteDeMethode(magasin: Magasin, exercice: number) {
+export function pdfNoteDeMethode(societe: Societe, magasin: Magasin, exercice: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const version = magasin.versionsParametres[magasin.versionsParametres.length - 1]
-  entete(doc, 'Note de méthode de valorisation', `${magasin.societe} — ${magasin.nom}`)
+  entete(doc, 'Note de méthode de valorisation', `${societe.raisonSociale} — ${magasin.nom}`)
 
   let y = 34
   const p = (txt: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
@@ -159,8 +172,8 @@ export function pdfNoteDeMethode(magasin: Magasin, exercice: number) {
   p(
     `Le coût de revient est obtenu en appliquant au prix de vente enregistré en démarque « don » le coefficient issu de la ` +
       `marge brute de la dernière liasse fiscale : coût de revient = prix de vente × (1 − marge brute). ` +
-      `Marge brute retenue : ${fmtPct(magasin.margePct)}. Par prudence, la marge est calée sur la liasse ou arrondie ` +
-      `au-dessus (jamais en dessous), ce qui minore la base de réduction.`,
+      `Marge brute retenue : ${fmtPct(societe.margePct)}${societe.verification.caSource ? ` — source : ${societe.verification.caSource}${societe.verification.caVerifieLe ? `, vérifiée le ${fmtDate(societe.verification.caVerifieLe)}` : ''}` : ''}. ` +
+      `Par prudence, la marge est calée sur la liasse ou arrondie au-dessus (jamais en dessous), ce qui minore la base de réduction.`,
     { gap: 5 },
   )
   p('3. Fruits & légumes (don au poids)', { bold: true })
@@ -201,9 +214,23 @@ export function pdfNoteDeMethode(magasin: Magasin, exercice: number) {
 /** État annuel de valorisation — récapitulatif par société pour l'expert-comptable. */
 export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  entete(doc, 'État annuel de valorisation des dons', `${agg.societe} — Exercice ${exercice}`)
+  const societe = agg.societe
+  entete(doc, 'État annuel de valorisation des dons', `${societe.raisonSociale} — Exercice ${exercice}`)
 
-  let y = 34
+  let y = 30
+  doc.setFontSize(9)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t(
+      `SIREN ${societe.siren}${societe.verification.caSource ? ` — CA vérifié le ${societe.verification.caVerifieLe ? fmtDate(societe.verification.caVerifieLe) : '—'} (source : ${societe.verification.caSource})` : ''}`,
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+  y += 10
+
   const ligne = (label: string, valeur: string, bold = false) => {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
@@ -219,18 +246,18 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   y += 8
 
   const r = agg.resultat
-  ligne('Chiffre d’affaires HT de référence', fmtEUR(agg.caHT))
+  ligne('Chiffre d’affaires HT de référence (vérifié)', fmtEUR(societe.caHT))
   ligne('Base de dons valorisée au coût de revient', fmtEUR(r.baseBrute, 2))
   ligne('Plafond annuel — max(20 000 € ; 0,5 % × CA HT)', fmtEUR(r.plafond))
   ligne('Base retenue (plafonnée)', fmtEUR(r.basePlafonnee, 2), true)
   if (r.excedent > 0) ligne('Excédent au-delà du plafond — reportable 5 exercices', fmtEUR(r.excedent, 2))
   ligne(`Réduction d’impôt sur les sociétés (60 %)`, fmtEUR(r.reductionIS, 2), true)
   y += 2
-  ligne(`Honoraires Mana (${fmtNum(agg.successFeePct)} % de la réduction constatée)`, fmtEUR(r.factureMana, 2))
-  ligne('Gain net pour la société', fmtEUR(r.gainNetClient, 2), true)
+  ligne(`Commissions Mana facturées sur l'exercice (HT)`, fmtEUR(agg.commissionsHT, 2))
+  ligne('Gain net pour la société (réduction − commissions)', fmtEUR(r.reductionIS - agg.commissionsHT, 2), true)
 
   y += 4
-  doc.setDrawColor(23, 68, 58)
+  doc.setDrawColor(26, 59, 46)
   doc.line(14, y, 196, y)
   y += 8
 
@@ -255,7 +282,7 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   y += 4
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
-  doc.text(t('Rappel des obligations déclaratives'), 14, y)
+  doc.text(t('Rappel des obligations'), 14, y)
   y += 7
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9.5)
@@ -265,6 +292,8 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
     'Au-delà de 10 000 € de dons sur l’exercice : déclaration des montants, dates, bénéficiaires et contreparties ' +
       '(déclaration spécifique dématérialisée).',
     'Conserver le registre des dons, la note de méthode et les bordereaux d’enlèvement signés à l’appui de la valorisation.',
+    'Obligation contractuelle : fournir à Mana la liasse fiscale du nouvel exercice sous 60 jours après son dépôt, ' +
+      'pour la régularisation annuelle (plafond et marge réels).',
   ]
   for (const o of obligations) {
     const lines = doc.splitTextToSize(t(`• ${o}`), 182)
@@ -273,7 +302,101 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   }
 
   piedDePage(doc)
-  doc.save(`mana-etat-annuel-${slug(agg.societe)}-${exercice}.pdf`)
+  doc.save(`mana-etat-annuel-${slug(societe.raisonSociale)}-${exercice}.pdf`)
+}
+
+/** Facture (commission mensuelle, complément ou avoir) — mentions légales françaises. */
+export function pdfFacture(facture: Facture, societe: Societe) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const estAvoir = facture.type === 'avoir'
+  entete(doc, estAvoir ? `Avoir ${facture.numero}` : `Facture ${facture.numero}`, `Émise le ${fmtDate(facture.emiseLe)}`)
+
+  let y = 34
+  // Émetteur / client
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Mana SAS', 14, y)
+  doc.setFont('helvetica', 'normal')
+  doc.text(t('[Adresse Mana — à compléter]'), 14, y + 5)
+  doc.text(t('SIREN : [SIREN Mana] — TVA : [N° TVA Mana]'), 14, y + 10)
+
+  doc.setFont('helvetica', 'bold')
+  doc.text(t(societe.raisonSociale), 196, y, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.text(t(`SIREN : ${societe.siren}`), 196, y + 5, { align: 'right' })
+  if (facture.periode.length === 7) {
+    doc.text(t(`Période : ${libelleMois(facture.periode)}`), 196, y + 10, { align: 'right' })
+  } else {
+    doc.text(t(`Régularisation — exercice ${facture.exercice}`), 196, y + 10, { align: 'right' })
+  }
+  y += 22
+
+  // Tableau
+  doc.setDrawColor(26, 59, 46)
+  doc.setFillColor(233, 223, 201)
+  doc.rect(14, y, 182, 8, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.text('Désignation', 17, y + 5.5)
+  doc.text('Montant HT', 193, y + 5.5, { align: 'right' })
+  y += 8
+  doc.setFont('helvetica', 'normal')
+  const libLines = doc.splitTextToSize(t(facture.libelle), 145)
+  doc.text(libLines, 17, y + 5.5)
+  doc.text(t(fmtEUR(facture.montantHT, 2)), 193, y + 5.5, { align: 'right' })
+  y += libLines.length * 4.5 + 4
+  doc.line(14, y, 196, y)
+  y += 6
+
+  const totaux: [string, string, boolean][] = [
+    ['Total HT', fmtEUR(facture.montantHT, 2), false],
+    [`TVA ${fmtNum(facture.tauxTVAPct)} %`, fmtEUR(facture.montantTVA, 2), false],
+    ['Total TTC', fmtEUR(facture.montantTTC, 2), true],
+  ]
+  for (const [label, valeur, bold] of totaux) {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal')
+    doc.setFontSize(bold ? 11 : 9.5)
+    doc.text(t(label), 140, y)
+    doc.text(t(valeur), 196, y, { align: 'right' })
+    y += bold ? 8 : 6
+  }
+
+  y += 4
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text(t('Détail du calcul (transparence)'), 14, y)
+  y += 6
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  for (const l of facture.detail) {
+    const lines = doc.splitTextToSize(t(`• ${l}`), 182)
+    doc.text(lines, 14, y)
+    y += lines.length * 4.4 + 1.5
+  }
+
+  y += 6
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text(t('Conditions de règlement'), 14, y)
+  y += 6
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  const mentions = estAvoir
+    ? ['Avoir imputable sur la prochaine facture ou remboursable sur demande.']
+    : [
+        'Règlement par prélèvement SEPA B2B — échéance : 30 jours à compter de la date d’émission.',
+        'Pénalités de retard : taux BCE majoré de 10 points ; indemnité forfaitaire de recouvrement : 40 €.',
+        'Pas d’escompte pour paiement anticipé. TVA sur les débits.',
+        'La facturation cesse automatiquement lorsque la base de dons cumulée atteint le plafond fiscal de la société.',
+      ]
+  for (const m of mentions) {
+    const lines = doc.splitTextToSize(t(`• ${m}`), 182)
+    doc.text(lines, 14, y)
+    y += lines.length * 4.2 + 1.5
+  }
+
+  piedDePage(doc, 'Facture établie par Mana SAS. Pas d’économie d’impôt = pas de facture.')
+  doc.save(`${facture.numero.toLowerCase()}-${slug(societe.raisonSociale)}.pdf`)
 }
 
 function slug(s: string): string {
