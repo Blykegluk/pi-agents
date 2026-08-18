@@ -62,6 +62,10 @@ function estV2(parsed: unknown): parsed is AppState {
   )
 }
 
+export function interpreterEtat(parsed: unknown): AppState | null {
+  return interpreter(parsed)
+}
+
 function interpreter(parsed: unknown): AppState | null {
   if (estV2(parsed)) return parsed
   const p = parsed as { schema?: number; magasins?: unknown; saisies?: unknown }
@@ -127,6 +131,21 @@ export function importJSON(file: File): Promise<AppState> {
     }
     reader.readAsText(file)
   })
+}
+
+const KEY_MAJ = 'mana-maj-v1'
+
+/** Horodatage (ms) de la dernière modification locale — sert d'arbitre de synchronisation. */
+export function getMajLocale(): number {
+  return Number(localStorage.getItem(KEY_MAJ)) || 0
+}
+
+export function setMajLocale(ms: number): void {
+  try {
+    localStorage.setItem(KEY_MAJ, String(ms))
+  } catch {
+    /* sans importance */
+  }
 }
 
 export function uid(): string {

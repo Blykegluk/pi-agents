@@ -3,8 +3,10 @@
 > **La manne cachée de vos invendus** — défiscalisation automatisée des dons d'invendus alimentaires
 > pour commerces indépendants (article 238 bis du CGI).
 
-Web-app 100 % front, mobile-first, en français. Aucune donnée ne quitte l'appareil :
-persistance en `localStorage`, sauvegarde par export/import JSON. Déployable en statique.
+Web-app front mobile-first en français, déployable en statique (site façade `index.html` + portail `portail.html`,
+installable en PWA sur Android). Persistance locale (`localStorage`) + **compte et synchronisation multi-appareils**
+via Supabase (e-mail + mot de passe, table `mana_etats` protégée par RLS, stratégie « le plus récent gagne » avec
+rafraîchissement au retour sur l'onglet). Sans compte, tout fonctionne en local ; export/import JSON en secours.
 
 ## Lancer en local
 
