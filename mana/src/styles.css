@@ -763,6 +763,29 @@ hr.sep {
   color: var(--ambre-texte);
 }
 
+/* ---------- Mise en place de la collecte ---------- */
+.progress {
+  height: 8px;
+  background: var(--sable);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress > div {
+  height: 100%;
+  background: var(--vert);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.reseau {
+  border: 1px solid var(--trait);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--papier);
+}
+
 /* ---------- Facture ---------- */
 .facture-ligne {
   display: flex;

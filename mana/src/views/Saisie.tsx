@@ -37,11 +37,13 @@ export function SaisieView({
   exercice,
   onSave,
   onDelete,
+  onAllerCollecte,
 }: {
   state: AppState
   exercice: number
   onSave: (s: Saisie) => void
   onDelete: (id: string) => void
+  onAllerCollecte: () => void
 }) {
   const magasins = state.magasins
   const [magasinId, setMagasinId] = useState(magasins[0]?.id ?? '')
@@ -168,6 +170,16 @@ export function SaisieView({
               {m.nom}
             </button>
           ))}
+        </div>
+      )}
+
+      {magasin.collecteurs.length === 0 && (
+        <div className="info-banner">
+          <strong>Pas encore de collecte en place ?</strong> Suivez l’assistant : associations près de chez vous,
+          calendrier, tri, pesée — vous êtes pris en main de A à Z.{' '}
+          <button className="btn btn-ambre btn-sm" style={{ marginTop: 8, display: 'flex' }} onClick={onAllerCollecte}>
+            Organiser ma collecte
+          </button>
         </div>
       )}
 

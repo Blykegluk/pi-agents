@@ -62,6 +62,18 @@ export function IconRegistre() {
   )
 }
 
+export function IconCollecte() {
+  return (
+    <svg {...base}>
+      <path d="M2.5 6.5 h11.5 v9.5 H2.5 Z" />
+      <path d="M14 10 h4 l3.5 3.5 v2.5 H14" />
+      <circle cx="6.5" cy="18.5" r="2" />
+      <circle cx="17.5" cy="18.5" r="2" />
+      <path d="M8.5 18.5 h7" />
+    </svg>
+  )
+}
+
 export function IconReglages() {
   return (
     <svg {...base} width={20} height={20} strokeWidth={1.8}>

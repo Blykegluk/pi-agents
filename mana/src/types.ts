@@ -46,6 +46,14 @@ export interface Societe {
   creeLe: string
 }
 
+/** Avancement de l'assistant « Mise en place de la collecte » (accompagnement). */
+export interface MiseEnPlace {
+  /** Identifiants des étapes cochées par le magasin. */
+  faites: string[]
+  /** Gisement estimé de produits donnables, en kg/jour. */
+  gisementKgJour?: number
+}
+
 export interface Magasin {
   id: string
   societeId: string
@@ -56,6 +64,7 @@ export interface Magasin {
   /** Rythme de saisie des pertes choisi par le magasin (hebdomadaire par défaut). */
   frequenceSaisie?: 'hebdomadaire' | 'quotidienne'
   collecteurs: Collecteur[]
+  miseEnPlace?: MiseEnPlace
   creeLe: string
   versionsParametres: VersionParametres[]
 }

@@ -399,6 +399,146 @@ export function pdfFacture(facture: Facture, societe: Societe) {
   doc.save(`${facture.numero.toLowerCase()}-${slug(societe.raisonSociale)}.pdf`)
 }
 
+/** Affiche A4 « Le bac don — règles de tri » à imprimer pour la réserve. */
+export function pdfAfficheTri(nomMagasin: string) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  doc.setFillColor(26, 59, 46)
+  doc.rect(0, 0, 210, 40, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(26)
+  doc.text(t('LE BAC « DON »'), 105, 18, { align: 'center' })
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(t(`${nomMagasin} — pendant la tournée DLC, au lieu de la poubelle`), 105, 28, { align: 'center' })
+  doc.setTextColor(43, 38, 32)
+
+  let y = 52
+  const bloc = (titre: string, items: string[], vert: boolean) => {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(15)
+    if (vert) doc.setTextColor(26, 59, 46)
+    else doc.setTextColor(150, 45, 30)
+    doc.text(t(titre), 16, y)
+    doc.setTextColor(43, 38, 32)
+    y += 8
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11.5)
+    for (const i of items) {
+      // Pas de ✓/✗ : les polices PDF standard (WinAnsi) ne les contiennent pas
+      const lines = doc.splitTextToSize(t(`•  ${i}`), 178)
+      doc.text(lines, 18, y)
+      y += lines.length * 5.6 + 1.8
+    }
+    y += 6
+  }
+
+  bloc('ON DONNE', [
+    'Produits à DLC demain ou après-demain (« à consommer jusqu’au ») — à sortir la veille, jamais après la date.',
+    'DDM dépassée (« à consommer de préférence avant ») : biscuits, conserves, épicerie — donnables sans limite stricte.',
+    'Fruits & légumes moches, tachés, mûrs — mais sains.',
+    'Pain de la veille, emballages abîmés mais intacts (boîte cabossée, carton déchiré).',
+  ], true)
+
+  bloc('ON NE DONNE JAMAIS', [
+    'DLC dépassée — même d’un jour. C’est la règle d’or.',
+    'Produits entamés, déconditionnés ou sans étiquette.',
+    'Chaîne du froid rompue (produit resté hors frigo).',
+    'Alcool.',
+  ], false)
+
+  doc.setFillColor(243, 228, 198)
+  doc.roundedRect(14, y, 182, 30, 3, 3, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text(t('Les 3 gestes'), 20, y + 8)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10.5)
+  doc.text(t('1. Scanner la démarque avec le motif « DON » (comme d’habitude).'), 20, y + 15)
+  doc.text(t('2. Poser dans le bac « don » — frais au froid (0–4 °C) jusqu’au passage du collecteur.'), 20, y + 21)
+  doc.text(t('3. F&L : peser la cagette, noter le poids sur le bordereau.'), 20, y + 27)
+
+  doc.setFontSize(8.5)
+  doc.setTextColor(120, 113, 100)
+  doc.text(t('Généré par Mana — mana, la manne cachée de vos invendus'), 105, 288, { align: 'center' })
+  doc.save(`mana-affiche-tri-${slug(nomMagasin)}.pdf`)
+}
+
+/** Bordereau d'enlèvement vierge — à faire signer au collecteur à chaque passage. */
+export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  entete(doc, 'Bordereau d’enlèvement de denrées', `${raisonSociale} — ${magasin.nom}`)
+
+  let y = 34
+  doc.setFontSize(10)
+  const champ = (label: string, largeur: number, x: number) => {
+    doc.text(t(label), x, y)
+    doc.setDrawColor(180, 172, 155)
+    doc.line(x + doc.getTextWidth(t(label)) + 2, y + 0.5, x + largeur, y + 0.5)
+  }
+  champ('Date :', 88, 14)
+  champ('Heure :', 182, 110)
+  y += 9
+  champ('Association bénéficiaire :', 182, 14)
+  y += 9
+  champ('Nom du collecteur :', 182, 14)
+  y += 12
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setFillColor(233, 223, 201)
+  doc.rect(14, y, 182, 8, 'F')
+  doc.text(t('Famille de produits'), 17, y + 5.5)
+  doc.text(t('Poids (kg)'), 130, y + 5.5)
+  doc.text(t('Remarques (refus, état…)'), 155, y + 5.5)
+  y += 8
+  doc.setFont('helvetica', 'normal')
+  const familles = [
+    'Fruits & légumes',
+    'Crèmerie / frais',
+    'Épicerie (DDM)',
+    'Pain / viennoiserie',
+    'Autres',
+    '',
+  ]
+  for (const f of familles) {
+    doc.setDrawColor(210, 200, 180)
+    doc.rect(14, y, 182, 10)
+    doc.line(126, y, 126, y + 10)
+    doc.line(152, y, 152, y + 10)
+    doc.text(t(f), 17, y + 6.5)
+    y += 10
+  }
+  y += 8
+
+  doc.setFontSize(9.5)
+  doc.text(t('Total pesé (kg) : ______________'), 14, y)
+  y += 12
+  doc.setFont('helvetica', 'bold')
+  doc.text(t('Signature du magasin'), 30, y)
+  doc.text(t('Signature du collecteur'), 130, y)
+  doc.setDrawColor(180, 172, 155)
+  doc.rect(14, y + 3, 80, 26)
+  doc.rect(114, y + 3, 82, 26)
+  y += 38
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.text(
+    t(
+      'Ce bordereau atteste de la remise des denrées à l’association. Conservez-le (photo dans Mana, onglet Saisie) : ' +
+        'il appuie le registre des dons et le reçu fiscal 2041-MEC-SD délivré par l’association en fin d’exercice. ' +
+        'Rappel : jamais de DLC dépassée ; DDM dépassée donnable ; frais maintenu à 0–4 °C jusqu’à l’enlèvement.',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+
+  piedDePage(doc, 'Bordereau généré par Mana — à faire signer à chaque passage du collecteur.')
+  doc.save(`mana-bordereau-${slug(magasin.nom)}.pdf`)
+}
+
 function slug(s: string): string {
   return s
     .normalize('NFD')

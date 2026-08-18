@@ -5,18 +5,20 @@ import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, uid
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { FormulaProvider } from './components/Formula'
-import { IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
+import { IconCollecte, IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
 import { Simulateur } from './views/Simulateur'
 import { MagasinsView } from './views/Magasins'
+import { Collecte } from './views/Collecte'
 import { SaisieView } from './views/Saisie'
 import { Dashboard } from './views/Dashboard'
 import { Registre } from './views/Registre'
 
-type Tab = 'simulateur' | 'magasins' | 'saisie' | 'dashboard' | 'registre'
+type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre'
 
 const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
   { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
   { id: 'magasins', label: 'Magasins', icone: IconMagasins },
+  { id: 'collecte', label: 'Collecte', icone: IconCollecte },
   { id: 'saisie', label: 'Saisie', icone: IconSaisie },
   { id: 'dashboard', label: 'Tableau', icone: IconTableau },
   { id: 'registre', label: 'Registre', icone: IconRegistre },
@@ -229,7 +231,10 @@ export default function App() {
             onDeleteMagasin={deleteMagasin}
           />
         )}
-        {tab === 'saisie' && <SaisieView state={state} exercice={exercice} onSave={saveSaisie} onDelete={deleteSaisie} />}
+        {tab === 'collecte' && <Collecte state={state} onSaveMagasin={saveMagasin} onAllerSaisie={() => setTab('saisie')} />}
+        {tab === 'saisie' && (
+          <SaisieView state={state} exercice={exercice} onSave={saveSaisie} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
+        )}
         {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
         {tab === 'registre' && (
           <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} />
