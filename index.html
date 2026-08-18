@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#234F3E" />
+  <meta name="description" content="Mana transforme vos invendus alimentaires en réduction d'impôt : jusqu'à 12 000 € par magasin et par an. 0 € d'abonnement, 25 % de l'économie constatée." />
+  <title>Mana — La manne cachée de vos invendus</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'><g fill='none' stroke='%23234F3E' stroke-width='4' stroke-linecap='round'><path d='M28 50 V22'/><path d='M28 36 C19 34 15 27 15 19 C24 21 28 27 28 36'/><path d='M28 36 C37 34 41 27 41 19 C32 21 28 27 28 36'/></g><circle cx='28' cy='12' r='5' fill='%23D9A441'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;500;600;700&display=swap" />
+  <style>
+    :root {
+      --papier: #f8f3e9; --carte: #fffdf7; --encre: #2b2620; --encre-2: #5c554a; --encre-3: #8a8171;
+      --vert: #234f3e; --vert-fonce: #1a3b2e; --vert-texte-2: #b9cbbd; --sable: #ede3cc;
+      --ambre: #d9a441; --ambre-pale: #f3e4c6; --trait: #e2d7c0;
+      --serif: 'Young Serif', Georgia, serif; --sans: 'Instrument Sans', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--papier); color: var(--encre); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+    header { position: sticky; top: 0; z-index: 10; background: var(--papier); border-bottom: 1px solid var(--trait); }
+    header .wrap { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; padding-bottom: 12px; }
+    .brand { display: flex; align-items: center; gap: 9px; font-family: var(--serif); font-size: 22px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 10px; padding: 13px 20px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; min-height: 48px; }
+    .btn-primary { background: var(--vert); color: var(--papier); }
+    .btn-ambre { background: var(--ambre); color: var(--encre); }
+    .btn-ghost { background: transparent; color: var(--vert); border: 1px solid var(--trait); }
+    .hero { padding: 56px 0 40px; }
+    .hero h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(32px, 6vw, 52px); line-height: 1.1; margin: 0 0 16px; max-width: 720px; }
+    .hero p.lede { font-size: clamp(16px, 2.5vw, 19px); color: var(--encre-2); max-width: 640px; margin: 0 0 26px; }
+    .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .bandeau { background: var(--vert); color: var(--papier); }
+    .bandeau .wrap { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding-top: 34px; padding-bottom: 34px; }
+    .bandeau .stat strong { display: block; font-family: var(--serif); font-weight: 400; font-size: clamp(24px, 4vw, 36px); color: var(--ambre); }
+    .bandeau .stat span { font-size: 14px; color: var(--vert-texte-2); }
+    section.bloc { padding: 48px 0 8px; }
+    section.bloc h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(24px, 4vw, 32px); margin: 0 0 22px; }
+    .cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
+    .carte { background: var(--carte); border: 1px solid var(--trait); border-radius: 14px; padding: 22px; }
+    .carte .num { font-family: var(--serif); font-size: 26px; color: var(--ambre); }
+    .carte h3 { font-family: var(--serif); font-weight: 400; font-size: 18px; margin: 6px 0 8px; }
+    .carte p { margin: 0; font-size: 14.5px; color: var(--encre-2); }
+    .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .encart { background: var(--sable); border-radius: 14px; padding: 24px; }
+    .encart h3 { font-family: var(--serif); font-weight: 400; font-size: 19px; margin: 0 0 10px; }
+    .encart ul { margin: 0; padding-left: 20px; font-size: 15px; color: var(--encre-2); }
+    .encart li { margin-bottom: 7px; }
+    .final { text-align: center; padding: 56px 0 64px; }
+    .final h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 4.5vw, 36px); margin: 0 0 10px; }
+    .final p { color: var(--encre-2); margin: 0 0 24px; }
+    footer { border-top: 1px solid var(--trait); padding: 24px 0 40px; font-size: 12.5px; color: var(--encre-3); }
+    @media (max-width: 640px) { .bandeau .wrap { grid-template-columns: 1fr; gap: 14px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <svg width="26" height="26" viewBox="0 0 56 56" aria-hidden="true"><g fill="none" stroke="#234F3E" stroke-width="4" stroke-linecap="round"><path d="M28 50 V22"/><path d="M28 36 C19 34 15 27 15 19 C24 21 28 27 28 36"/><path d="M28 36 C37 34 41 27 41 19 C32 21 28 27 28 36"/></g><circle cx="28" cy="12" r="5" fill="#D9A441"/></svg>
+        mana
+      </div>
+      <a class="btn btn-primary" href="./portail.html">Accéder au portail</a>
+    </div>
+  </header>
+
+  <div class="wrap hero">
+    <h1>La manne cachée de vos invendus</h1>
+    <p class="lede">Vos invendus alimentaires donnent droit à <strong>60 % de leur coût de revient en réduction d'impôt</strong> (article 238 bis du CGI). Mana fait la valorisation, le registre, le plafond et les documents pour votre expert-comptable. Vous, vous saisissez un chiffre par semaine.</p>
+    <div class="cta">
+      <a class="btn btn-ambre" href="./portail.html">Estimer mon gain en 30 secondes</a>
+      <a class="btn btn-ghost" href="./portail.html">Ouvrir mon espace magasin</a>
+    </div>
+  </div>
+
+  <div class="bandeau">
+    <div class="wrap">
+      <div class="stat"><strong>jusqu'à 12 000 €</strong><span>de réduction d'impôt par magasin et par an</span></div>
+      <div class="stat"><strong>0 €</strong><span>d'abonnement — 25 % de l'économie réellement constatée</span></div>
+      <div class="stat"><strong>10 min</strong><span>par semaine, sans changer les habitudes de l'équipe</span></div>
+    </div>
+  </div>
+
+  <section class="bloc">
+    <div class="wrap">
+      <h2>Comment ça marche</h2>
+      <div class="cartes">
+        <div class="carte"><div class="num">1</div><h3>Rien ne change le matin</h3><p>La tournée DLC habituelle. Les produits encore consommables partent dans un bac « don » au lieu de la poubelle.</p></div>
+        <div class="carte"><div class="num">2</div><h3>Votre collecteur local passe</h3><p>Banque Alimentaire, Restos du Cœur… Il pèse, contrôle et signe un bon d'enlèvement. Vous gardez votre relation directe.</p></div>
+        <div class="carte"><div class="num">3</div><h3>Vous saisissez vos pertes</h3><p>Sur le portail web ou l'application, à la fréquence de votre choix : chaque jour ou une fois par semaine.</p></div>
+        <div class="carte"><div class="num">4</div><h3>Mana fait le reste</h3><p>Coût de revient, registre horodaté, jauge du plafond fiscal, état annuel prêt pour votre expert-comptable.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloc">
+    <div class="wrap duo">
+      <div class="encart">
+        <h3>Sérieux fiscal, noir sur blanc</h3>
+        <ul>
+          <li>Valorisation au coût de revient : méthode documentée, constante, auditable.</li>
+          <li>SIREN vérifié au registre national ; CA adossé à votre liasse fiscale.</li>
+          <li>Plafond légal — 20 000 € ou 0,5 % du CA — calculé automatiquement, jamais éditable.</li>
+          <li>La facturation s'arrête d'elle-même quand vos dons ne génèrent plus de réduction.</li>
+        </ul>
+      </div>
+      <div class="encart">
+        <h3>En magasin : le site ou l'application</h3>
+        <ul>
+          <li>Le portail fonctionne dans n'importe quel navigateur, ordinateur ou téléphone.</li>
+          <li>Sur Android : ouvrez le portail dans Chrome, menu ⋮ puis « Ajouter à l'écran d'accueil » — Mana s'installe comme une application et fonctionne même hors connexion.</li>
+          <li>Vos données restent sur votre appareil ; sauvegarde par export en un clic.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="final wrap">
+    <h2>Vous n'en touchez rien aujourd'hui.</h2>
+    <p>Configurez votre magasin en 5 minutes. Pas d'économie d'impôt = pas de facture.</p>
+    <a class="btn btn-primary" href="./portail.html">Créer mon espace magasin</a>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      Mana n'est pas un conseil fiscal : l'état annuel est destiné à validation par votre expert-comptable. Réduction d'impôt prévue par l'article 238 bis du CGI, dans la limite de 20 000 € ou 0,5 % du chiffre d'affaires HT.
+    </div>
+  </footer>
+</body>
+</html>
