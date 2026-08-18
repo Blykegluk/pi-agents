@@ -54,6 +54,18 @@ export async function inscription(email: string, motDePasse: string): Promise<{ 
   return { confirmationRequise: !data.session }
 }
 
+export async function connexionGoogle(): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname },
+  })
+  if (!error) return null // le navigateur part vers Google
+  if (error.message.toLowerCase().includes('provider') || error.message.toLowerCase().includes('not enabled')) {
+    return 'Connexion Google pas encore activée — utilisez e-mail + mot de passe en attendant.'
+  }
+  return error.message
+}
+
 export async function deconnexion(): Promise<void> {
   await supabase.auth.signOut()
 }
