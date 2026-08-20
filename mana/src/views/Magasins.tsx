@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Collecteur, Justificatif, Magasin, Societe } from '../types'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
@@ -36,6 +36,11 @@ export function MagasinsView({
     | { type: 'magasin'; societeId: string; magasin: Magasin | null }
     | null
   >(null)
+
+  // Entrée / sortie d'un formulaire → retour en haut de page
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [edition])
 
   if (edition?.type === 'societe') {
     return (

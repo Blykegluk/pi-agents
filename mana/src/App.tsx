@@ -61,6 +61,11 @@ export default function App() {
     else setAdmin(false)
   }, [session?.user.id])
 
+  // Changement d'onglet → retour en haut de page
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [tab])
+
   /** Applique un état venu du cloud sans le re-pousser. */
   function appliquerDistant(etat: AppState, majLe: string) {
     sauterProchainPush.current = true
