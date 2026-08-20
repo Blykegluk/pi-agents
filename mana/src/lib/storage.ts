@@ -21,7 +21,7 @@ function migrerV1(v1: EtatV1): AppState {
         siren: m.siren ?? '',
         caHT: m.caHT,
         margePct: m.margePct,
-        successFeePct: m.successFeePct ?? 25,
+        successFeePct: m.successFeePct ?? 30,
         verification: { apiStatut: 'non_verifie' },
         creeLe: m.creeLe,
       }

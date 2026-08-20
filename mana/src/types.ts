@@ -39,7 +39,7 @@ export interface Societe {
   caHT: number
   /** Marge brute de la liasse fiscale, en % — liée au justificatif CA. */
   margePct: number
-  /** Success fee en % de la réduction d'impôt (25 par défaut) — soit 15 % de la base valorisée. */
+  /** Success fee en % de la réduction d'impôt (30, fixé par Mana) — soit 18 % de la base valorisée. */
   successFeePct: number
   verification: VerificationSociete
   justificatifCA?: Justificatif

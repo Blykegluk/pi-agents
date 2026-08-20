@@ -13,7 +13,7 @@ import { mondayOfWeek, parseWeekId } from './iso.ts'
 
 export const TAUX_TVA_PCT = 20
 
-/** Commission en % de la base valorisée : success fee (25 %) × taux de réduction (60 %) = 15 %. */
+/** Commission en % de la base valorisée : success fee (30 %) × taux de réduction (60 %) = 18 %. */
 export function tauxCommissionPct(successFeePct: number): number {
   return successFeePct * TAUX_REDUCTION
 }

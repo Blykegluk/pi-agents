@@ -24,7 +24,7 @@ export function buildDemoState(): AppState {
     siren: '842517396',
     caHT: 1_970_000,
     margePct: 33.6,
-    successFeePct: 25,
+    successFeePct: 30,
     verification: {
       apiStatut: 'verifie',
       raisonSocialeAPI: 'SARL DELMAS DISTRIBUTION',
@@ -42,7 +42,7 @@ export function buildDemoState(): AppState {
     siren: '901284375',
     caHT: 1_680_000,
     margePct: 28.9,
-    successFeePct: 25,
+    successFeePct: 30,
     verification: {
       apiStatut: 'verifie',
       raisonSocialeAPI: 'SAS RIVA ALIMENTAIRE',

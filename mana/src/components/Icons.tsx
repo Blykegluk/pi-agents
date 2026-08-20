@@ -74,6 +74,25 @@ export function IconCollecte() {
   )
 }
 
+export function IconAide() {
+  return (
+    <svg {...base} width={20} height={20} strokeWidth={1.8}>
+      <circle cx="12" cy="12" r="9.2" />
+      <path d="M9.4 9.2 a2.6 2.6 0 1 1 3.6 2.4 c-0.9 0.4 -1 1 -1 1.9" />
+      <circle cx="12" cy="16.8" r="0.5" />
+    </svg>
+  )
+}
+
+export function IconAdmin() {
+  return (
+    <svg {...base}>
+      <path d="M12 2.5 L20 5.5 v6 c0 5 -3.5 8.5 -8 10 c-4.5 -1.5 -8 -5 -8 -10 v-6 Z" />
+      <path d="M8.5 12 l2.5 2.5 L15.5 9.5" />
+    </svg>
+  )
+}
+
 export function IconReglages() {
   return (
     <svg {...base} width={20} height={20} strokeWidth={1.8}>

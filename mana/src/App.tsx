@@ -3,19 +3,26 @@ import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
 import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, uid } from './lib/storage'
-import { chargerEtatDistant, connexion, connexionGoogle, deconnexion, inscription, pousserEtatDistant, supabase } from './lib/cloud'
+import { chargerEtatDistant, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { FormulaProvider } from './components/Formula'
-import { IconCollecte, IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
+import { Aide } from './components/Aide'
+import { IconAdmin, IconAide, IconCollecte, IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
 import { Simulateur } from './views/Simulateur'
 import { MagasinsView } from './views/Magasins'
 import { Collecte } from './views/Collecte'
 import { SaisieView } from './views/Saisie'
 import { Dashboard } from './views/Dashboard'
 import { Registre } from './views/Registre'
+import { Admin } from './views/Admin'
 
-type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre'
+type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre' | 'admin'
+
+/** L'état local est-il le jeu de démonstration (jamais synchronisé vers un compte) ? */
+function estDemo(etat: AppState): boolean {
+  return etat.societes.some((s) => s.id.startsWith('demo-'))
+}
 
 const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
   { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
@@ -38,6 +45,8 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [syncStatut, setSyncStatut] = useState<'inactif' | 'encours' | 'ok' | 'erreur'>('inactif')
   const [syncHeure, setSyncHeure] = useState('')
+  const [aideOuverte, setAideOuverte] = useState(false)
+  const [admin, setAdmin] = useState(false)
   const sauterProchainPush = useRef(false)
   const timerPush = useRef<number | undefined>(undefined)
 
@@ -46,6 +55,11 @@ export default function App() {
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (session) estAdmin().then(setAdmin)
+    else setAdmin(false)
+  }, [session?.user.id])
 
   /** Applique un état venu du cloud sans le re-pousser. */
   function appliquerDistant(etat: AppState, majLe: string) {
@@ -56,10 +70,10 @@ export default function App() {
     setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
   }
 
-  async function pousser(etat: AppState, userId: string) {
+  async function pousser(etat: AppState, userId: string, email?: string) {
     try {
       setSyncStatut('encours')
-      const majLe = await pousserEtatDistant(userId, etat)
+      const majLe = await pousserEtatDistant(userId, etat, email)
       setMajLocale(Date.parse(majLe))
       setSyncStatut('ok')
       setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
@@ -80,10 +94,19 @@ export default function App() {
         setSyncStatut('encours')
         const distant = await chargerEtatDistant()
         if (annule) return
-        if (distant && Date.parse(distant.majLe) >= getMajLocale()) {
+        const local = loadState() ?? buildDemoState()
+        // Le jeu de démonstration ne rejoint jamais un compte : à la connexion,
+        // on prend le cloud s'il existe, sinon on démarre sur un état vierge.
+        const localDemo = estDemo(local)
+        if (distant && (localDemo || Date.parse(distant.majLe) >= getMajLocale())) {
           appliquerDistant(distant.etat, distant.majLe)
         } else {
-          await pousser(loadState() ?? buildDemoState(), session.user.id)
+          const aPousser = localDemo ? etatVide() : local
+          if (localDemo) {
+            sauterProchainPush.current = true
+            setState(aPousser)
+          }
+          await pousser(aPousser, session.user.id, session.user.email ?? undefined)
         }
       } catch {
         if (!annule) setSyncStatut('erreur')
@@ -123,9 +146,9 @@ export default function App() {
       return
     }
     setMajLocale(Date.now())
-    if (session) {
+    if (session && !estDemo(state)) {
       window.clearTimeout(timerPush.current)
-      timerPush.current = window.setTimeout(() => pousser(state, session.user.id), 1500)
+      timerPush.current = window.setTimeout(() => pousser(state, session.user.id, session.user.email ?? undefined), 1500)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
@@ -306,12 +329,15 @@ export default function App() {
           <h1>mana</h1>
           <span>la manne cachée de vos invendus</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {!session && (
-            <button onClick={() => setReglages(true)} style={{ width: 'auto', padding: '0 12px', fontSize: 13.5, fontWeight: 700, color: 'var(--vert)' }}>
+            <button onClick={() => setReglages(true)} style={{ width: 'auto', padding: '0 10px', fontSize: 13.5, fontWeight: 700, color: 'var(--vert)' }}>
               Se connecter
             </button>
           )}
+          <button onClick={() => setAideOuverte(true)} aria-label="Aide et contact">
+            <IconAide />
+          </button>
           <button onClick={() => setReglages(true)} aria-label="Réglages et données" style={{ position: 'relative' }}>
             <IconReglages />
             {session && (
@@ -328,6 +354,17 @@ export default function App() {
       </header>
 
       <main>
+        {estDemo(state) && !session && (
+          <div className="info-banner" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span>
+              <strong>Vous explorez la démonstration</strong> (2 magasins fictifs). Créez votre compte pour démarrer
+              avec vos vraies données — la démo disparaît automatiquement.
+            </span>
+            <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setReglages(true)}>
+              Créer mon compte
+            </button>
+          </div>
+        )}
         {tab === 'simulateur' && <Simulateur onCommencer={() => setTab('magasins')} />}
         {tab === 'magasins' && (
           <MagasinsView
@@ -337,9 +374,19 @@ export default function App() {
             onDeleteSociete={deleteSociete}
             onSaveMagasin={saveMagasin}
             onDeleteMagasin={deleteMagasin}
+            onPremierMagasin={() => setTab('collecte')}
           />
         )}
-        {tab === 'collecte' && <Collecte state={state} onSaveMagasin={saveMagasin} onAllerSaisie={() => setTab('saisie')} />}
+        {tab === 'collecte' && (
+          <Collecte
+            state={state}
+            session={session}
+            onSaveMagasin={saveMagasin}
+            onAllerSaisie={() => setTab('saisie')}
+            onConnexion={() => setReglages(true)}
+            onOuvrirAide={() => setAideOuverte(true)}
+          />
+        )}
         {tab === 'saisie' && (
           <SaisieView state={state} exercice={exercice} onSave={saveSaisie} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
         )}
@@ -347,11 +394,12 @@ export default function App() {
         {tab === 'registre' && (
           <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} />
         )}
+        {tab === 'admin' && session && admin && <Admin session={session} />}
       </main>
 
       <nav className="tabbar">
         <div className="tabbar-inner">
-          {TABS.map((t) => (
+          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : TABS).map((t) => (
             <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
               <t.icone />
               {t.label}
@@ -359,6 +407,16 @@ export default function App() {
           ))}
         </div>
       </nav>
+
+      <Aide
+        session={session}
+        ouvert={aideOuverte}
+        onFermer={() => setAideOuverte(false)}
+        onConnexion={() => {
+          setAideOuverte(false)
+          setReglages(true)
+        }}
+      />
 
       {reglages && (
         <div className="sheet-backdrop" onClick={() => setReglages(false)}>

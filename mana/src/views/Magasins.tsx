@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Collecteur, Justificatif, Magasin, Societe } from '../types'
-import { plafondAnnuel } from '../lib/calc'
+import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
 import { IconMagasins } from '../components/Icons'
@@ -20,6 +20,7 @@ export function MagasinsView({
   onDeleteSociete,
   onSaveMagasin,
   onDeleteMagasin,
+  onPremierMagasin,
 }: {
   societes: Societe[]
   magasins: Magasin[]
@@ -27,6 +28,7 @@ export function MagasinsView({
   onDeleteSociete: (id: string) => void
   onSaveMagasin: (m: Magasin) => void
   onDeleteMagasin: (id: string) => void
+  onPremierMagasin: () => void
 }) {
   const [edition, setEdition] = useState<
     | { type: 'societe'; societe: Societe | null }
@@ -54,8 +56,11 @@ export function MagasinsView({
         initial={edition.magasin}
         onCancel={() => setEdition(null)}
         onSave={(m) => {
+          const premierMagasin = edition.magasin === null && magasins.length === 0
           onSaveMagasin(m)
           setEdition(null)
+          // Parcours fluide : après le tout premier magasin, direction la mise en place de la collecte
+          if (premierMagasin) onPremierMagasin()
         }}
       />
     )
@@ -199,7 +204,6 @@ function FormulaireSociete({
   const [siren, setSiren] = useState(initial?.siren ?? '')
   const [caHT, setCaHT] = useState(initial?.caHT ?? 0)
   const [margePct, setMargePct] = useState(initial?.margePct ?? 30)
-  const [successFeePct, setSuccessFeePct] = useState(initial?.successFeePct ?? 25)
   const [verification, setVerification] = useState(initial?.verification ?? { apiStatut: 'non_verifie' as const })
   const [nouvellePiece, setNouvellePiece] = useState<Justificatif | null>(null)
   const [sourcePiece, setSourcePiece] = useState<'liasse' | 'attestation'>('liasse')
@@ -256,7 +260,8 @@ function FormulaireSociete({
         siren: normaliserSiren(siren),
         caHT,
         margePct,
-        successFeePct,
+        // Fixé par Mana — jamais saisi par le client (30 % de la réduction constatée)
+        successFeePct: SUCCESS_FEE_PCT,
         verification: verif,
         justificatifCA: nouvellePiece ?? initial?.justificatifCA,
         creeLe: initial?.creeLe ?? maintenant,
@@ -351,16 +356,10 @@ function FormulaireSociete({
             liasse ou arrondir <strong>au-dessus</strong>.
           </span>
         </label>
-        <label className="field" style={{ marginBottom: 0 }}>
-          <span>Success fee Mana</span>
-          <div className="suffixe">
-            <input type="number" inputMode="decimal" min={0} max={100} step={1} value={successFeePct} onChange={(e) => setSuccessFeePct(Number(e.target.value))} />
-            <em>% de la réduction</em>
-          </div>
-          <span className="aide">
-            Soit {(successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons documentés, facturés au mois échu. 0 € d’abonnement.
-          </span>
-        </label>
+        <p className="muted" style={{ margin: 0 }}>
+          0 € d’abonnement : Mana se rémunère uniquement au succès, sur l’économie d’impôt réellement constatée —
+          pas d’économie, pas de facture. Le détail figure sur chaque facture et dans « Votre contrat en clair ».
+        </p>
       </div>
 
       <div className="row-actions">

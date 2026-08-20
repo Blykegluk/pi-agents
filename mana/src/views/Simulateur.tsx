@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { simuler } from '../lib/calc'
+import { simuler, SUCCESS_FEE_PCT } from '../lib/calc'
 import { fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
 
@@ -12,7 +12,7 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
   const [marge, setMarge] = useState(30)
   const [demarque, setDemarque] = useState(3)
   const [donnable, setDonnable] = useState(50)
-  const FEE = 25
+  const FEE = SUCCESS_FEE_PCT
 
   const r = simuler(caHT, marge, demarque, donnable, FEE)
   const plafonne = r.excedent > 0
@@ -166,7 +166,7 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
       </button>
 
       <footer className="legal">
-        0 € fixe : Mana se rémunère uniquement à 25 % de l’économie d’impôt constatée. Estimation indicative — Mana
+        0 € fixe : Mana se rémunère uniquement à {SUCCESS_FEE_PCT} % de l’économie d’impôt constatée. Estimation indicative — Mana
         n’est pas un conseil fiscal ; les montants définitifs sont validés par votre expert-comptable.
       </footer>
     </div>

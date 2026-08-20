@@ -1,39 +1,70 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import type { AppState, Magasin } from '../types'
 import { RESEAUX_COLLECTEURS, recommanderFrequence } from '../lib/annuaire'
 import { pdfAfficheTri, pdfBordereau } from '../lib/pdf'
 import { IconMagasins } from '../components/Icons'
+import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
+import { LIBELLES_STATUT } from '../components/Aide'
+import { fmtNum } from '../lib/format'
 
 /**
- * Mise en place de la collecte — l'accompagnement pas à pas pour un magasin
- * qui n'a encore rien en place : gisement, choix des associations, calendrier,
- * tri, pesée, première collecte. (Spec §4.7 : liste indicative en dur, pas de
- * matching automatique — le magasin garde sa relation directe avec son collecteur.)
+ * Mise en place de la collecte — l'accompagnement pas à pas : estimation des
+ * invendus, définition du besoin, demande de mise en relation traitée par
+ * l'équipe Mana (ou contact direct via l'annuaire), calendrier, tri, pesée.
  */
 
 const ETAPES = [
-  { id: 'gisement', titre: 'Estimer votre gisement' },
-  { id: 'collecteurs', titre: 'Choisir votre ou vos associations' },
+  { id: 'gisement', titre: 'Estimer vos invendus' },
+  { id: 'collecteurs', titre: 'Définir votre besoin et trouver votre association' },
   { id: 'calendrier', titre: 'Caler le calendrier de passage' },
   { id: 'tri', titre: 'Former l’équipe au tri' },
   { id: 'pesee', titre: 'Organiser la pesée et les bordereaux' },
   { id: 'premiere', titre: 'Réussir la première collecte' },
 ] as const
 
+const FREQUENCES = ['Quotidienne', '2 à 3 fois par semaine', 'Hebdomadaire'] as const
+const PLAGES = ['Matin (7 h – 10 h)', 'Midi (11 h – 14 h)', 'Fin de journée (17 h – 20 h)'] as const
+
 export function Collecte({
   state,
+  session,
   onSaveMagasin,
   onAllerSaisie,
+  onConnexion,
+  onOuvrirAide,
 }: {
   state: AppState
+  session: Session | null
   onSaveMagasin: (m: Magasin) => void
   onAllerSaisie: () => void
+  onConnexion: () => void
+  onOuvrirAide: () => void
 }) {
   const [magasinId, setMagasinId] = useState(state.magasins[0]?.id ?? '')
   const magasin = state.magasins.find((m) => m.id === magasinId) ?? state.magasins[0]
   const societe = state.societes.find((s) => s.id === magasin?.societeId)
-  const [gisementSaisi, setGisementSaisi] = useState('')
+  const [invendusSaisis, setInvendusSaisis] = useState('')
   const [nouveau, setNouveau] = useState({ nom: '', contact: '', jours: '' })
+
+  // Demande de mise en relation
+  const [frequence, setFrequence] = useState<string>('')
+  const [plage, setPlage] = useState<string>('')
+  const [ville, setVille] = useState('')
+  const [precision, setPrecision] = useState('')
+  const [demandesCollecte, setDemandesCollecte] = useState<Demande[]>([])
+  const [envoiEnCours, setEnvoiEnCours] = useState(false)
+  const [messageDemande, setMessageDemande] = useState('')
+
+  useEffect(() => {
+    if (session) {
+      mesDemandes()
+        .then((ds) => setDemandesCollecte(ds.filter((d) => d.type === 'collecte')))
+        .catch(() => {})
+    } else {
+      setDemandesCollecte([])
+    }
+  }, [session])
 
   if (!magasin || !societe) {
     return (
@@ -41,18 +72,25 @@ export function Collecte({
         <span className="ico">
           <IconMagasins />
         </span>
-        Créez d’abord votre société et votre magasin dans l’onglet « Magasins » — l’assistant de mise en place de la
-        collecte vous prend ensuite en main, étape par étape.
+        Créez d’abord votre société et votre magasin dans l’onglet « Magasins » — l’assistant vous prend ensuite en main
+        pour mettre la collecte en place, étape par étape.
       </div>
     )
   }
 
   const mp = magasin.miseEnPlace ?? { faites: [] }
-  const gisement = mp.gisementKgJour ?? (Number(gisementSaisi) || 0)
-  const reco = gisement > 0 ? recommanderFrequence(gisement) : null
+  const kgJour = mp.gisementKgJour ?? (Number(invendusSaisis) || 0)
+  const reco = kgJour > 0 ? recommanderFrequence(kgJour) : null
+  const demandeDuMagasin = demandesCollecte.find((d) => d.contenu?.magasin === magasin.nom)
 
-  const estFaite = (id: string) =>
-    id === 'calendrier' ? magasin.collecteurs.length > 0 || mp.faites.includes(id) : mp.faites.includes(id)
+  const kgParPassage = (f: string) =>
+    f === 'Quotidienne' ? kgJour : f === 'Hebdomadaire' ? kgJour * 7 : kgJour * 2.5
+
+  const estFaite = (id: string) => {
+    if (id === 'calendrier') return magasin.collecteurs.length > 0 || mp.faites.includes(id)
+    if (id === 'collecteurs') return Boolean(demandeDuMagasin) || mp.faites.includes(id)
+    return mp.faites.includes(id)
+  }
   const nbFaites = ETAPES.filter((e) => estFaite(e.id)).length
   const toutFait = nbFaites === ETAPES.length
 
@@ -62,9 +100,9 @@ export function Collecte({
     onSaveMagasin({ ...magasin, miseEnPlace: { ...mp, faites } })
   }
 
-  function enregistrerGisement() {
+  function enregistrerInvendus() {
     if (!magasin) return
-    const kg = Number(gisementSaisi) || 0
+    const kg = Number(invendusSaisis) || 0
     if (kg <= 0) return
     const faites = mp.faites.includes('gisement') ? mp.faites : [...mp.faites, 'gisement']
     onSaveMagasin({ ...magasin, miseEnPlace: { faites, gisementKgJour: kg } })
@@ -76,14 +114,39 @@ export function Collecte({
     setNouveau({ nom: '', contact: '', jours: '' })
   }
 
+  async function envoyerDemande() {
+    if (!session || !magasin || !frequence || !plage || !ville.trim() || kgJour <= 0) return
+    setEnvoiEnCours(true)
+    setMessageDemande('')
+    try {
+      await creerDemande(
+        session.user.id,
+        session.user.email ?? '',
+        'collecte',
+        `Mise en relation — ${magasin.nom} (${ville.trim()})`,
+        {
+          magasin: magasin.nom,
+          societe: societe?.raisonSociale ?? '',
+          ville: ville.trim(),
+          invendus_estimes: `${fmtNum(kgJour, 1)} kg/jour`,
+          frequence_souhaitee: frequence,
+          plage_horaire: plage,
+          volume_par_passage: `≈ ${fmtNum(kgParPassage(frequence))} kg`,
+        },
+        precision,
+      )
+      setDemandesCollecte((await mesDemandes()).filter((d) => d.type === 'collecte'))
+      setMessageDemande('Demande envoyée ! L’équipe Mana revient vers vous avec la ou les associations adaptées — suivez les échanges dans Aide & contact (bouton ? en haut).')
+    } catch (e) {
+      setMessageDemande((e as Error).message)
+    }
+    setEnvoiEnCours(false)
+  }
+
   function CaseEtape({ id }: { id: string }) {
     const faite = estFaite(id)
     return (
-      <button
-        className={`btn btn-sm ${faite ? 'btn-primary' : 'btn-ghost'}`}
-        onClick={() => basculer(id)}
-        style={{ flex: 'none' }}
-      >
+      <button className={`btn btn-sm ${faite ? 'btn-primary' : 'btn-ghost'}`} onClick={() => basculer(id)} style={{ flex: 'none' }}>
         {faite ? '✓ Fait' : 'Marquer fait'}
       </button>
     )
@@ -118,23 +181,24 @@ export function Collecte({
           </div>
         ) : (
           <p className="muted" style={{ margin: '10px 0 0' }}>
-            Pas encore de collecte en place ? Suivez les étapes dans l’ordre : en une semaine, tout est calé.
+            Pas encore de collecte en place ? Suivez les étapes dans l’ordre : on vous accompagne jusqu’à la première
+            collecte réussie.
           </p>
         )}
       </div>
 
-      {/* Étape 1 — gisement */}
+      {/* Étape 1 — estimer les invendus */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>1. Estimer votre gisement</h3>
+          <h3>1. Estimer vos invendus</h3>
           <CaseEtape id="gisement" />
         </div>
         <p className="muted">
-          Pendant 2 ou 3 jours, regardez ce qui part à la poubelle et qui serait donnable. Repère simple : une cagette
-          de fruits &amp; légumes pleine ≈ 8 à 10 kg ; un bac de produits frais ≈ 5 kg.
+          Pendant 2 ou 3 jours, regardez ce qui part à la poubelle alors que c’est encore consommable. Repère simple :
+          une cagette de fruits &amp; légumes pleine ≈ 8 à 10 kg ; un bac de produits frais ≈ 5 kg.
         </p>
         <label className="field" style={{ marginBottom: 8 }}>
-          <span>Volume donnable estimé</span>
+          <span>Invendus donnables, en moyenne</span>
           <div className="range-row">
             <div className="suffixe" style={{ flex: 1 }}>
               <input
@@ -142,13 +206,13 @@ export function Collecte({
                 inputMode="decimal"
                 min={0}
                 step={1}
-                value={gisementSaisi || (mp.gisementKgJour ?? '')}
-                onChange={(e) => setGisementSaisi(e.target.value)}
+                value={invendusSaisis || (mp.gisementKgJour ?? '')}
+                onChange={(e) => setInvendusSaisis(e.target.value)}
                 placeholder="Ex. 12"
               />
               <em>kg/jour</em>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={enregistrerGisement}>
+            <button className="btn btn-primary btn-sm" onClick={enregistrerInvendus}>
               Valider
             </button>
           </div>
@@ -160,43 +224,117 @@ export function Collecte({
         )}
       </div>
 
-      {/* Étape 2 — annuaire */}
+      {/* Étape 2 — besoin + mise en relation */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>2. Choisir votre ou vos associations</h3>
+          <h3>2. Définir votre besoin et trouver votre association</h3>
           <CaseEtape id="collecteurs" />
         </div>
-        <p className="muted">
-          Liste indicative des réseaux qui collectent chez les commerçants — appelez l’antenne locale, expliquez votre
-          volume et vos jours souhaités. Vous gardez votre relation directe : aucune exclusivité, aucun intermédiaire.
-          Besoin de passages quotidiens que personne n’assure seul ? <strong>Combinez deux associations</strong> — Mana
-          rattache tous les bordereaux au même registre.
-        </p>
-        {RESEAUX_COLLECTEURS.map((r) => (
-          <div className="reseau" key={r.nom}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-              <strong style={{ fontSize: 15 }}>{r.nom}</strong>
-              <span className="muted" style={{ whiteSpace: 'nowrap' }}>{r.site}</span>
-            </div>
-            <p className="muted" style={{ margin: '4px 0 6px' }}>{r.profil}</p>
-            <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <span><strong>Produits :</strong> {r.produits}</span>
-              <span><strong>Rythme :</strong> {r.rythme}</span>
-              <span><strong>Contact :</strong> {r.commentContacter}</span>
-            </div>
+
+        {demandeDuMagasin ? (
+          <div className="info-banner vert">
+            <strong>Demande de mise en relation {LIBELLES_STATUT[demandeDuMagasin.statut].texte}.</strong>{' '}
+            L’équipe Mana s’occupe de vous trouver la ou les associations adaptées ({String(demandeDuMagasin.contenu.frequence_souhaitee ?? '')},{' '}
+            {String(demandeDuMagasin.contenu.plage_horaire ?? '').toLowerCase()}).{' '}
+            <button className="amt" onClick={onOuvrirAide}>Suivre les échanges</button>
           </div>
-        ))}
+        ) : (
+          <div>
+            <p className="muted">
+              Dites-nous ce qu’il vous faut : <strong>l’équipe Mana vous met en relation</strong> avec la ou les
+              associations adaptées de votre secteur (deux associations combinées si vous voulez des passages
+              quotidiens) et vous suit jusqu’à la première collecte.
+            </p>
+            <label className="field">
+              <span>Fréquence de ramassage souhaitée</span>
+              <div className="chips" style={{ marginBottom: 0 }}>
+                {FREQUENCES.map((f) => (
+                  <button key={f} type="button" className={`chip ${frequence === f ? 'active' : ''}`} onClick={() => setFrequence(f)}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+              {frequence && kgJour > 0 && (
+                <span className="aide">Soit environ {fmtNum(kgParPassage(frequence))} kg à chaque passage.</span>
+              )}
+            </label>
+            <label className="field">
+              <span>Plage horaire de ramassage</span>
+              <div className="chips" style={{ marginBottom: 0 }}>
+                {PLAGES.map((p) => (
+                  <button key={p} type="button" className={`chip ${plage === p ? 'active' : ''}`} onClick={() => setPlage(p)}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </label>
+            <label className="field">
+              <span>Ville / code postal du magasin</span>
+              <input type="text" value={ville} onChange={(e) => setVille(e.target.value)} placeholder="Ex. Villeurbanne 69100" />
+            </label>
+            <label className="field">
+              <span>Précisions (facultatif)</span>
+              <textarea rows={2} value={precision} onChange={(e) => setPrecision(e.target.value)} placeholder="Ex. beaucoup de frais, accès quai de livraison, fermé le lundi…" />
+            </label>
+            {kgJour <= 0 && <p className="muted" style={{ color: 'var(--ambre-texte)' }}>Complétez d’abord l’étape 1 (estimation des invendus).</p>}
+            {session ? (
+              <button
+                className="btn btn-ambre btn-block"
+                onClick={envoyerDemande}
+                disabled={envoiEnCours || !frequence || !plage || !ville.trim() || kgJour <= 0}
+                style={{ opacity: frequence && plage && ville.trim() && kgJour > 0 ? 1 : 0.5 }}
+              >
+                Envoyer ma demande de mise en relation
+              </button>
+            ) : (
+              <div className="info-banner">
+                Connectez-vous pour envoyer votre demande de mise en relation (et retrouver vos données partout).{' '}
+                <button className="btn btn-primary btn-sm" style={{ marginTop: 8, display: 'flex' }} onClick={onConnexion}>
+                  Se connecter / créer un compte
+                </button>
+              </div>
+            )}
+            {messageDemande && <p className="muted" style={{ marginTop: 8, color: 'var(--vert)' }}>{messageDemande}</p>}
+          </div>
+        )}
+
+        <details style={{ marginTop: 12 }}>
+          <summary style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', color: 'var(--encre-2)' }}>
+            Préférez contacter directement une association ? L’annuaire des réseaux
+          </summary>
+          <p className="muted" style={{ margin: '8px 0' }}>
+            Vous gardez votre relation directe — aucune exclusivité. Confirmez toujours le rythme réel avec l’antenne locale.
+          </p>
+          {RESEAUX_COLLECTEURS.map((r) => (
+            <div className="reseau" key={r.nom}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                <strong style={{ fontSize: 15 }}>{r.nom}</strong>
+                <span className="muted" style={{ whiteSpace: 'nowrap' }}>{r.site}</span>
+              </div>
+              <p className="muted" style={{ margin: '4px 0 6px' }}>{r.profil}</p>
+              <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <span><strong>Produits :</strong> {r.produits}</span>
+                <span><strong>Rythme :</strong> {r.rythme}</span>
+                <span><strong>Contact :</strong> {r.commentContacter}</span>
+              </div>
+            </div>
+          ))}
+        </details>
       </div>
 
       {/* Étape 3 — calendrier */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
           <h3>3. Caler le calendrier de passage</h3>
-          {magasin.collecteurs.length > 0 ? <span className="verif-badge">✓ {magasin.collecteurs.length} collecteur{magasin.collecteurs.length > 1 ? 's' : ''}</span> : <CaseEtape id="calendrier" />}
+          {magasin.collecteurs.length > 0 ? (
+            <span className="verif-badge">✓ {magasin.collecteurs.length} collecteur{magasin.collecteurs.length > 1 ? 's' : ''}</span>
+          ) : (
+            <CaseEtape id="calendrier" />
+          )}
         </div>
         <p className="muted">
-          Accord trouvé ? Enregistrez chaque association et ses jours de passage — ils s’affichent sur la fiche du
-          magasin et dans l’état annuel (reçus fiscaux attendus).
+          Une fois la mise en relation faite, enregistrez chaque association et ses jours de passage — ils s’affichent
+          sur la fiche du magasin et dans l’état annuel (reçus fiscaux attendus).
         </p>
         {magasin.collecteurs.map((c, i) => (
           <div className="facture-ligne" key={i}>
@@ -279,8 +417,8 @@ export function Collecte({
       </div>
 
       <footer className="legal">
-        Objectif du pilote : moins de 10 % de produits refusés par le collecteur. Si les refus dépassent ça, resserrez
-        le tri (étape 4) — et enregistrez les refus en correction dans la saisie.
+        Objectif : moins de 10 % de produits refusés par le collecteur. Au-delà, resserrez le tri (étape 4) — et
+        enregistrez les refus en correction dans la saisie.
       </footer>
     </div>
   )

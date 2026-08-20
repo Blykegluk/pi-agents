@@ -5,6 +5,11 @@
 
 /** Taux de la réduction d'impôt (article 238 bis du CGI) — fixe. */
 export const TAUX_REDUCTION = 0.6
+/**
+ * Success fee Mana, en % de la réduction d'impôt constatée — fixé par Mana,
+ * jamais saisi par le client (soit 18 % de la base des dons documentés).
+ */
+export const SUCCESS_FEE_PCT = 30
 /** Plancher du plafond annuel de dons (€). */
 export const PLAFOND_FIXE = 20_000
 /** Alternative : 0,5 % du CA HT. */
