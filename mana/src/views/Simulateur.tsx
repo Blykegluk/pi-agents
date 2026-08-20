@@ -130,7 +130,16 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
               <span>
                 Excédent au-delà du plafond <span className="badge">reportable 5 exercices</span>
               </span>
-              <strong>{fmtEUR(r.excedent)}</strong>
+              <Amount
+                titre="Excédent reportable — les règles"
+                lignes={[
+                  `Dons au-delà du plafond : ${fmtEUR(r.baseBrute)} − ${fmtEUR(r.plafond)} = ${fmtEUR(r.excedent)}`,
+                  'Reportable sur les 5 exercices suivants, mais absorbé uniquement s’il reste de la place sous le plafond de ces années, après les dons de l’année.',
+                  'Si le plafond est saturé chaque année, l’excédent expire au bout de 5 ans : viser le plafond, pas le dépasser largement.',
+                ]}
+              >
+                <strong>{fmtEUR(r.excedent)}</strong>
+              </Amount>
             </div>
           )}
           <div className="ligne">

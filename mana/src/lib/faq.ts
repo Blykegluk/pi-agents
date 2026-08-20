@@ -43,8 +43,8 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'C’est quoi, le plafond fiscal ?',
     reponse:
-      'La loi retient vos dons dans la limite de 20 000 € ou 0,5 % de votre chiffre d’affaires HT (le plus élevé des deux), par société et par exercice. La jauge du tableau de bord suit ce plafond en temps réel ; au-delà, l’excédent est reportable sur les 5 exercices suivants et vos dons ne sont plus facturés.',
-    motsCles: 'plafond 20000 0,5 limite jauge excedent reportable',
+      'La loi retient vos dons dans la limite de 20 000 € ou 0,5 % de votre chiffre d’affaires HT (le plus élevé des deux), par société et par exercice. La jauge du tableau de bord suit ce plafond en temps réel ; au-delà, vos dons ne sont plus facturés. L’excédent est reportable sur les 5 exercices suivants, mais il n’est absorbé que s’il reste de la place sous le plafond de ces années-là (après les dons de l’année) — s’il ne trouve jamais de place, il expire au bout de 5 ans. La bonne stratégie : viser le plafond, pas le dépasser largement.',
+    motsCles: 'plafond 20000 0,5 limite jauge excedent reportable cumul expiration',
   },
   {
     question: 'Et si ma société paie peu ou pas d’impôt cette année ?',
