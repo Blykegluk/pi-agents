@@ -29,6 +29,12 @@ export const FAQ: EntreeFAQ[] = [
     motsCles: 'association collecteur mise en relation banque alimentaire restos coeur trouver contact',
   },
   {
+    question: 'Qui fait quoi au quotidien, et que reste-t-il pour la saisie hebdomadaire ?',
+    reponse:
+      'Chaque jour : l’équipe scanne les produits donnés avec le motif « don » (le back-office accumule les € tout seul — personne ne les consulte), et chaque bordereau signé part dans une bannette. Une fois par semaine (10 minutes) : ouvrez l’export démarque « don » de la semaine (un total en €), additionnez les poids nets F&L des bordereaux de la bannette (un total en kg), saisissez les deux chiffres dans Mana et joignez tous les bordereaux signés de la semaine — en photo, au fil de l’eau ou en une fois. Astuce : la photo du bordereau au moment de la signature, depuis le téléphone, évite toute perte.',
+    motsCles: 'quotidien routine semaine bordereaux journaliers joindre organisation qui fait quoi bannette',
+  },
+  {
     question: 'Comment peser les fruits et légumes ?',
     reponse:
       'Seuls les F&L partent au poids (les produits emballés sont valorisés par le montant de démarque). Pesez la cagette sur la balance du rayon ou un pèse-personne, déduisez la tare (~1 kg par cagette bois), notez le total sur le bordereau que le collecteur signe. Prenez le bordereau en photo et joignez-le à la saisie de la semaine.',
