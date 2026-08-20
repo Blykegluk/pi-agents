@@ -134,6 +134,19 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
             </div>
           )}
           <div className="ligne">
+            <span>Réduction d’impôt : 60 % des dons retenus</span>
+            <Amount
+              titre="Réduction d'impôt sur les sociétés"
+              lignes={[
+                'Le plafond limite les dons retenus — l’État en rend 60 % en réduction d’impôt.',
+                `Dons retenus : min(${fmtEUR(r.baseBrute)} ; plafond ${fmtEUR(r.plafond)}) = ${fmtEUR(r.basePlafonnee)}`,
+                `= 60 % × ${fmtEUR(r.basePlafonnee)} = ${fmtEUR(r.reductionIS)}`,
+              ]}
+            >
+              <strong>{fmtEUR(r.reductionIS)}</strong>
+            </Amount>
+          </div>
+          <div className="ligne">
             <span>Honoraires Mana ({fmtNum(FEE)} % du gain constaté)</span>
             <Amount
               titre="Honoraires Mana"
