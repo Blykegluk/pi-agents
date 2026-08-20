@@ -7,6 +7,7 @@ import { IconMagasins } from '../components/Icons'
 import { uid } from '../lib/storage'
 import { lireFichiers } from '../lib/fichiers'
 import { normaliserSiren, sirenValide, verifierSiren } from '../lib/entreprise'
+import { pdfModeleAttestation } from '../lib/pdf'
 
 /**
  * Onboarding en deux temps (spec §4.1 + complément §2) :
@@ -95,10 +96,10 @@ export function MagasinsView({
               )}
               {s.verification.caVerifieLe ? (
                 <span className="verif-badge">
-                  ✓ CA vérifié le {fmtDate(s.verification.caVerifieLe)} — source : {s.verification.caSource}
+                  ✓ CA &amp; marge vérifiés le {fmtDate(s.verification.caVerifieLe)} — source : {s.verification.caSource}
                 </span>
               ) : (
-                <span className="verif-badge attente">CA en attente de justificatif</span>
+                <span className="verif-badge attente">CA &amp; marge en attente de justificatif</span>
               )}
             </div>
             <div className="detail-lignes">
@@ -251,7 +252,7 @@ function FormulaireSociete({
     if (nouvellePiece) {
       verif.caVerifieLe = maintenant
       verif.caSource =
-        sourcePiece === 'liasse' ? 'Liasse fiscale 2052 (téléversée)' : 'Attestation de CA de l’expert-comptable (téléversée)'
+        sourcePiece === 'liasse' ? 'Liasse fiscale 2052 (téléversée)' : 'Attestation CA & marge de l’expert-comptable (téléversée)'
     }
     onSave(
       {
@@ -303,8 +304,9 @@ function FormulaireSociete({
       <div className="card">
         <h3>CA &amp; marge (liés à un justificatif)</h3>
         <p className="muted">
-          Le CA n’est jamais un champ libre : il est adossé à la liasse fiscale (formulaire 2052) ou à une attestation
-          d’expert-comptable. Le plafond de dons en découle automatiquement.
+          Un seul justificatif prouve les deux valeurs : la liasse fiscale (formulaire 2052) les contient, ou une
+          attestation d’expert-comptable mentionnant <strong>le CA HT et la marge brute</strong>. Le plafond de dons en
+          découle automatiquement.
         </p>
         {initial && !nouvellePiece && (
           <div className="info-banner">
@@ -322,6 +324,16 @@ function FormulaireSociete({
               Attestation expert-comptable
             </button>
           </div>
+          {sourcePiece === 'attestation' && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginBottom: 8 }}
+              onClick={() => pdfModeleAttestation(raisonSociale.trim() || undefined, normaliserSiren(siren) || undefined, new Date().getFullYear())}
+            >
+              ⬇ Modèle d’attestation CA &amp; marge à faire signer par votre expert-comptable
+            </button>
+          )}
           <input type="file" accept="image/*,application/pdf" onChange={(e) => choisirPiece(e.target.files)} />
           {nouvellePiece && (
             <span className="justif-list">
@@ -331,7 +343,10 @@ function FormulaireSociete({
               </span>
             </span>
           )}
-          <span className="aide">Si les comptes de la société ne sont pas publics (confidentialité), ce justificatif est obligatoire.</span>
+          <span className="aide">
+            Une seule demande à votre expert-comptable suffit : le modèle ci-dessus contient les deux valeurs (CA HT et
+            marge brute). Si les comptes de la société ne sont pas publics, ce justificatif est obligatoire.
+          </span>
         </label>
         <label className="field">
           <span>CA HT du dernier exercice *</span>

@@ -539,6 +539,74 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.save(`mana-bordereau-${slug(magasin.nom)}.pdf`)
 }
 
+/**
+ * Modèle d'attestation CA & marge à faire compléter et signer par
+ * l'expert-comptable — une seule demande, les deux valeurs.
+ */
+export function pdfModeleAttestation(raisonSociale?: string, siren?: string, exercice?: number) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  entete(doc, 'Attestation de chiffre d’affaires et de marge brute', 'Modèle à compléter par l’expert-comptable')
+
+  let y = 38
+  const p = (txt: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
+    doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal')
+    doc.setFontSize(opts?.size ?? 11)
+    const lines = doc.splitTextToSize(t(txt), 182)
+    doc.text(lines, 14, y)
+    y += lines.length * ((opts?.size ?? 11) * 0.5) + (opts?.gap ?? 4)
+  }
+  const champ = (label: string) => {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.text(t(label), 14, y)
+    doc.setDrawColor(150, 143, 128)
+    doc.line(14 + doc.getTextWidth(t(label)) + 3, y + 0.8, 196, y + 0.8)
+    y += 11
+  }
+
+  p('Je soussigné(e) :', { gap: 1 })
+  champ('Nom, cabinet :')
+  p('expert-comptable inscrit(e) à l’Ordre des experts-comptables, atteste que, d’après la comptabilité et la ' +
+    'dernière liasse fiscale de la société :', { gap: 1 })
+  champ(`Raison sociale : ${raisonSociale ?? ''}`)
+  champ(`SIREN : ${siren ?? ''}`)
+  champ(`Exercice clos le : ${exercice ? `31/12/${exercice - 1}` : ''}`)
+  y += 2
+  p('les valeurs suivantes sont exactes :', { bold: true, gap: 6 })
+  champ('1. Chiffre d’affaires hors taxes de l’exercice :                                              € HT')
+  champ('2. Taux de marge brute (marge commerciale / chiffre d’affaires HT) :                %')
+  y += 2
+  p(
+    'Cette attestation est établie à la demande de la société pour la mise en œuvre de la réduction d’impôt ' +
+      'mécénat prévue à l’article 238 bis du CGI (valorisation des dons de denrées au coût de revient et calcul du ' +
+      'plafond de versements de 20 000 € ou 5 ‰ du chiffre d’affaires). Ces valeurs servent de référence constante ' +
+      'pour l’exercice en cours, jusqu’à production de la liasse fiscale suivante.',
+    { size: 10, gap: 8 },
+  )
+  champ('Fait à :                                                      Le :')
+  y += 4
+  doc.setFont('helvetica', 'bold')
+  doc.text(t('Signature et cachet du cabinet'), 14, y)
+  doc.setDrawColor(150, 143, 128)
+  doc.rect(14, y + 4, 90, 32)
+
+  y += 46
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t('Une fois signée, téléversez cette attestation dans Mana (onglet Magasins → votre société → justificatif) : ' +
+      'elle déverrouille la saisie du CA et de la marge, calcule votre plafond de dons et date la vérification.'),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+
+  piedDePage(doc, 'Modèle fourni par Mana — l’attestation engage son signataire, pas Mana.')
+  doc.save(`mana-modele-attestation-ca-marge${raisonSociale ? '-' + slug(raisonSociale) : ''}.pdf`)
+}
+
 function slug(s: string): string {
   return s
     .normalize('NFD')
