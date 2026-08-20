@@ -47,6 +47,12 @@ export const FAQ: EntreeFAQ[] = [
     motsCles: 'plafond 20000 0,5 limite jauge excedent reportable',
   },
   {
+    question: 'Et si ma société paie peu ou pas d’impôt cette année ?',
+    reponse:
+      'Rien n’est perdu : la réduction d’impôt qui dépasse l’IS dû de l’exercice est utilisable pour payer l’IS des 5 exercices suivants (article 220 E du CGI). C’est un report distinct de celui des dons dépassant le plafond, eux aussi reportables 5 exercices (article 238 bis). Votre expert-comptable gère cette imputation via l’imprimé 2069-RCI, sur la base de l’état annuel Mana.',
+    motsCles: 'deficit pas impot is report reliquat imputation 220 excedent perte',
+  },
+  {
     question: 'L’association a refusé une partie des dons, que faire ?',
     reponse:
       'Dans l’onglet Saisie, cochez « Correction : retrancher des dons refusés », saisissez les montants en négatif sur la semaine concernée avec le justificatif du refus : le cumul, le plafond et la prochaine facture se recalculent automatiquement.',
