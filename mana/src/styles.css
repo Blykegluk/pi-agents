@@ -67,6 +67,11 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
+  min-width: 0;
+}
+
+.header .brand svg {
+  flex: none;
 }
 
 .header .brand h1 {
