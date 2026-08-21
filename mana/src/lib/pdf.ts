@@ -31,13 +31,13 @@ function entete(doc: jsPDF, titre: string, sousTitre: string) {
   doc.setFillColor(26, 59, 46)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
   doc.setTextColor(255, 255, 255)
-  if (logoCourant) doc.addImage(logoCourant, 'PNG', 14, 4, 6.7, 14)
+  if (logoCourant) doc.addImage(logoCourant, 'PNG', 14, 3, 7.7, 16)
   doc.setFont('YoungSerif', 'normal')
   doc.setFontSize(15)
-  doc.text('mana', 24, 12)
+  doc.text('mana', 26, 12)
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(10.5)
-  doc.text(t(titre), 24, 18.5)
+  doc.text(t(titre), 26, 18.5)
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9)
   doc.text(t(sousTitre), doc.internal.pageSize.getWidth() - 14, 14, { align: 'right' })
@@ -638,7 +638,7 @@ export async function pdfModeleAttestation(raisonSociale?: string, siren?: strin
   p(
     'Cette attestation est établie à la demande de la société pour la mise en œuvre de la réduction d’impôt ' +
       'mécénat prévue à l’article 238 bis du CGI (valorisation des dons de denrées au coût de revient et calcul du ' +
-      'plafond de versements de 20 000 € ou 5 ‰ du chiffre d’affaires). Ces valeurs servent de référence constante ' +
+      'plafond de versements de 20 000 € ou 0,5 % du chiffre d’affaires). Ces valeurs servent de référence constante ' +
       'pour l’exercice en cours, jusqu’à production de la liasse fiscale suivante.',
     { size: 10, gap: 8 },
   )

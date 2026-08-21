@@ -330,7 +330,7 @@ export default function App() {
     <FormulaProvider>
       <header className="header">
         <div className="brand">
-          <LogoMana taille={26} />
+          <LogoMana taille={36} />
           <h1>mana</h1>
           <span>la manne cachée de vos invendus</span>
         </div>

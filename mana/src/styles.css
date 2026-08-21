@@ -87,6 +87,11 @@ body {
   color: var(--encre-3);
 }
 
+/* Sur petit écran, le logo agrandi tient la ligne : la baseline passe à la trappe */
+@media (max-width: 560px) {
+  .header .brand span { display: none; }
+}
+
 .header button {
   background: none;
   border: none;
