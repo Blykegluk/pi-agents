@@ -13,16 +13,32 @@ function t(s: string): string {
   return pdfSafe(s)
 }
 
+let logoCourant = ''
+
+/** Charge la marque Mana dans le document : polices officielles + logo épi. */
+async function marque(doc: jsPDF): Promise<void> {
+  const b = await import('./brandingPdf')
+  doc.addFileToVFS('YoungSerif.ttf', b.YOUNG_SERIF)
+  doc.addFont('YoungSerif.ttf', 'YoungSerif', 'normal')
+  doc.addFileToVFS('InstrumentSans.ttf', b.INSTRUMENT_SANS)
+  doc.addFont('InstrumentSans.ttf', 'InstrumentSans', 'normal')
+  doc.addFileToVFS('InstrumentSans-Gras.ttf', b.INSTRUMENT_SANS_GRAS)
+  doc.addFont('InstrumentSans-Gras.ttf', 'InstrumentSans', 'bold')
+  logoCourant = b.LOGO_CREME
+}
+
 function entete(doc: jsPDF, titre: string, sousTitre: string) {
   doc.setFillColor(26, 59, 46)
   doc.rect(0, 0, doc.internal.pageSize.getWidth(), 22, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text('Mana', 14, 10)
-  doc.setFontSize(11)
-  doc.text(t(titre), 14, 17)
-  doc.setFont('helvetica', 'normal')
+  if (logoCourant) doc.addImage(logoCourant, 'PNG', 13.5, 4.5, 11, 11)
+  doc.setFont('YoungSerif', 'normal')
+  doc.setFontSize(15)
+  doc.text('mana', 27, 12)
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(10.5)
+  doc.text(t(titre), 27, 18.5)
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9)
   doc.text(t(sousTitre), doc.internal.pageSize.getWidth() - 14, 14, { align: 'right' })
   doc.setTextColor(43, 38, 32)
@@ -43,8 +59,9 @@ function piedDePage(doc: jsPDF, mention: string = MENTION_LEGALE) {
 }
 
 /** Registre des dons — tableau chronologique horodaté (format paysage). */
-export function pdfRegistre(agg: AggSociete, exercice: number) {
+export async function pdfRegistre(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+  await marque(doc)
   entete(doc, 'Registre des dons', `${agg.societe.raisonSociale} — Exercice ${exercice}`)
 
   const cols = [
@@ -63,9 +80,9 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
 
   let y = 32
   doc.setFontSize(8)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   for (const c of cols) doc.text(t(c.label), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right' } : undefined)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   y += 2
   doc.setDrawColor(26, 59, 46)
   doc.line(14, y, 284, y)
@@ -110,10 +127,10 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
   y += 2
   doc.line(14, y, 284, y)
   y += 6
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.text(t(`Base cumulée de l'exercice : ${fmtEUR(agg.baseBrute, 2)}`), 284, y, { align: 'right' })
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   y += 6
   doc.setFontSize(8)
   doc.text(
@@ -143,14 +160,15 @@ export function pdfRegistre(agg: AggSociete, exercice: number) {
 }
 
 /** Note de méthode — 1 page par magasin, datée et versionnée. */
-export function pdfNoteDeMethode(societe: Societe, magasin: Magasin, exercice: number) {
+export async function pdfNoteDeMethode(societe: Societe, magasin: Magasin, exercice: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   const version = magasin.versionsParametres[magasin.versionsParametres.length - 1]
   entete(doc, 'Note de méthode de valorisation', `${societe.raisonSociale} — ${magasin.nom}`)
 
   let y = 34
   const p = (txt: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
-    doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal')
+    doc.setFont('InstrumentSans', opts?.bold ? 'bold' : 'normal')
     doc.setFontSize(opts?.size ?? 10)
     const lines = doc.splitTextToSize(t(txt), 182)
     doc.text(lines, 14, y)
@@ -212,8 +230,9 @@ export function pdfNoteDeMethode(societe: Societe, magasin: Magasin, exercice: n
 }
 
 /** État annuel de valorisation — récapitulatif par société pour l'expert-comptable. */
-export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
+export async function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   const societe = agg.societe
   entete(doc, 'État annuel de valorisation des dons', `${societe.raisonSociale} — Exercice ${exercice}`)
 
@@ -232,15 +251,15 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   y += 10
 
   const ligne = (label: string, valeur: string, bold = false) => {
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('InstrumentSans', 'normal')
     doc.setFontSize(10)
     doc.text(t(label), 14, y)
-    doc.setFont('helvetica', bold ? 'bold' : 'normal')
+    doc.setFont('InstrumentSans', bold ? 'bold' : 'normal')
     doc.text(t(valeur), 196, y, { align: 'right' })
     y += 7
   }
 
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('Synthèse fiscale (article 238 bis du CGI)'), 14, y)
   y += 8
@@ -261,11 +280,11 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   doc.line(14, y, 196, y)
   y += 8
 
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('Reçus fiscaux attendus des associations'), 14, y)
   y += 7
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(10)
   const collecteurs = agg.magasins.flatMap((m) => m.collecteurs.map((c) => ({ magasin: m.nom, ...c })))
   if (collecteurs.length === 0) {
@@ -280,11 +299,11 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   }
 
   y += 4
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('Rappel des obligations'), 14, y)
   y += 7
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9.5)
   const obligations = [
     'Obtenir de chaque association bénéficiaire le reçu fiscal 2041-MEC-SD couvrant les dons de l’exercice.',
@@ -306,23 +325,24 @@ export function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
 }
 
 /** Facture (commission mensuelle, complément ou avoir) — mentions légales françaises. */
-export function pdfFacture(facture: Facture, societe: Societe) {
+export async function pdfFacture(facture: Facture, societe: Societe) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   const estAvoir = facture.type === 'avoir'
   entete(doc, estAvoir ? `Avoir ${facture.numero}` : `Facture ${facture.numero}`, `Émise le ${fmtDate(facture.emiseLe)}`)
 
   let y = 34
   // Émetteur / client
   doc.setFontSize(9)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.text('Mana SAS', 14, y)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.text(t('[Adresse Mana — à compléter]'), 14, y + 5)
   doc.text(t('SIREN : [SIREN Mana] — TVA : [N° TVA Mana]'), 14, y + 10)
 
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.text(t(societe.raisonSociale), 196, y, { align: 'right' })
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.text(t(`SIREN : ${societe.siren}`), 196, y + 5, { align: 'right' })
   if (facture.periode.length === 7) {
     doc.text(t(`Période : ${libelleMois(facture.periode)}`), 196, y + 10, { align: 'right' })
@@ -335,12 +355,12 @@ export function pdfFacture(facture: Facture, societe: Societe) {
   doc.setDrawColor(26, 59, 46)
   doc.setFillColor(233, 223, 201)
   doc.rect(14, y, 182, 8, 'F')
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.text('Désignation', 17, y + 5.5)
   doc.text('Montant HT', 193, y + 5.5, { align: 'right' })
   y += 8
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   const libLines = doc.splitTextToSize(t(facture.libelle), 145)
   doc.text(libLines, 17, y + 5.5)
   doc.text(t(fmtEUR(facture.montantHT, 2)), 193, y + 5.5, { align: 'right' })
@@ -354,7 +374,7 @@ export function pdfFacture(facture: Facture, societe: Societe) {
     ['Total TTC', fmtEUR(facture.montantTTC, 2), true],
   ]
   for (const [label, valeur, bold] of totaux) {
-    doc.setFont('helvetica', bold ? 'bold' : 'normal')
+    doc.setFont('InstrumentSans', bold ? 'bold' : 'normal')
     doc.setFontSize(bold ? 11 : 9.5)
     doc.text(t(label), 140, y)
     doc.text(t(valeur), 196, y, { align: 'right' })
@@ -362,11 +382,11 @@ export function pdfFacture(facture: Facture, societe: Societe) {
   }
 
   y += 4
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(10)
   doc.text(t('Détail du calcul (transparence)'), 14, y)
   y += 6
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9)
   for (const l of facture.detail) {
     const lines = doc.splitTextToSize(t(`• ${l}`), 182)
@@ -375,11 +395,11 @@ export function pdfFacture(facture: Facture, societe: Societe) {
   }
 
   y += 6
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(10)
   doc.text(t('Conditions de règlement'), 14, y)
   y += 6
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(8.5)
   const mentions = estAvoir
     ? ['Avoir imputable sur la prochaine facture ou remboursable sur demande.']
@@ -400,29 +420,31 @@ export function pdfFacture(facture: Facture, societe: Societe) {
 }
 
 /** Affiche A4 « Le bac don — règles de tri » à imprimer pour la réserve. */
-export function pdfAfficheTri(nomMagasin: string) {
+export async function pdfAfficheTri(nomMagasin: string) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   doc.setFillColor(26, 59, 46)
   doc.rect(0, 0, 210, 40, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.setFont('helvetica', 'bold')
+  if (logoCourant) doc.addImage(logoCourant, 'PNG', 16, 8, 24, 24)
+  doc.setFont('YoungSerif', 'normal')
   doc.setFontSize(26)
   doc.text(t('LE BAC « DON »'), 105, 18, { align: 'center' })
   doc.setFontSize(12)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.text(t(`${nomMagasin} — pendant la tournée DLC, au lieu de la poubelle`), 105, 28, { align: 'center' })
   doc.setTextColor(43, 38, 32)
 
   let y = 52
   const bloc = (titre: string, items: string[], vert: boolean) => {
-    doc.setFont('helvetica', 'bold')
+    doc.setFont('InstrumentSans', 'bold')
     doc.setFontSize(15)
     if (vert) doc.setTextColor(26, 59, 46)
     else doc.setTextColor(150, 45, 30)
     doc.text(t(titre), 16, y)
     doc.setTextColor(43, 38, 32)
     y += 8
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('InstrumentSans', 'normal')
     doc.setFontSize(11.5)
     for (const i of items) {
       // Pas de ✓/✗ : les polices PDF standard (WinAnsi) ne les contiennent pas
@@ -449,10 +471,10 @@ export function pdfAfficheTri(nomMagasin: string) {
 
   doc.setFillColor(243, 228, 198)
   doc.roundedRect(14, y, 182, 30, 3, 3, 'F')
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('Les 3 gestes'), 20, y + 8)
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(10.5)
   doc.text(t('1. Scanner la démarque avec le motif « DON » (comme d’habitude).'), 20, y + 15)
   doc.text(t('2. Poser dans le bac ou le sac « don » — frais au froid (0–4 °C) jusqu’au passage du collecteur.'), 20, y + 21)
@@ -470,14 +492,15 @@ export function pdfAfficheTri(nomMagasin: string) {
  * les emballés se COMPTENT (leur valeur vient de la démarque scannée),
  * les fruits & légumes se PÈSENT (leur valeur vient du poids).
  */
-export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
+export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   entete(doc, 'Bordereau d’enlèvement de denrées', `${raisonSociale} — ${magasin.nom}`)
 
   let y = 32
   doc.setFontSize(10)
   const champ = (label: string, largeur: number, x: number) => {
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('InstrumentSans', 'normal')
     doc.setFontSize(10)
     doc.text(t(label), x, y)
     doc.setDrawColor(180, 172, 155)
@@ -508,7 +531,7 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   y += 24
 
   // Section 1 — produits emballés (comptage)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('1. Produits emballés (démarque scannée en magasin)'), 14, y)
   y += 8
@@ -519,11 +542,11 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   y += 12
 
   // Section 2 — fruits & légumes (pesée obligatoire)
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('2. Fruits & légumes (pesée obligatoire)'), 14, y)
   y += 6
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.setFillColor(233, 223, 201)
   doc.rect(14, y, 182, 8, 'F')
@@ -532,7 +555,7 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.text(t('Tare (kg)'), 130, y + 5.5)
   doc.text(t('Poids net (kg)'), 160, y + 5.5)
   y += 8
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   for (let i = 1; i <= 5; i++) {
     doc.setDrawColor(210, 200, 180)
     doc.rect(14, y, 182, 9)
@@ -543,12 +566,12 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
     y += 9
   }
   y += 7
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(10.5)
   doc.text(t('Total net F&L : ______________ kg   →  à reporter dans la saisie Mana de la semaine'), 14, y)
   y += 13
 
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(10)
   doc.text(t('Signature du magasin'), 30, y)
   doc.text(t('Signature du collecteur'), 130, y)
@@ -557,7 +580,7 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.rect(114, y + 3, 82, 26)
   y += 37
 
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(8.5)
   doc.text(
     t(
@@ -578,20 +601,21 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
  * Modèle d'attestation CA & marge à faire compléter et signer par
  * l'expert-comptable — une seule demande, les deux valeurs.
  */
-export function pdfModeleAttestation(raisonSociale?: string, siren?: string, exercice?: number) {
+export async function pdfModeleAttestation(raisonSociale?: string, siren?: string, exercice?: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
   entete(doc, 'Attestation de chiffre d’affaires et de marge brute', 'Modèle à compléter par l’expert-comptable')
 
   let y = 38
   const p = (txt: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
-    doc.setFont('helvetica', opts?.bold ? 'bold' : 'normal')
+    doc.setFont('InstrumentSans', opts?.bold ? 'bold' : 'normal')
     doc.setFontSize(opts?.size ?? 11)
     const lines = doc.splitTextToSize(t(txt), 182)
     doc.text(lines, 14, y)
     y += lines.length * ((opts?.size ?? 11) * 0.5) + (opts?.gap ?? 4)
   }
   const champ = (label: string) => {
-    doc.setFont('helvetica', 'normal')
+    doc.setFont('InstrumentSans', 'normal')
     doc.setFontSize(11)
     doc.text(t(label), 14, y)
     doc.setDrawColor(150, 143, 128)
@@ -620,13 +644,13 @@ export function pdfModeleAttestation(raisonSociale?: string, siren?: string, exe
   )
   champ('Fait à :                                                      Le :')
   y += 4
-  doc.setFont('helvetica', 'bold')
+  doc.setFont('InstrumentSans', 'bold')
   doc.text(t('Signature et cachet du cabinet'), 14, y)
   doc.setDrawColor(150, 143, 128)
   doc.rect(14, y + 4, 90, 32)
 
   y += 46
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(120, 113, 100)
   doc.text(
