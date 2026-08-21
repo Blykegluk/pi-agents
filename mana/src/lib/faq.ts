@@ -37,8 +37,8 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Comment peser les fruits et légumes ?',
     reponse:
-      'Seuls les F&L partent au poids (les produits emballés sont valorisés par le montant de démarque). Pesez la cagette sur la balance du rayon ou un pèse-personne, déduisez la tare (~1 kg par cagette bois), notez le total sur le bordereau que le collecteur signe. Prenez le bordereau en photo et joignez-le à la saisie de la semaine.',
-    motsCles: 'peser pesee poids fruits legumes balance bordereau tare kg',
+      'Seuls les F&L partent au poids (les produits emballés sont valorisés par le montant de démarque — on compte simplement les colis remis : bacs, cartons ou sacs). Pesez chaque cagette ou sac sur la balance du rayon ou un pèse-personne, déduisez la tare (~1 kg pour une cagette bois, négligeable pour un sac), notez le total sur le bordereau que le collecteur signe. Prenez le bordereau en photo et joignez-le à la saisie de la semaine.',
+    motsCles: 'peser pesee poids fruits legumes balance bordereau tare kg sac cagette colis',
   },
   {
     question: 'Combien Mana me coûte-t-il ?',

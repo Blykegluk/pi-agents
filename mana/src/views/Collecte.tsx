@@ -388,10 +388,11 @@ export function Collecte({
           <CaseEtape id="pesee" />
         </div>
         <p className="muted">
-          Les produits emballés sont valorisés par leur montant de démarque — rien à peser. Seuls les fruits &amp;
-          légumes partent au poids : pesez la cagette sur la balance du rayon (ou un pèse-personne), déduisez la tare
-          (~1 kg par cagette bois), notez le total sur le bordereau. Le collecteur contrôle et signe à chaque passage —
-          prenez le bordereau en photo et joignez-le à la saisie de la semaine.
+          Les produits emballés sont valorisés par leur montant de démarque — rien à peser, on compte juste les colis
+          remis (bacs, cartons ou sacs). Seuls les fruits &amp; légumes partent au poids : pesez chaque cagette ou sac
+          sur la balance du rayon (ou un pèse-personne), déduisez la tare (~1 kg pour une cagette bois, négligeable
+          pour un sac), notez le total sur le bordereau. Le collecteur contrôle et signe à chaque passage — prenez le
+          bordereau en photo et joignez-le à la saisie de la semaine.
         </p>
         <button className="btn btn-primary btn-block" onClick={() => pdfBordereau(magasin, societe.raisonSociale)}>
           ⬇ Imprimer des bordereaux d’enlèvement vierges

@@ -455,8 +455,8 @@ export function pdfAfficheTri(nomMagasin: string) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)
   doc.text(t('1. Scanner la démarque avec le motif « DON » (comme d’habitude).'), 20, y + 15)
-  doc.text(t('2. Poser dans le bac « don » — frais au froid (0–4 °C) jusqu’au passage du collecteur.'), 20, y + 21)
-  doc.text(t('3. F&L : peser la cagette, noter le poids sur le bordereau.'), 20, y + 27)
+  doc.text(t('2. Poser dans le bac ou le sac « don » — frais au froid (0–4 °C) jusqu’au passage du collecteur.'), 20, y + 21)
+  doc.text(t('3. F&L : peser chaque cagette ou sac, noter le poids sur le bordereau.'), 20, y + 27)
 
   doc.setFontSize(8.5)
   doc.setTextColor(120, 113, 100)
@@ -498,8 +498,8 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.text(
     t(
       'Ce bordereau prouve la remise — il ne fixe pas la valeur fiscale. Produits emballés : valorisés dans Mana par la ' +
-        'démarque scannée en magasin (en €) — on les compte, pas besoin de les peser. Fruits & légumes : valorisés au ' +
-        'poids — la pesée ci-dessous est la référence à reporter dans Mana.',
+        'démarque scannée en magasin (en €) — comptez les colis (bacs, cartons ou sacs), pas besoin de peser. ' +
+        'Fruits & légumes : valorisés au poids — la pesée ci-dessous est la référence à reporter dans Mana.',
     ),
     17,
     y + 5,
@@ -512,7 +512,7 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFontSize(11)
   doc.text(t('1. Produits emballés (démarque scannée en magasin)'), 14, y)
   y += 8
-  champ('Nombre de bacs / cartons remis :', 110, 14)
+  champ('Nombre de colis remis (bacs, cartons ou sacs) :', 110, 14)
   champ('Poids indicatif (facultatif, pour l’association) :        kg', 196, 118)
   y += 9
   champ('Produits refusés / remarques :', 196, 14)
@@ -527,7 +527,7 @@ export function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFontSize(9)
   doc.setFillColor(233, 223, 201)
   doc.rect(14, y, 182, 8, 'F')
-  doc.text(t('Cagette / contenant'), 17, y + 5.5)
+  doc.text(t('Contenant (cagette, sac…)'), 17, y + 5.5)
   doc.text(t('Poids brut (kg)'), 92, y + 5.5)
   doc.text(t('Tare (kg)'), 130, y + 5.5)
   doc.text(t('Poids net (kg)'), 160, y + 5.5)
