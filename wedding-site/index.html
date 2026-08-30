@@ -9,7 +9,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -17,10 +17,8 @@
   <!-- ===================== PORTE D'ENTRÉE (MOT DE PASSE) ===================== -->
   <div id="gate" class="gate">
     <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
-    <img class="branch branch-l" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
-    <img class="branch branch-r" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
-    <img class="lemon-fruit lemon-l" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
-    <img class="lemon-fruit lemon-r" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
+    <img class="branch branch-l" src="assets/art/redoute.jpg" alt="" aria-hidden="true" />
+    <img class="branch branch-r" src="assets/art/redoute.jpg" alt="" aria-hidden="true" />
     <div class="gate-card">
       <p class="gate-kicker">Millamore</p>
       <h1 class="gate-names">Sara <span class="amp">&amp;</span> John</h1>
@@ -53,16 +51,11 @@
     <!-- ============ ACCUEIL ============ -->
     <header id="accueil" class="hero">
       <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
-      <img class="branch branch-l" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
-      <img class="branch branch-r" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
-      <img class="lemon-fruit lemon-l" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
-      <img class="lemon-fruit lemon-r" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
+      <img class="std-branch std-branch-l" src="assets/std/branch-left.jpg" alt="" aria-hidden="true" />
+      <img class="std-branch std-branch-r" src="assets/std/branch-right.jpg" alt="" aria-hidden="true" />
       <div class="hero-inner">
-        <p class="hero-kicker">Millamore</p>
-        <h1 class="hero-names">Sara <span class="amp">&amp;</span> John</h1>
-        <p class="hero-sub">se marient</p>
-        <p class="hero-date">27 &ndash; 28 juin 2027</p>
-        <p class="hero-place">Rome &middot; Italie</p>
+        <h1 class="sr-only">Millamore &mdash; Sara &amp; John se marient les 27 et 28 juin 2027 &agrave; Rome</h1>
+        <img class="std-full" src="assets/gallery/save-the-date.jpg" alt="Save the date — Millamore, Sara & John, 27-28 juin 2027, Rome" />
 
         <div id="countdown" class="countdown" aria-label="Compte à rebours jusqu'au mariage">
           <div class="cd-box"><span id="cd-days" class="cd-num">–</span><span class="cd-label">jours</span></div>
@@ -72,9 +65,6 @@
         </div>
 
         <a href="#rsvp" class="btn btn-green hero-cta">Confirmer ma pr&eacute;sence</a>
-      </div>
-      <div class="hero-skyline" aria-hidden="true">
-        <img src="assets/art/skyline.svg" alt="" />
       </div>
     </header>
 
@@ -88,7 +78,6 @@
 
       <div class="timeline">
         <article class="event card">
-          <img class="event-illu" src="assets/illus/aperitivo.svg" alt="" aria-hidden="true" />
           <div class="event-body">
             <p class="event-day">Samedi <span class="event-daynum">27</span> juin 2027</p>
             <h3 class="event-title">Welcome Party</h3>
@@ -98,8 +87,7 @@
           </div>
         </article>
 
-        <article class="event card event-reverse">
-          <img class="event-illu" src="assets/illus/castello.svg" alt="" aria-hidden="true" />
+        <article class="event card">
           <div class="event-body">
             <p class="event-day">Dimanche <span class="event-daynum">28</span> juin 2027</p>
             <h3 class="event-title">Houppa &amp; Soir&eacute;e</h3>
@@ -116,7 +104,6 @@
         </article>
 
         <article class="event card">
-          <img class="event-illu" src="assets/illus/mairie.svg" alt="" aria-hidden="true" />
           <div class="event-body">
             <p class="event-day">Date &agrave; confirmer</p>
             <h3 class="event-title">La Mairie</h3>
@@ -129,8 +116,9 @@
 
     <!-- ============ HÔTEL ============ -->
     <section id="hotel" class="section section-alt">
+      <img class="gravure-coin" src="assets/art/gravure.jpg" alt="" aria-hidden="true" />
       <div class="section-head">
-        <img class="divider divider-illu" src="assets/illus/colonnade.svg" alt="" aria-hidden="true" />
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
         <h2>O&ugrave; dormir</h2>
         <p class="section-sub">Nous vous donnons rendez-vous au m&ecirc;me h&ocirc;tel</p>
       </div>
@@ -165,7 +153,6 @@
 
       <div class="infos-grid">
         <div class="info card">
-          <img class="info-illu" src="assets/illus/navette.svg" alt="" aria-hidden="true" />
           <h3>Navettes</h3>
           <p>Des bus et navettes vous emm&egrave;neront de l&rsquo;h&ocirc;tel &agrave; chaque lieu de f&ecirc;te, et vous ram&egrave;neront. Horaires communiqu&eacute;s prochainement.</p>
         </div>
@@ -183,7 +170,7 @@
     <!-- ============ RSVP ============ -->
     <section id="rsvp" class="section section-alt">
       <div class="section-head">
-        <img class="divider divider-illu" src="assets/illus/enveloppe.svg" alt="" aria-hidden="true" />
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
         <h2>RSVP</h2>
         <p class="section-sub">Merci de confirmer votre pr&eacute;sence pour chaque &eacute;v&eacute;nement</p>
       </div>
@@ -246,7 +233,7 @@
     <!-- ============ GALERIE ============ -->
     <section id="galerie" class="section">
       <div class="section-head">
-        <img class="divider divider-illu" src="assets/illus/camera.svg" alt="" aria-hidden="true" />
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
         <h2>Galerie</h2>
       </div>
       <div class="gallery">
@@ -256,6 +243,14 @@
         <figure class="gallery-item"><img src="assets/gallery/photo-3.jpg" alt="Sara & John" loading="lazy" /></figure>
         <figure class="gallery-item"><img src="assets/gallery/photo-4.jpg" alt="Sara & John" loading="lazy" /></figure>
         <figure class="gallery-item"><img src="assets/gallery/photo-5.jpg" alt="Sara & John" loading="lazy" /></figure>
+      </div>
+    </section>
+
+    <section id="fin" class="fin" aria-label="Les fiancés">
+      <img class="fin-photo" src="assets/std/fiances.jpg" alt="Sara et John" />
+      <div class="fin-overlay">
+        <p class="fin-script">A tr&egrave;s vite &agrave; Rome</p>
+        <p class="fin-names">Sara <span class="amp">&amp;</span> John</p>
       </div>
     </section>
 

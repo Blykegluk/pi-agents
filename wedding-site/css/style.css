@@ -15,8 +15,8 @@
   --red-brush-dark: #8c181c;
   --card: #fffdf7;
   --shadow: 0 10px 30px rgba(120, 84, 30, 0.12);
-  --font-script: "Caveat Brush", cursive;
-  --font-hand: "Caveat", cursive;
+  --font-script: "Great Vibes", cursive;
+  --font-hand: "Great Vibes", cursive;
   --font-roman: "Cinzel", serif;
   --font-serif: "Cormorant Garamond", Georgia, serif;
 }
@@ -69,27 +69,49 @@ img { max-width: 100%; }
   pointer-events: none;
 }
 
-/* ---------- Branches de citronnier (planche Köhler, domaine public) ---------- */
+/* ---------- Branches Redouté (porte d'entrée, gravure domaine public) ---------- */
 .branch {
   position: absolute;
-  width: min(38vw, 520px);
+  width: min(30vw, 360px);
   mix-blend-mode: multiply;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(75% 75% at 42% 38%, #000 55%, transparent 92%);
-  mask-image: radial-gradient(75% 75% at 42% 38%, #000 55%, transparent 92%);
+  -webkit-mask-image: radial-gradient(72% 72% at 45% 42%, #000 55%, transparent 92%);
+  mask-image: radial-gradient(72% 72% at 45% 42%, #000 55%, transparent 92%);
 }
-.branch-l { top: 4.5rem; left: max(-110px, -8vw); transform: rotate(8deg); }
-.branch-r { top: 4.2rem; right: max(-110px, -8vw); transform: scaleX(-1) rotate(8deg); }
-.lemon-fruit {
+.branch-l { top: -3rem; left: max(-80px, -6vw); transform: rotate(12deg); }
+.branch-r { top: -3rem; right: max(-80px, -6vw); transform: scaleX(-1) rotate(12deg); }
+
+/* ---------- Éléments découpés du save the date ---------- */
+.std-branch {
   position: absolute;
-  width: min(9.5vw, 130px);
   mix-blend-mode: multiply;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(58% 58% at 50% 50%, #000 62%, transparent 96%);
-  mask-image: radial-gradient(58% 58% at 50% 50%, #000 62%, transparent 96%);
 }
-.lemon-l { top: min(24vw, 350px); left: min(7.5vw, 108px); transform: rotate(-8deg); }
-.lemon-r { top: min(23.8vw, 346px); right: min(7.5vw, 108px); transform: scaleX(-1) rotate(-8deg); }
+.std-branch-l {
+  top: 3.6rem; left: 0; width: min(22vw, 300px);
+  -webkit-mask-image: radial-gradient(115% 100% at 0% 40%, #000 45%, transparent 82%);
+  mask-image: radial-gradient(115% 100% at 0% 40%, #000 45%, transparent 82%);
+}
+.std-branch-r {
+  top: clamp(240px, 32vw, 440px); right: 0; width: min(16vw, 215px);
+  -webkit-mask-image: radial-gradient(120% 96% at 100% 50%, #000 36%, transparent 76%);
+  mask-image: radial-gradient(120% 96% at 100% 50%, #000 36%, transparent 76%);
+}
+.std-full {
+  display: block;
+  width: min(90vw, 580px);
+  mix-blend-mode: multiply;
+  -webkit-mask-image: radial-gradient(74% 74% at 50% 50%, #000 62%, transparent 95%);
+  mask-image: radial-gradient(74% 74% at 50% 50%, #000 62%, transparent 95%);
+}
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
 
 /* ============================================================
    PORTE D'ENTRÉE
@@ -116,24 +138,22 @@ img { max-width: 100%; }
 }
 .gate-kicker {
   font-family: var(--font-script);
-  font-size: clamp(2.8rem, 7.5vw, 4.4rem);
+  font-size: clamp(3.2rem, 8.5vw, 5rem);
   color: var(--red-brush);
-  -webkit-text-stroke: 1.5px var(--red-brush);
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .gate-names {
   font-family: var(--font-script);
-  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-size: clamp(2rem, 5.5vw, 3rem);
   color: var(--red-brush);
-  -webkit-text-stroke: 1px var(--red-brush);
-  margin-top: 0.3rem;
-  line-height: 1.3;
+  margin-top: 0.2rem;
+  line-height: 1.35;
 }
 .gate-date {
   font-family: var(--font-script);
   font-size: 1.9rem;
   color: var(--red-brush);
-  margin: 0.8rem 0 2rem;
+  margin: 0.7rem 0 2rem;
 }
 .gate-label {
   display: block;
@@ -228,42 +248,12 @@ img { max-width: 100%; }
   overflow: hidden;
   padding: 6.5rem 1.5rem 0;
 }
-.hero-inner { position: relative; z-index: 2; }
-.hero-kicker {
-  font-family: var(--font-script);
-  font-size: clamp(3.4rem, 9.5vw, 6.4rem);
-  color: var(--red-brush);
-  -webkit-text-stroke: 2px var(--red-brush);
-  line-height: 1.05;
-}
-.hero-names {
-  font-family: var(--font-script);
-  font-size: clamp(2.2rem, 6vw, 3.7rem);
-  color: var(--red-brush);
-  -webkit-text-stroke: 1.2px var(--red-brush);
-  margin-top: 0.4rem;
-  line-height: 1.2;
-}
-.hero-sub {
-  font-style: italic;
-  font-size: 1.3rem;
-  color: var(--ink);
-  margin-top: 0.5rem;
-}
-.hero-date {
-  font-family: var(--font-script);
-  font-size: clamp(2rem, 5.5vw, 3.2rem);
-  color: var(--red-brush);
-  -webkit-text-stroke: 1px var(--red-brush);
-  letter-spacing: 0.04em;
-  margin-top: 1.2rem;
-  line-height: 1.1;
-}
-.hero-place {
-  font-family: var(--font-script);
-  font-size: clamp(1.5rem, 4vw, 2.3rem);
-  color: var(--red-brush);
-  margin-top: 0.1rem;
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .countdown {
@@ -300,15 +290,23 @@ img { max-width: 100%; }
 
 .hero-cta { margin: 2.6rem 0 3rem; }
 
-.hero-skyline {
+.hero-scene {
   position: relative;
   z-index: 1;
   width: 100%;
   margin-top: auto;
   line-height: 0;
-  height: clamp(150px, 21vw, 300px);
+  display: flex;
+  justify-content: center;
 }
-.hero-skyline img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; display: block; }
+.hero-scene img {
+  width: min(100%, 1100px);
+  height: auto;
+  display: block;
+  mix-blend-mode: multiply;
+  -webkit-mask-image: linear-gradient(transparent 0%, #000 16%);
+  mask-image: linear-gradient(transparent 0%, #000 16%);
+}
 
 /* ============================================================
    SECTIONS
@@ -330,9 +328,8 @@ img { max-width: 100%; }
   color: var(--green-dark);
 }
 .section-sub {
-  font-family: var(--font-hand);
-  font-weight: 600;
-  font-size: 1.5rem;
+  font-style: italic;
+  font-size: 1.3rem;
   color: var(--ochre);
   margin-top: 0.5rem;
 }
@@ -352,15 +349,8 @@ img { max-width: 100%; }
   gap: 1.6rem;
 }
 .event {
-  display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  gap: 2.2rem;
-  align-items: center;
-  padding: 2rem 2.4rem;
+  padding: 2.2rem 2.6rem;
 }
-.event-reverse { grid-template-columns: minmax(0, 1fr) 230px; }
-.event-reverse .event-illu { order: 2; width: 230px; }
-.event-illu { width: 200px; justify-self: center; }
 .event-day {
   font-family: var(--font-roman);
   font-size: 0.85rem;
@@ -371,22 +361,21 @@ img { max-width: 100%; }
 .event-daynum { font-size: 1.1em; color: var(--red-brush); }
 .event-title {
   font-family: var(--font-script);
-  font-size: 2rem;
-  color: var(--green-dark);
-  margin: 0.3rem 0 0.2rem;
-  line-height: 1.4;
+  font-size: 2.6rem;
+  color: var(--red-brush);
+  margin: 0.4rem 0 0.2rem;
+  line-height: 1.25;
 }
 .event-venue { font-size: 1.25rem; font-weight: 600; color: var(--ink); }
 .event-address { color: var(--ink); }
 .event-note {
   display: inline-block;
-  font-family: var(--font-hand);
-  font-weight: 600;
-  font-size: 1.15rem;
+  font-style: italic;
+  font-size: 1.05rem;
   color: var(--ochre);
   background-color: rgba(238, 189, 62, 0.16);
   border-radius: 999px;
-  padding: 0.1rem 0.9rem;
+  padding: 0.15rem 0.9rem;
   margin-top: 0.5rem;
 }
 .event-desc { margin-top: 0.7rem; }
@@ -403,18 +392,17 @@ img { max-width: 100%; }
 .hotel-info { padding: 2.2rem; }
 .hotel-info h3 {
   font-family: var(--font-script);
-  font-size: 1.8rem;
-  color: var(--green-dark);
-  line-height: 1.4;
+  font-size: 2.2rem;
+  color: var(--red-brush);
+  line-height: 1.3;
 }
 .stars { color: var(--lemon); font-size: 1.1rem; letter-spacing: 0.1em; }
 .hotel-address { font-weight: 600; margin-top: 0.3rem; }
 .hotel-desc { margin-top: 0.8rem; }
 .hotel-note {
   display: inline-block;
-  font-family: var(--font-hand);
-  font-weight: 600;
-  font-size: 1.15rem;
+  font-style: italic;
+  font-size: 1.05rem;
   color: var(--red-brush);
   background-color: rgba(169, 30, 34, 0.08);
   border-radius: 999px;
@@ -431,7 +419,20 @@ img { max-width: 100%; }
   gap: 1.6rem;
 }
 .info { padding: 1.8rem 2rem; border-top: 5px solid var(--green-leaf); }
-.info-illu { width: 130px; display: block; margin: 0 auto 0.8rem; }
+
+/* ---------- Gravure discrète (option D5) ---------- */
+.gravure-coin {
+  position: absolute;
+  right: max(-40px, -3vw);
+  bottom: 30px;
+  width: min(15vw, 190px);
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(60% 66% at 48% 50%, #000 46%, transparent 84%);
+  mask-image: radial-gradient(60% 66% at 48% 50%, #000 46%, transparent 84%);
+}
+#hotel { position: relative; overflow: hidden; }
 .info h3 {
   font-family: var(--font-roman);
   font-size: 1.05rem;
@@ -531,6 +532,43 @@ img { max-width: 100%; }
 }
 .gallery-item:hover img { transform: scale(1.04); }
 
+/* ---------- Les fiancés (fin) ---------- */
+.fin {
+  position: relative;
+  height: min(88vh, 780px);
+  overflow: hidden;
+  background-color: var(--paper);
+}
+.fin-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  filter: saturate(0.92) sepia(0.08) brightness(1.02);
+  -webkit-mask-image: linear-gradient(transparent 0%, #000 16%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(transparent 0%, #000 16%, #000 82%, transparent 100%);
+}
+.fin-overlay {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 9%;
+  text-align: center;
+  color: #fffdf7;
+  text-shadow: 0 2px 18px rgba(60, 30, 10, 0.55);
+}
+.fin-script {
+  font-family: var(--font-script);
+  font-size: clamp(2.2rem, 6vw, 3.4rem);
+  line-height: 1.2;
+}
+.fin-names {
+  font-family: var(--font-roman);
+  font-size: 1rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+
 /* ---------- Footer ---------- */
 .footer {
   text-align: center;
@@ -540,9 +578,9 @@ img { max-width: 100%; }
 }
 .footer-names {
   font-family: var(--font-script);
-  font-size: 2rem;
+  font-size: 2.4rem;
   color: var(--red-brush);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 .footer-date {
   font-family: var(--font-roman);
@@ -553,11 +591,10 @@ img { max-width: 100%; }
   margin-top: 0.4rem;
 }
 .footer-love {
-  font-family: var(--font-hand);
-  font-weight: 600;
-  font-size: 1.6rem;
+  font-family: var(--font-script);
+  font-size: 1.8rem;
   color: var(--ochre);
-  margin-top: 1rem;
+  margin-top: 0.8rem;
 }
 
 /* ---------- Responsive ---------- */
@@ -569,11 +606,11 @@ img { max-width: 100%; }
   .nav-links { justify-content: center; gap: 0.2rem 0.85rem; }
   .nav-links a { font-size: 0.72rem; letter-spacing: 0.1em; }
   html { scroll-padding-top: 96px; }
-  .hero { padding-top: 8rem; }
-  .lemon-fruit { display: none; }
-  .branch { width: 46vw; }
-  .branch-l { top: 6.5rem; }
-  .branch-r { top: 6.2rem; }
+  .hero { padding-top: 7.5rem; }
+  .branch { width: 40vw; }
+  .std-branch-l { width: 30vw; top: 6rem; }
+  .std-branch-r { width: 22vw; }
+  .gravure-coin { display: none; }
   .event { grid-template-columns: 1fr; gap: 1rem; padding: 1.6rem 1.4rem; }
   .event-reverse .event-illu { order: 0; }
   .event-illu { width: 170px; }
