@@ -1,0 +1,553 @@
+/* ============================================================
+   Sara & John — 27-28 juin 2027 — Rome
+   DA : aquarelle, citronniers, tons crème/ocre, rouge manuscrit
+   ============================================================ */
+
+:root {
+  --paper: #fbf6ec;
+  --paper-warm: #f9efdd;
+  --ink: #4a3f2f;
+  --green-dark: #21381c;
+  --green-leaf: #7a8b4c;
+  --lemon: #eebd3e;
+  --ochre: #e8a144;
+  --red-brush: #a91e22;
+  --red-brush-dark: #8c181c;
+  --card: #fffdf7;
+  --shadow: 0 10px 30px rgba(120, 84, 30, 0.12);
+  --font-script: "Caveat", cursive;
+  --font-roman: "Cinzel", serif;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+
+body {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--ink);
+  background-color: var(--paper);
+  line-height: 1.6;
+}
+
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+
+.amp { font-family: var(--font-script); }
+
+/* ---------- Boutons ---------- */
+.btn {
+  display: inline-block;
+  font-family: var(--font-roman);
+  font-size: 0.95rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 2rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  box-shadow: var(--shadow);
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-red { background-color: var(--red-brush); }
+.btn-red:hover { background-color: var(--red-brush-dark); }
+.btn-green { background-color: var(--green-dark); }
+.btn-green:hover { background-color: #2e4d27; }
+
+/* ---------- Washes aquarelle (fond) ---------- */
+.gate-wash, .hero-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(55% 45% at 72% 22%, rgba(240, 168, 80, 0.38) 0%, rgba(240, 168, 80, 0) 70%),
+    radial-gradient(50% 40% at 30% 65%, rgba(238, 189, 62, 0.25) 0%, rgba(238, 189, 62, 0) 70%),
+    radial-gradient(60% 50% at 85% 75%, rgba(232, 161, 68, 0.28) 0%, rgba(232, 161, 68, 0) 70%),
+    radial-gradient(45% 40% at 15% 15%, rgba(122, 139, 76, 0.12) 0%, rgba(122, 139, 76, 0) 70%);
+  pointer-events: none;
+}
+
+/* ---------- Branches de citronnier ---------- */
+.gate-branch, .hero-branch {
+  position: absolute;
+  width: min(38vw, 340px);
+  pointer-events: none;
+  opacity: 0.95;
+}
+.branch-tl { top: -12px; left: -18px; }
+.branch-tr { top: -12px; right: -18px; transform: scaleX(-1); }
+.branch-br { bottom: -12px; right: -18px; transform: rotate(180deg); }
+
+/* ============================================================
+   PORTE D'ENTRÉE
+   ============================================================ */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow: hidden;
+  transition: opacity 0.7s ease;
+}
+.gate.gate-out { opacity: 0; pointer-events: none; }
+
+.gate-card {
+  position: relative;
+  text-align: center;
+  max-width: 30rem;
+  width: 100%;
+}
+.gate-kicker {
+  font-family: var(--font-script);
+  font-size: clamp(2.6rem, 7vw, 3.6rem);
+  font-weight: 700;
+  color: var(--red-brush);
+  line-height: 1;
+}
+.gate-names {
+  font-family: var(--font-script);
+  font-size: clamp(2rem, 5.5vw, 2.8rem);
+  font-weight: 600;
+  color: var(--red-brush);
+  margin-top: 0.2rem;
+}
+.gate-date {
+  font-family: var(--font-roman);
+  font-size: 1rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  margin: 1rem 0 2.2rem;
+}
+.gate-label {
+  display: block;
+  font-family: var(--font-roman);
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 0.6rem;
+}
+.gate-row {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.gate-row input {
+  flex: 1 1 12rem;
+  max-width: 16rem;
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  text-align: center;
+  padding: 0.8rem 1rem;
+  border: 1.5px solid rgba(33, 56, 28, 0.35);
+  border-radius: 999px;
+  background-color: var(--card);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.gate-row input:focus { border-color: var(--green-dark); }
+.gate-error {
+  margin-top: 1rem;
+  font-style: italic;
+  color: var(--red-brush);
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 1.2rem;
+  background-color: rgba(251, 246, 236, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(120, 84, 30, 0.15);
+}
+.nav-monogram {
+  font-family: var(--font-script);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--red-brush);
+  text-decoration: none;
+  line-height: 1;
+}
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1.3rem;
+  justify-content: flex-end;
+}
+.nav-links a {
+  font-family: var(--font-roman);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+.nav-links a:hover { border-bottom-color: var(--lemon); }
+
+/* ============================================================
+   ACCUEIL
+   ============================================================ */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  padding: 6.5rem 1.5rem 0;
+}
+.hero-inner { position: relative; z-index: 2; }
+.hero-kicker {
+  font-family: var(--font-script);
+  font-size: clamp(3.2rem, 9vw, 5.2rem);
+  font-weight: 700;
+  color: var(--red-brush);
+  line-height: 1;
+}
+.hero-names {
+  font-family: var(--font-script);
+  font-size: clamp(2.4rem, 6.5vw, 3.6rem);
+  font-weight: 600;
+  color: var(--red-brush);
+  margin-top: 0.3rem;
+}
+.hero-sub {
+  font-style: italic;
+  font-size: 1.3rem;
+  color: var(--ink);
+  margin-top: 0.4rem;
+}
+.hero-date {
+  font-family: var(--font-roman);
+  font-size: clamp(1.15rem, 3vw, 1.5rem);
+  letter-spacing: 0.18em;
+  color: var(--green-dark);
+  margin-top: 1.6rem;
+}
+.hero-place {
+  font-family: var(--font-roman);
+  font-size: 1rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  margin-top: 0.4rem;
+}
+
+.countdown {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.7rem, 3vw, 1.6rem);
+  margin-top: 2.4rem;
+}
+.cd-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 4.2rem;
+  padding: 0.7rem 0.5rem;
+  background-color: rgba(255, 253, 247, 0.75);
+  border: 1px solid rgba(232, 161, 68, 0.45);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.cd-num {
+  font-family: var(--font-roman);
+  font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+  color: var(--green-dark);
+  font-variant-numeric: tabular-nums;
+}
+.cd-label {
+  font-family: var(--font-roman);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ochre);
+  margin-top: 0.2rem;
+}
+
+.hero-cta { margin: 2.6rem 0 3rem; }
+
+.hero-skyline {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-top: auto;
+  line-height: 0;
+}
+.hero-skyline img { width: 100%; height: auto; display: block; }
+
+/* ============================================================
+   SECTIONS
+   ============================================================ */
+.section { padding: 5rem 1.5rem; max-width: 68rem; margin: 0 auto; }
+.section-alt {
+  max-width: none;
+  background-color: var(--paper-warm);
+}
+.section-alt > * { max-width: 68rem; margin-left: auto; margin-right: auto; }
+
+.section-head { text-align: center; margin-bottom: 3rem; }
+.section-head h2 {
+  font-family: var(--font-roman);
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+}
+.section-sub {
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--ochre);
+  margin-top: 0.5rem;
+}
+.divider { width: 88px; margin-bottom: 0.8rem; }
+
+.card {
+  background-color: var(--card);
+  border: 1px solid rgba(232, 161, 68, 0.35);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Programme ---------- */
+.timeline {
+  display: grid;
+  gap: 1.6rem;
+}
+.event {
+  padding: 2rem 2.2rem;
+  border-left: 5px solid var(--lemon);
+}
+.event-day {
+  font-family: var(--font-roman);
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ochre);
+}
+.event-daynum { font-size: 1.1em; color: var(--red-brush); }
+.event-title {
+  font-family: var(--font-script);
+  font-size: 2.3rem;
+  font-weight: 600;
+  color: var(--green-dark);
+  margin: 0.3rem 0 0.2rem;
+}
+.event-venue { font-size: 1.25rem; font-weight: 600; color: var(--ink); }
+.event-address { color: var(--ink); }
+.event-note {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--ochre);
+  background-color: rgba(238, 189, 62, 0.14);
+  border-radius: 999px;
+  padding: 0.15rem 0.9rem;
+  margin-top: 0.5rem;
+}
+.event-desc { margin-top: 0.7rem; }
+.event-links { margin-top: 0.8rem; font-size: 1.05rem; }
+.event-links a { color: var(--red-brush); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.event-links span { margin: 0 0.4rem; color: var(--ochre); }
+
+/* ---------- Hôtel ---------- */
+.hotel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+.hotel-info { padding: 2.2rem; }
+.hotel-info h3 {
+  font-family: var(--font-script);
+  font-size: 2.1rem;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+.stars { color: var(--lemon); font-size: 1.1rem; letter-spacing: 0.1em; }
+.hotel-address { font-weight: 600; margin-top: 0.3rem; }
+.hotel-desc { margin-top: 0.8rem; }
+.hotel-note {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--red-brush);
+  background-color: rgba(169, 30, 34, 0.08);
+  border-radius: 999px;
+  padding: 0.15rem 0.9rem;
+  margin-top: 0.8rem;
+}
+.hotel-map { min-height: 320px; }
+.hotel-map iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* ---------- Infos ---------- */
+.infos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.6rem;
+}
+.info { padding: 1.8rem 2rem; border-top: 5px solid var(--green-leaf); }
+.info h3 {
+  font-family: var(--font-roman);
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  margin-bottom: 0.6rem;
+}
+
+/* ---------- RSVP ---------- */
+.rsvp {
+  padding: 2.4rem 2.2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+.form-row.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.field { display: grid; gap: 0.45rem; border: none; }
+.field label, .field legend {
+  font-family: var(--font-roman);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  padding: 0;
+}
+.field legend { margin-bottom: 0.5rem; }
+.field input, .field select, .field textarea {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--ink);
+  background-color: var(--paper);
+  border: 1.5px solid rgba(33, 56, 28, 0.3);
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--green-dark); }
+.field textarea { resize: vertical; }
+
+.pills { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.pill { position: relative; cursor: pointer; }
+.pill input {
+  position: absolute;
+  opacity: 0;
+  width: 100%; height: 100%;
+  cursor: pointer;
+}
+.pill span {
+  display: inline-block;
+  font-family: var(--font-roman);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.5rem;
+  border: 1.5px solid rgba(33, 56, 28, 0.35);
+  border-radius: 999px;
+  color: var(--green-dark);
+  background-color: var(--paper);
+  transition: all 0.2s ease;
+}
+.pill input:checked + span {
+  background-color: var(--green-dark);
+  border-color: var(--green-dark);
+  color: #fff;
+}
+.pill input:focus-visible + span { outline: 2px solid var(--lemon); outline-offset: 2px; }
+
+.rsvp-submit { justify-self: center; margin-top: 0.5rem; }
+.rsvp-status { text-align: center; font-size: 1.15rem; font-style: italic; }
+.rsvp-status.ok { color: var(--green-dark); }
+.rsvp-status.err { color: var(--red-brush); }
+
+/* ---------- Galerie ---------- */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1.2rem;
+}
+.gallery-item {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  background-color: var(--paper-warm);
+  aspect-ratio: 4 / 5;
+}
+.gallery-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
+}
+.gallery-item:hover img { transform: scale(1.04); }
+
+/* ---------- Footer ---------- */
+.footer {
+  text-align: center;
+  padding: 4rem 1.5rem 3rem;
+  background-color: var(--paper-warm);
+  border-top: 1px solid rgba(232, 161, 68, 0.3);
+}
+.footer-names {
+  font-family: var(--font-script);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--red-brush);
+}
+.footer-date {
+  font-family: var(--font-roman);
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  margin-top: 0.4rem;
+}
+.footer-love {
+  font-family: var(--font-script);
+  font-size: 1.5rem;
+  color: var(--ochre);
+  margin-top: 1rem;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  .hotel { grid-template-columns: 1fr; }
+  .hotel-map { min-height: 260px; }
+  .form-row.two-cols { grid-template-columns: 1fr; }
+  .nav { flex-direction: column; gap: 0.15rem; padding-bottom: 0.45rem; }
+  .nav-links { justify-content: center; gap: 0.2rem 0.85rem; }
+  .nav-links a { font-size: 0.72rem; letter-spacing: 0.1em; }
+  html { scroll-padding-top: 96px; }
+  .hero { padding-top: 8rem; }
+  .event { padding: 1.6rem 1.4rem; }
+  .rsvp { padding: 1.8rem 1.3rem; }
+}

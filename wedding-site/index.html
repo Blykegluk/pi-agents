@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sara &amp; John — 27-28 Juin 2027 — Rome</title>
+  <meta name="description" content="Millamore — Le mariage de Sara & John, les 27 et 28 juin 2027 à Rome." />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===================== PORTE D'ENTRÉE (MOT DE PASSE) ===================== -->
+  <div id="gate" class="gate">
+    <div class="gate-wash" aria-hidden="true"></div>
+    <img class="gate-branch branch-tl" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+    <img class="gate-branch branch-br" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+    <div class="gate-card">
+      <p class="gate-kicker">Millamore</p>
+      <h1 class="gate-names">Sara <span class="amp">&amp;</span> John</h1>
+      <p class="gate-date">27 &ndash; 28 juin 2027 &middot; Rome</p>
+      <form id="gate-form" autocomplete="off">
+        <label class="gate-label" for="gate-password">Mot de passe</label>
+        <div class="gate-row">
+          <input id="gate-password" type="password" inputmode="text" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required />
+          <button type="submit" class="btn btn-red">Entrer</button>
+        </div>
+        <p id="gate-error" class="gate-error" hidden>Ce n&rsquo;est pas le bon mot de passe&hellip; il est sur votre save the date&nbsp;!</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== SITE ===================== -->
+  <div id="site" hidden>
+
+    <nav class="nav">
+      <a class="nav-monogram" href="#accueil">S&nbsp;<span class="amp">&amp;</span>&nbsp;J</a>
+      <div class="nav-links">
+        <a href="#programme">Programme</a>
+        <a href="#hotel">H&ocirc;tel</a>
+        <a href="#infos">Infos</a>
+        <a href="#rsvp">RSVP</a>
+        <a href="#galerie">Galerie</a>
+      </div>
+    </nav>
+
+    <!-- ============ ACCUEIL ============ -->
+    <header id="accueil" class="hero">
+      <div class="hero-wash" aria-hidden="true"></div>
+      <img class="hero-branch branch-tl" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+      <img class="hero-branch branch-tr" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+      <div class="hero-inner">
+        <p class="hero-kicker">Millamore</p>
+        <h1 class="hero-names">Sara <span class="amp">&amp;</span> John</h1>
+        <p class="hero-sub">se marient</p>
+        <p class="hero-date">27 &ndash; 28 juin 2027</p>
+        <p class="hero-place">Rome &middot; Italie</p>
+
+        <div id="countdown" class="countdown" aria-label="Compte à rebours jusqu'au mariage">
+          <div class="cd-box"><span id="cd-days" class="cd-num">–</span><span class="cd-label">jours</span></div>
+          <div class="cd-box"><span id="cd-hours" class="cd-num">–</span><span class="cd-label">heures</span></div>
+          <div class="cd-box"><span id="cd-mins" class="cd-num">–</span><span class="cd-label">minutes</span></div>
+          <div class="cd-box"><span id="cd-secs" class="cd-num">–</span><span class="cd-label">secondes</span></div>
+        </div>
+
+        <a href="#rsvp" class="btn btn-green hero-cta">Confirmer ma pr&eacute;sence</a>
+      </div>
+      <div class="hero-skyline" aria-hidden="true">
+        <img src="assets/rome-skyline.svg" alt="" />
+      </div>
+    </header>
+
+    <!-- ============ PROGRAMME ============ -->
+    <section id="programme" class="section">
+      <div class="section-head">
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <h2>Programme</h2>
+        <p class="section-sub">Deux jours de f&ecirc;te sous le soleil de Rome</p>
+      </div>
+
+      <div class="timeline">
+        <article class="event card">
+          <p class="event-day">Samedi <span class="event-daynum">27</span> juin 2027</p>
+          <h3 class="event-title">Welcome Party</h3>
+          <p class="event-venue">L&rsquo;Instituto &middot; Rome</p>
+          <p class="event-note">Adresse et horaires &agrave; confirmer</p>
+          <p class="event-desc">On lance les festivit&eacute;s&nbsp;! Retrouvons-nous pour une premi&egrave;re soir&eacute;e tous ensemble, &agrave; la romaine.</p>
+        </article>
+
+        <article class="event card">
+          <p class="event-day">Dimanche <span class="event-daynum">28</span> juin 2027</p>
+          <h3 class="event-title">Houppa &amp; Soir&eacute;e</h3>
+          <p class="event-venue">Castello Odescalchi di Bracciano</p>
+          <p class="event-address">Via Giulio Volpi 12, 00062 Bracciano (Rome)</p>
+          <p class="event-note">Horaires &agrave; confirmer &middot; navettes pr&eacute;vues depuis l&rsquo;h&ocirc;tel</p>
+          <p class="event-desc">Le grand jour&nbsp;: la houppa puis la f&ecirc;te dans un ch&acirc;teau du XV<sup>e</sup> si&egrave;cle surplombant le lac de Bracciano.</p>
+          <p class="event-links">
+            <a href="https://odescalchi.it/" target="_blank" rel="noopener">D&eacute;couvrir le ch&acirc;teau</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="https://maps.google.com/?q=Castello+Odescalchi,+Via+Giulio+Volpi+12,+Bracciano" target="_blank" rel="noopener">Voir sur la carte</a>
+          </p>
+        </article>
+
+        <article class="event card">
+          <p class="event-day">Date &agrave; confirmer</p>
+          <h3 class="event-title">La Mairie</h3>
+          <p class="event-venue">Mairie de Boulogne</p>
+          <p class="event-desc">La c&eacute;r&eacute;monie civile, suivie d&rsquo;une after party pour prolonger la f&ecirc;te.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ HÔTEL ============ -->
+    <section id="hotel" class="section section-alt">
+      <div class="section-head">
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <h2>O&ugrave; dormir</h2>
+        <p class="section-sub">Nous vous donnons rendez-vous au m&ecirc;me h&ocirc;tel</p>
+      </div>
+
+      <div class="hotel card">
+        <div class="hotel-info">
+          <h3>H&ocirc;tel Villa Pamphili Roma <span class="stars" aria-label="4 étoiles">&#9733;&#9733;&#9733;&#9733;</span></h3>
+          <p class="hotel-address">Via della Nocetta 105, 00164 Rome</p>
+          <p class="hotel-desc">Une oasis de verdure en bordure du parc de la Villa Doria Pamphilj, le plus grand parc de Rome &mdash; piscine, jardins et le centre historique &agrave; quelques minutes. C&rsquo;est de l&agrave; que partiront les navettes pour chaque &eacute;v&eacute;nement.</p>
+          <p class="hotel-note">Code et lien de r&eacute;servation &agrave; venir &mdash; ne r&eacute;servez pas encore&nbsp;!</p>
+          <p class="event-links">
+            <a href="https://www.hotelvillapamphiliroma.com/" target="_blank" rel="noopener">Site de l&rsquo;h&ocirc;tel</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="https://maps.google.com/?q=Hotel+Villa+Pamphili+Roma,+Via+della+Nocetta+105,+Roma" target="_blank" rel="noopener">Itin&eacute;raire</a>
+          </p>
+        </div>
+        <div class="hotel-map">
+          <iframe
+            title="Carte — Hôtel Villa Pamphili Roma"
+            src="https://maps.google.com/maps?q=Hotel%20Villa%20Pamphili%20Roma%2C%20Via%20della%20Nocetta%20105%2C%20Roma&t=&z=13&ie=UTF8&iwloc=&output=embed"
+            loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ INFOS PRATIQUES ============ -->
+    <section id="infos" class="section">
+      <div class="section-head">
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <h2>Infos pratiques</h2>
+      </div>
+
+      <div class="infos-grid">
+        <div class="info card">
+          <h3>Navettes</h3>
+          <p>Des bus et navettes vous emm&egrave;neront de l&rsquo;h&ocirc;tel &agrave; chaque lieu de f&ecirc;te, et vous ram&egrave;neront. Horaires communiqu&eacute;s prochainement.</p>
+        </div>
+        <div class="info card">
+          <h3>Venir &agrave; Rome</h3>
+          <p>A&eacute;roports de Rome Fiumicino (FCO) ou Ciampino (CIA), &agrave; environ 30&nbsp;minutes de l&rsquo;h&ocirc;tel. Vols directs quotidiens depuis Paris.</p>
+        </div>
+        <div class="info card">
+          <h3>Fin juin &agrave; Rome</h3>
+          <p>Il fera beau et chaud (25&ndash;32&nbsp;&deg;C). Pr&eacute;voyez lunettes de soleil, tenues l&eacute;g&egrave;res&hellip; et de quoi danser jusqu&rsquo;au bout de la nuit.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RSVP ============ -->
+    <section id="rsvp" class="section section-alt">
+      <div class="section-head">
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <h2>RSVP</h2>
+        <p class="section-sub">Merci de confirmer votre pr&eacute;sence pour chaque &eacute;v&eacute;nement</p>
+      </div>
+
+      <form id="rsvp-form" class="rsvp card" novalidate>
+        <div class="form-row two-cols">
+          <div class="field">
+            <label for="rsvp-firstname">Pr&eacute;nom</label>
+            <input id="rsvp-firstname" name="prenom" type="text" autocomplete="given-name" required />
+          </div>
+          <div class="field">
+            <label for="rsvp-lastname">Nom</label>
+            <input id="rsvp-lastname" name="nom" type="text" autocomplete="family-name" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="rsvp-count">Nombre total de personnes (vous inclus)</label>
+          <select id="rsvp-count" name="nbPersonnes" required>
+            <option value="" selected disabled>Choisir&hellip;</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+        </div>
+
+        <fieldset class="field">
+          <legend>Welcome Party &mdash; samedi 27 juin, Rome</legend>
+          <div class="pills" role="radiogroup">
+            <label class="pill"><input type="radio" name="welcomeParty" value="Oui" required /><span>Pr&eacute;sents</span></label>
+            <label class="pill"><input type="radio" name="welcomeParty" value="Non" /><span>Absents</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>Houppa &amp; Soir&eacute;e &mdash; dimanche 28 juin, Castello di Bracciano</legend>
+          <div class="pills" role="radiogroup">
+            <label class="pill"><input type="radio" name="houppa" value="Oui" required /><span>Pr&eacute;sents</span></label>
+            <label class="pill"><input type="radio" name="houppa" value="Non" /><span>Absents</span></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend>Mairie &amp; After &mdash; Mairie de Boulogne, date &agrave; confirmer</legend>
+          <div class="pills" role="radiogroup">
+            <label class="pill"><input type="radio" name="mairie" value="Oui" required /><span>Pr&eacute;sents</span></label>
+            <label class="pill"><input type="radio" name="mairie" value="Non" /><span>Absents</span></label>
+          </div>
+        </fieldset>
+
+        <div class="field">
+          <label for="rsvp-message">Un petit mot pour les mari&eacute;s (optionnel)</label>
+          <textarea id="rsvp-message" name="message" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-red rsvp-submit">Envoyer ma r&eacute;ponse</button>
+        <p id="rsvp-status" class="rsvp-status" hidden></p>
+      </form>
+    </section>
+
+    <!-- ============ GALERIE ============ -->
+    <section id="galerie" class="section">
+      <div class="section-head">
+        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <h2>Galerie</h2>
+      </div>
+      <div class="gallery">
+        <figure class="gallery-item"><img src="assets/gallery/save-the-date.jpg" alt="Save the date aquarelle — Sara & John, Rome" loading="lazy" /></figure>
+        <figure class="gallery-item"><img src="assets/gallery/photo-1.jpg" alt="Sara & John" loading="lazy" /></figure>
+        <figure class="gallery-item"><img src="assets/gallery/photo-2.jpg" alt="Sara & John" loading="lazy" /></figure>
+        <figure class="gallery-item"><img src="assets/gallery/photo-3.jpg" alt="Sara & John" loading="lazy" /></figure>
+        <figure class="gallery-item"><img src="assets/gallery/photo-4.jpg" alt="Sara & John" loading="lazy" /></figure>
+        <figure class="gallery-item"><img src="assets/gallery/photo-5.jpg" alt="Sara & John" loading="lazy" /></figure>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+      <p class="footer-names">Sara <span class="amp">&amp;</span> John</p>
+      <p class="footer-date">27 &ndash; 28 juin 2027 &middot; Rome</p>
+      <p class="footer-love">Millamore</p>
+    </footer>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
