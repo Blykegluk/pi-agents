@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 300" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <filter id="skySoft" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="5" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="7"/>
+        <feGaussianBlur stdDeviation="0.7"/>
+      </filter>
+      <filter id="skyFar" x="-10%" y="-10%" width="120%" height="120%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" seed="9" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="10"/>
+        <feGaussianBlur stdDeviation="2.2"/>
+      </filter>
+      <filter id="skyGrain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="2" seed="11" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.55  0 0 0 0 0.35  0 0 0 0 0.18  0 0 0 0.6 0"/>
+        <feComposite operator="in" in2="SourceGraphic"/>
+      </filter>
+      <linearGradient id="farG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#eec9a0"/><stop offset="100%" stop-color="#e5b183"/>
+      </linearGradient>
+      <linearGradient id="midG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#e0a672"/><stop offset="100%" stop-color="#d3915b"/>
+      </linearGradient>
+      <linearGradient id="nearG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#c98a52"/><stop offset="100%" stop-color="#b47140"/>
+      </linearGradient>
+      <linearGradient id="coloG" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#cd8f57"/><stop offset="100%" stop-color="#b3703d"/>
+      </linearGradient>
+      <radialGradient id="sun" cx="50%" cy="100%" r="80%">
+        <stop offset="0%" stop-color="#f7d488" stop-opacity="0.85"/>
+        <stop offset="60%" stop-color="#f3bc66" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="#f3bc66" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+
+    <!-- halo de soleil derrière le dôme -->
+    <ellipse cx="420" cy="300" rx="520" ry="260" fill="url(#sun)"/>
+
+    <!-- ===== plan lointain : Saint-Pierre + ville pâle ===== -->
+    <g filter="url(#skyFar)" opacity="0.75">
+      <path fill="url(#farG)" d="M0 300 L0 240 L60 240 L60 220 L120 220 L120 244 L200 244 L200 228 L270 228 L270 248
+        L330 248 L330 190 L338 190 L338 174
+        C 338 132 352 104 380 92
+        L380 84 L372 84 L372 76 L392 60 L412 76 L412 84 L404 84 L404 92
+        C 432 104 446 132 446 174
+        L446 190 L454 190 L454 248
+        L520 248 L520 232 L590 232 L590 252 L680 252 L680 236 L760 236 L760 254 L860 254 L860 240 L950 240 L950 256 L1440 256 L1440 300 Z"/>
+      <!-- colonnade du dôme -->
+      <g stroke="#d9a678" stroke-width="4" opacity="0.85">
+        <line x1="352" y1="150" x2="352" y2="182"/><line x1="366" y1="142" x2="366" y2="182"/>
+        <line x1="380" y1="138" x2="380" y2="182"/><line x1="392" y1="136" x2="392" y2="182"/>
+        <line x1="404" y1="138" x2="404" y2="182"/><line x1="418" y1="142" x2="418" y2="182"/>
+        <line x1="432" y1="150" x2="432" y2="182"/>
+      </g>
+    </g>
+
+    <!-- ===== plan moyen : toits, campanile, petit dôme ===== -->
+    <g filter="url(#skySoft)" opacity="0.9">
+      <path fill="url(#midG)" d="M0 300 L0 262 L46 262 L46 246 L58 238 L70 246 L70 262 L150 262 L150 250 L230 250 L230 268
+        L300 268 L300 254 L310 254 L310 226 L322 218 L334 226 L334 254 L344 254 L344 268
+        L470 268 L470 252 L560 252 L560 270 L700 270 L700 256 L790 256 L790 272 L1440 272 L1440 300 Z"/>
+      <!-- petit dôme d'église -->
+      <path fill="url(#midG)" d="M600 252 C 600 236 610 226 624 226 C 638 226 648 236 648 252 Z"/>
+      <rect x="620" y="212" width="8" height="16" rx="3" fill="url(#midG)"/>
+    </g>
+
+    <!-- ===== pins parasols ===== -->
+    <g filter="url(#skySoft)">
+      <g opacity="0.92">
+        <path d="M120 296 C 124 268 128 246 136 228" stroke="#7d6a43" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path d="M136 232 C 118 232 104 226 96 216" stroke="#7d6a43" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="118" cy="204" rx="74" ry="26" fill="#87905a"/>
+        <ellipse cx="80" cy="214" rx="34" ry="15" fill="#77814d"/>
+        <ellipse cx="160" cy="212" rx="38" ry="16" fill="#939c63"/>
+      </g>
+      <g opacity="0.88" transform="translate(1260 -6) scale(0.9)">
+        <path d="M60 340 C 64 300 70 272 80 250" stroke="#7d6a43" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <ellipse cx="66" cy="228" rx="80" ry="28" fill="#7f8952"/>
+        <ellipse cx="20" cy="240" rx="36" ry="16" fill="#6f7947"/>
+        <ellipse cx="112" cy="238" rx="40" ry="17" fill="#8a9459"/>
+      </g>
+    </g>
+
+    <!-- ===== premier plan : Colisée ===== -->
+    <g filter="url(#skySoft)">
+      <!-- corps, sommet incliné et profil brisé en gradins à gauche -->
+      <path fill="url(#coloG)" d="M878 300 L878 232 L898 228 L898 206 L920 202 L920 182
+        C 936 162 966 152 1000 148 L1150 138 C 1204 134 1250 148 1262 172 L1270 300 Z"/>
+      <!-- corniches -->
+      <path d="M898 208 L1256 178" stroke="#a5663a" stroke-width="5" opacity="0.5" fill="none"/>
+      <path d="M884 240 L1264 228" stroke="#a5663a" stroke-width="5" opacity="0.45" fill="none"/>
+      <!-- arches rang haut -->
+      <g fill="#f5ddb9" opacity="0.9">
+        <path d="M905 226 L905 206 C 905 197 921 197 921 206 L921 225 Z"/>
+        <path d="M941 224 L941 203 C 941 194 957 194 957 203 L957 222 Z"/>
+        <path d="M977 221 L977 200 C 977 191 993 191 993 200 L993 220 Z"/>
+        <path d="M1013 219 L1013 198 C 1013 189 1029 189 1029 198 L1029 218 Z"/>
+        <path d="M1049 217 L1049 196 C 1049 187 1065 187 1065 196 L1065 216 Z"/>
+        <path d="M1085 216 L1085 194 C 1085 185 1101 185 1101 194 L1101 215 Z"/>
+        <path d="M1121 214 L1121 193 C 1121 184 1137 184 1137 193 L1137 214 Z"/>
+        <path d="M1157 213 L1157 192 C 1157 183 1173 183 1173 192 L1173 213 Z"/>
+        <path d="M1193 213 L1193 192 C 1193 183 1209 183 1209 192 L1209 213 Z"/>
+        <path d="M1229 214 L1229 193 C 1229 184 1245 184 1245 193 L1245 214 Z"/>
+      </g>
+      <!-- arches rang bas -->
+      <g fill="#f2d5ad" opacity="0.85">
+        <path d="M903 288 L903 262 C 903 252 921 252 921 262 L921 288 Z"/>
+        <path d="M941 288 L941 260 C 941 250 959 250 959 260 L959 288 Z"/>
+        <path d="M979 288 L979 258 C 979 248 997 248 997 258 L997 288 Z"/>
+        <path d="M1017 288 L1017 257 C 1017 247 1035 247 1035 257 L1035 288 Z"/>
+        <path d="M1055 288 L1055 256 C 1055 246 1073 246 1073 256 L1073 288 Z"/>
+        <path d="M1093 288 L1093 255 C 1093 245 1111 245 1111 255 L1111 288 Z"/>
+        <path d="M1131 288 L1131 254 C 1131 244 1149 244 1149 254 L1149 288 Z"/>
+        <path d="M1169 288 L1169 254 C 1169 244 1187 244 1187 254 L1187 288 Z"/>
+        <path d="M1207 288 L1207 254 C 1207 244 1225 244 1225 254 L1225 288 Z"/>
+        <path d="M1245 288 L1245 255 C 1245 245 1263 245 1263 255 L1263 288 Z"/>
+      </g>
+      <!-- ombre interne du profil brisé -->
+      <path fill="#9d5f33" opacity="0.45" d="M878 232 L898 228 L898 206 L920 202 L920 182 C 928 172 940 164 954 158 L 946 176 L 936 214 L 930 300 L 878 300 Z"/>
+      <ellipse cx="1075" cy="296" rx="210" ry="8" fill="#9d5f33" opacity="0.3"/>
+    </g>
+
+    <!-- ===== bande de sol ===== -->
+    <g filter="url(#skySoft)">
+      <path fill="url(#nearG)" d="M0 300 L0 288 C 220 280 520 284 760 286 C 1000 288 1280 284 1440 288 L1440 300 Z" opacity="0.95"/>
+    </g>
+
+    <!-- granulation -->
+    <rect x="0" y="60" width="1440" height="240" filter="url(#skyGrain)" opacity="0.22" fill="#a97844"/>
+  </svg>

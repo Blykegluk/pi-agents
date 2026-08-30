@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <filter id="wash" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="3" seed="8" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="60"/>
+        <feGaussianBlur stdDeviation="14"/>
+      </filter>
+      <filter id="grain">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.72  0 0 0 0 0.55  0 0 0 0 0.33  0 0 0 0.5 0"/>
+        <feComposite operator="in" in2="SourceGraphic"/>
+      </filter>
+      <linearGradient id="wg1" x1="0" y1="0" x2="1" y2="0.3">
+        <stop offset="0%" stop-color="#f2b95c" stop-opacity="0"/>
+        <stop offset="45%" stop-color="#f0ad52" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="#eb9648" stop-opacity="0.1"/>
+      </linearGradient>
+      <linearGradient id="wg2" x1="0" y1="0" x2="1" y2="0.2">
+        <stop offset="0%" stop-color="#f6cf6e" stop-opacity="0.05"/>
+        <stop offset="50%" stop-color="#f3c05e" stop-opacity="0.5"/>
+        <stop offset="100%" stop-color="#f2b95c" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="wg3" x1="0" y1="0" x2="1" y2="0.25">
+        <stop offset="0%" stop-color="#eda963" stop-opacity="0"/>
+        <stop offset="55%" stop-color="#e89a55" stop-opacity="0.42"/>
+        <stop offset="100%" stop-color="#e08e4d" stop-opacity="0.05"/>
+      </linearGradient>
+    </defs>
+    <!-- traits de brosse diagonaux -->
+    <g filter="url(#wash)">
+      <rect x="380" y="100" width="1080" height="150" rx="70" fill="url(#wg2)" transform="rotate(-9 900 175)"/>
+      <rect x="270" y="240" width="1240" height="190" rx="90" fill="url(#wg1)" transform="rotate(-8 890 335)" opacity="0.75"/>
+      <rect x="150" y="420" width="1740" height="230" rx="110" fill="url(#wg3)" transform="rotate(-7 1020 535)" opacity="0.7"/>
+      <rect x="-80" y="590" width="1800" height="260" rx="120" fill="url(#wg1)" transform="rotate(-6 820 720)" opacity="0.65"/>
+      <rect x="-120" y="60" width="700" height="120" rx="60" fill="url(#wg2)" transform="rotate(-10 230 120)" opacity="0.6"/>
+    </g>
+    <!-- réserve claire au centre pour le texte -->
+    <ellipse cx="720" cy="330" rx="430" ry="260" fill="#faf4e6" opacity="0.4" filter="url(#wash)"/>
+    <!-- grain papier -->
+    <rect x="0" y="0" width="1440" height="900" filter="url(#grain)" opacity="0.16" fill="#c8a068"/>
+  </svg>

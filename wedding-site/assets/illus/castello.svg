@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="245 80 275 155" fill="none"><defs>
+    <filter id="w1" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="6"/>
+      <feGaussianBlur stdDeviation="0.5"/>
+    </filter>
+    <filter id="ink" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="3" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.5"/>
+    </filter>
+  </defs>  <g transform="translate(260 52)">
+    <g filter="url(#w1)">
+      <path d="M20 120 L 20 60 L 40 60 L 40 44 L 64 44 L 64 60 L 84 60 L 84 120 Z" fill="#e8c48a" opacity="0.7"/>
+      <path d="M84 120 L 84 84 L 150 84 L 150 120 Z" fill="#e3b477" opacity="0.65"/>
+      <path d="M150 120 L 150 56 L 170 56 L 170 40 L 194 40 L 194 56 L 214 56 L 214 120 Z" fill="#e8c48a" opacity="0.7"/>
+      <ellipse cx="117" cy="152" rx="150" ry="22" fill="#a8c4c0" opacity="0.55"/>
+      <path d="M96 120 L 96 96 L 138 96 L 138 120 Z" fill="#c98f4e" opacity="0.5"/>
+    </g>
+    <g filter="url(#ink)" stroke="#6b4a2f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M16 122 L 16 58 L 36 58 M 36 58 L 36 42 L 44 42 L 44 50 L 56 50 L 56 42 L 66 42 L 66 58 L 86 58 L 86 122"/>
+      <path d="M86 84 L 148 84"/>
+      <path d="M148 122 L 148 54 L 168 54 M 168 54 L 168 38 L 176 38 L 176 46 L 188 46 L 188 38 L 198 38 L 198 54 L 216 54 L 216 122"/>
+      <path d="M10 122 L 222 122"/>
+      <path d="M96 122 L 96 98 C 96 86, 138 86, 138 98 L 138 122" stroke-width="2.6"/>
+      <path d="M44 76 L 44 90 M 58 76 L 58 90 M 176 72 L 176 86 M 190 72 L 190 86 M 106 100 L 106 112 M 128 100 L 128 112" stroke-width="2"/>
+      <path d="M-14 150 C 30 142, 80 146, 117 150 C 160 154, 210 150, 250 144" stroke-width="2" opacity="0.6"/>
+      <path d="M20 162 C 60 156, 120 160, 165 162" stroke-width="1.6" opacity="0.4"/>
+    </g>
+  </g>
+
+  </svg>

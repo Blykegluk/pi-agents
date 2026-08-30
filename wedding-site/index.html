@@ -9,16 +9,18 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
   <!-- ===================== PORTE D'ENTRÉE (MOT DE PASSE) ===================== -->
   <div id="gate" class="gate">
-    <div class="gate-wash" aria-hidden="true"></div>
-    <img class="gate-branch branch-tl" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
-    <img class="gate-branch branch-br" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+    <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
+    <img class="branch branch-l" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
+    <img class="branch branch-r" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
+    <img class="lemon-fruit lemon-l" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
+    <img class="lemon-fruit lemon-r" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
     <div class="gate-card">
       <p class="gate-kicker">Millamore</p>
       <h1 class="gate-names">Sara <span class="amp">&amp;</span> John</h1>
@@ -50,9 +52,11 @@
 
     <!-- ============ ACCUEIL ============ -->
     <header id="accueil" class="hero">
-      <div class="hero-wash" aria-hidden="true"></div>
-      <img class="hero-branch branch-tl" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
-      <img class="hero-branch branch-tr" src="assets/lemon-branch.svg" alt="" aria-hidden="true" />
+      <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
+      <img class="branch branch-l" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
+      <img class="branch branch-r" src="assets/art/branch.jpg" alt="" aria-hidden="true" />
+      <img class="lemon-fruit lemon-l" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
+      <img class="lemon-fruit lemon-r" src="assets/art/lemon.jpg" alt="" aria-hidden="true" />
       <div class="hero-inner">
         <p class="hero-kicker">Millamore</p>
         <h1 class="hero-names">Sara <span class="amp">&amp;</span> John</h1>
@@ -70,7 +74,7 @@
         <a href="#rsvp" class="btn btn-green hero-cta">Confirmer ma pr&eacute;sence</a>
       </div>
       <div class="hero-skyline" aria-hidden="true">
-        <img src="assets/rome-skyline.svg" alt="" />
+        <img src="assets/art/skyline.svg" alt="" />
       </div>
     </header>
 
@@ -84,32 +88,41 @@
 
       <div class="timeline">
         <article class="event card">
-          <p class="event-day">Samedi <span class="event-daynum">27</span> juin 2027</p>
-          <h3 class="event-title">Welcome Party</h3>
-          <p class="event-venue">L&rsquo;Instituto &middot; Rome</p>
-          <p class="event-note">Adresse et horaires &agrave; confirmer</p>
-          <p class="event-desc">On lance les festivit&eacute;s&nbsp;! Retrouvons-nous pour une premi&egrave;re soir&eacute;e tous ensemble, &agrave; la romaine.</p>
+          <img class="event-illu" src="assets/illus/aperitivo.svg" alt="" aria-hidden="true" />
+          <div class="event-body">
+            <p class="event-day">Samedi <span class="event-daynum">27</span> juin 2027</p>
+            <h3 class="event-title">Welcome Party</h3>
+            <p class="event-venue">L&rsquo;Instituto &middot; Rome</p>
+            <p class="event-note">Adresse et horaires &agrave; confirmer</p>
+            <p class="event-desc">On lance les festivit&eacute;s&nbsp;! Retrouvons-nous pour une premi&egrave;re soir&eacute;e tous ensemble, &agrave; la romaine.</p>
+          </div>
+        </article>
+
+        <article class="event card event-reverse">
+          <img class="event-illu" src="assets/illus/castello.svg" alt="" aria-hidden="true" />
+          <div class="event-body">
+            <p class="event-day">Dimanche <span class="event-daynum">28</span> juin 2027</p>
+            <h3 class="event-title">Houppa &amp; Soir&eacute;e</h3>
+            <p class="event-venue">Castello Odescalchi di Bracciano</p>
+            <p class="event-address">Via Giulio Volpi 12, 00062 Bracciano (Rome)</p>
+            <p class="event-note">Horaires &agrave; confirmer &middot; navettes pr&eacute;vues depuis l&rsquo;h&ocirc;tel</p>
+            <p class="event-desc">Le grand jour&nbsp;: la houppa puis la f&ecirc;te dans un ch&acirc;teau du XV<sup>e</sup> si&egrave;cle surplombant le lac de Bracciano.</p>
+            <p class="event-links">
+              <a href="https://odescalchi.it/" target="_blank" rel="noopener">D&eacute;couvrir le ch&acirc;teau</a>
+              <span aria-hidden="true">&middot;</span>
+              <a href="https://maps.google.com/?q=Castello+Odescalchi,+Via+Giulio+Volpi+12,+Bracciano" target="_blank" rel="noopener">Voir sur la carte</a>
+            </p>
+          </div>
         </article>
 
         <article class="event card">
-          <p class="event-day">Dimanche <span class="event-daynum">28</span> juin 2027</p>
-          <h3 class="event-title">Houppa &amp; Soir&eacute;e</h3>
-          <p class="event-venue">Castello Odescalchi di Bracciano</p>
-          <p class="event-address">Via Giulio Volpi 12, 00062 Bracciano (Rome)</p>
-          <p class="event-note">Horaires &agrave; confirmer &middot; navettes pr&eacute;vues depuis l&rsquo;h&ocirc;tel</p>
-          <p class="event-desc">Le grand jour&nbsp;: la houppa puis la f&ecirc;te dans un ch&acirc;teau du XV<sup>e</sup> si&egrave;cle surplombant le lac de Bracciano.</p>
-          <p class="event-links">
-            <a href="https://odescalchi.it/" target="_blank" rel="noopener">D&eacute;couvrir le ch&acirc;teau</a>
-            <span aria-hidden="true">&middot;</span>
-            <a href="https://maps.google.com/?q=Castello+Odescalchi,+Via+Giulio+Volpi+12,+Bracciano" target="_blank" rel="noopener">Voir sur la carte</a>
-          </p>
-        </article>
-
-        <article class="event card">
-          <p class="event-day">Date &agrave; confirmer</p>
-          <h3 class="event-title">La Mairie</h3>
-          <p class="event-venue">Mairie de Boulogne</p>
-          <p class="event-desc">La c&eacute;r&eacute;monie civile, suivie d&rsquo;une after party pour prolonger la f&ecirc;te.</p>
+          <img class="event-illu" src="assets/illus/mairie.svg" alt="" aria-hidden="true" />
+          <div class="event-body">
+            <p class="event-day">Date &agrave; confirmer</p>
+            <h3 class="event-title">La Mairie</h3>
+            <p class="event-venue">Mairie de Boulogne</p>
+            <p class="event-desc">La c&eacute;r&eacute;monie civile, suivie d&rsquo;une after party pour prolonger la f&ecirc;te.</p>
+          </div>
         </article>
       </div>
     </section>
@@ -117,7 +130,7 @@
     <!-- ============ HÔTEL ============ -->
     <section id="hotel" class="section section-alt">
       <div class="section-head">
-        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <img class="divider divider-illu" src="assets/illus/colonnade.svg" alt="" aria-hidden="true" />
         <h2>O&ugrave; dormir</h2>
         <p class="section-sub">Nous vous donnons rendez-vous au m&ecirc;me h&ocirc;tel</p>
       </div>
@@ -152,6 +165,7 @@
 
       <div class="infos-grid">
         <div class="info card">
+          <img class="info-illu" src="assets/illus/navette.svg" alt="" aria-hidden="true" />
           <h3>Navettes</h3>
           <p>Des bus et navettes vous emm&egrave;neront de l&rsquo;h&ocirc;tel &agrave; chaque lieu de f&ecirc;te, et vous ram&egrave;neront. Horaires communiqu&eacute;s prochainement.</p>
         </div>
@@ -169,7 +183,7 @@
     <!-- ============ RSVP ============ -->
     <section id="rsvp" class="section section-alt">
       <div class="section-head">
-        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <img class="divider divider-illu" src="assets/illus/enveloppe.svg" alt="" aria-hidden="true" />
         <h2>RSVP</h2>
         <p class="section-sub">Merci de confirmer votre pr&eacute;sence pour chaque &eacute;v&eacute;nement</p>
       </div>
@@ -232,7 +246,7 @@
     <!-- ============ GALERIE ============ -->
     <section id="galerie" class="section">
       <div class="section-head">
-        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
+        <img class="divider divider-illu" src="assets/illus/camera.svg" alt="" aria-hidden="true" />
         <h2>Galerie</h2>
       </div>
       <div class="gallery">

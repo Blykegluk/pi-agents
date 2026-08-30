@@ -7,15 +7,16 @@
   --paper: #fbf6ec;
   --paper-warm: #f9efdd;
   --ink: #4a3f2f;
-  --green-dark: #21381c;
-  --green-leaf: #7a8b4c;
-  --lemon: #eebd3e;
-  --ochre: #e8a144;
+  --green-dark: #2e4a35;
+  --green-leaf: #5c7c4c;
+  --lemon: #f3cf3f;
+  --ochre: #c9822e;
   --red-brush: #a91e22;
   --red-brush-dark: #8c181c;
   --card: #fffdf7;
   --shadow: 0 10px 30px rgba(120, 84, 30, 0.12);
-  --font-script: "Caveat", cursive;
+  --font-script: "Caveat Brush", cursive;
+  --font-hand: "Caveat", cursive;
   --font-roman: "Cinzel", serif;
   --font-serif: "Cormorant Garamond", Georgia, serif;
 }
@@ -58,28 +59,37 @@ img { max-width: 100%; }
 .btn-green { background-color: var(--green-dark); }
 .btn-green:hover { background-color: #2e4d27; }
 
-/* ---------- Washes aquarelle (fond) ---------- */
-.gate-wash, .hero-wash {
+/* ---------- Lavis aquarelle (fond) ---------- */
+.washes-img {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(55% 45% at 72% 22%, rgba(240, 168, 80, 0.38) 0%, rgba(240, 168, 80, 0) 70%),
-    radial-gradient(50% 40% at 30% 65%, rgba(238, 189, 62, 0.25) 0%, rgba(238, 189, 62, 0) 70%),
-    radial-gradient(60% 50% at 85% 75%, rgba(232, 161, 68, 0.28) 0%, rgba(232, 161, 68, 0) 70%),
-    radial-gradient(45% 40% at 15% 15%, rgba(122, 139, 76, 0.12) 0%, rgba(122, 139, 76, 0) 70%);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   pointer-events: none;
 }
 
-/* ---------- Branches de citronnier ---------- */
-.gate-branch, .hero-branch {
+/* ---------- Branches de citronnier (planche Köhler, domaine public) ---------- */
+.branch {
   position: absolute;
-  width: min(38vw, 340px);
+  width: min(38vw, 520px);
+  mix-blend-mode: multiply;
   pointer-events: none;
-  opacity: 0.95;
+  -webkit-mask-image: radial-gradient(75% 75% at 42% 38%, #000 55%, transparent 92%);
+  mask-image: radial-gradient(75% 75% at 42% 38%, #000 55%, transparent 92%);
 }
-.branch-tl { top: -12px; left: -18px; }
-.branch-tr { top: -12px; right: -18px; transform: scaleX(-1); }
-.branch-br { bottom: -12px; right: -18px; transform: rotate(180deg); }
+.branch-l { top: 4.5rem; left: max(-110px, -8vw); transform: rotate(8deg); }
+.branch-r { top: 4.2rem; right: max(-110px, -8vw); transform: scaleX(-1) rotate(8deg); }
+.lemon-fruit {
+  position: absolute;
+  width: min(9.5vw, 130px);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(58% 58% at 50% 50%, #000 62%, transparent 96%);
+  mask-image: radial-gradient(58% 58% at 50% 50%, #000 62%, transparent 96%);
+}
+.lemon-l { top: min(24vw, 350px); left: min(7.5vw, 108px); transform: rotate(-8deg); }
+.lemon-r { top: min(23.8vw, 346px); right: min(7.5vw, 108px); transform: scaleX(-1) rotate(-8deg); }
 
 /* ============================================================
    PORTE D'ENTRÉE
@@ -106,25 +116,24 @@ img { max-width: 100%; }
 }
 .gate-kicker {
   font-family: var(--font-script);
-  font-size: clamp(2.6rem, 7vw, 3.6rem);
-  font-weight: 700;
+  font-size: clamp(2.8rem, 7.5vw, 4.4rem);
   color: var(--red-brush);
-  line-height: 1;
+  -webkit-text-stroke: 1.5px var(--red-brush);
+  line-height: 1.1;
 }
 .gate-names {
   font-family: var(--font-script);
-  font-size: clamp(2rem, 5.5vw, 2.8rem);
-  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 2.8rem);
   color: var(--red-brush);
-  margin-top: 0.2rem;
+  -webkit-text-stroke: 1px var(--red-brush);
+  margin-top: 0.3rem;
+  line-height: 1.3;
 }
 .gate-date {
-  font-family: var(--font-roman);
-  font-size: 1rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--green-dark);
-  margin: 1rem 0 2.2rem;
+  font-family: var(--font-script);
+  font-size: 1.9rem;
+  color: var(--red-brush);
+  margin: 0.8rem 0 2rem;
 }
 .gate-label {
   display: block;
@@ -181,11 +190,10 @@ img { max-width: 100%; }
 }
 .nav-monogram {
   font-family: var(--font-script);
-  font-size: 1.7rem;
-  font-weight: 700;
+  font-size: 1.5rem;
   color: var(--red-brush);
   text-decoration: none;
-  line-height: 1;
+  line-height: 1.2;
 }
 .nav-links {
   display: flex;
@@ -223,38 +231,39 @@ img { max-width: 100%; }
 .hero-inner { position: relative; z-index: 2; }
 .hero-kicker {
   font-family: var(--font-script);
-  font-size: clamp(3.2rem, 9vw, 5.2rem);
-  font-weight: 700;
+  font-size: clamp(3.4rem, 9.5vw, 6.4rem);
   color: var(--red-brush);
-  line-height: 1;
+  -webkit-text-stroke: 2px var(--red-brush);
+  line-height: 1.05;
 }
 .hero-names {
   font-family: var(--font-script);
-  font-size: clamp(2.4rem, 6.5vw, 3.6rem);
-  font-weight: 600;
+  font-size: clamp(2.2rem, 6vw, 3.7rem);
   color: var(--red-brush);
-  margin-top: 0.3rem;
+  -webkit-text-stroke: 1.2px var(--red-brush);
+  margin-top: 0.4rem;
+  line-height: 1.2;
 }
 .hero-sub {
   font-style: italic;
   font-size: 1.3rem;
   color: var(--ink);
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 .hero-date {
-  font-family: var(--font-roman);
-  font-size: clamp(1.15rem, 3vw, 1.5rem);
-  letter-spacing: 0.18em;
-  color: var(--green-dark);
-  margin-top: 1.6rem;
+  font-family: var(--font-script);
+  font-size: clamp(2rem, 5.5vw, 3.2rem);
+  color: var(--red-brush);
+  -webkit-text-stroke: 1px var(--red-brush);
+  letter-spacing: 0.04em;
+  margin-top: 1.2rem;
+  line-height: 1.1;
 }
 .hero-place {
-  font-family: var(--font-roman);
-  font-size: 1rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: var(--ochre);
-  margin-top: 0.4rem;
+  font-family: var(--font-script);
+  font-size: clamp(1.5rem, 4vw, 2.3rem);
+  color: var(--red-brush);
+  margin-top: 0.1rem;
 }
 
 .countdown {
@@ -297,8 +306,9 @@ img { max-width: 100%; }
   width: 100%;
   margin-top: auto;
   line-height: 0;
+  height: clamp(150px, 21vw, 300px);
 }
-.hero-skyline img { width: 100%; height: auto; display: block; }
+.hero-skyline img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; display: block; }
 
 /* ============================================================
    SECTIONS
@@ -320,12 +330,14 @@ img { max-width: 100%; }
   color: var(--green-dark);
 }
 .section-sub {
-  font-style: italic;
-  font-size: 1.2rem;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 1.5rem;
   color: var(--ochre);
   margin-top: 0.5rem;
 }
 .divider { width: 88px; margin-bottom: 0.8rem; }
+.divider-illu { width: 130px; }
 
 .card {
   background-color: var(--card);
@@ -340,9 +352,15 @@ img { max-width: 100%; }
   gap: 1.6rem;
 }
 .event {
-  padding: 2rem 2.2rem;
-  border-left: 5px solid var(--lemon);
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 2.2rem;
+  align-items: center;
+  padding: 2rem 2.4rem;
 }
+.event-reverse { grid-template-columns: minmax(0, 1fr) 230px; }
+.event-reverse .event-illu { order: 2; width: 230px; }
+.event-illu { width: 200px; justify-self: center; }
 .event-day {
   font-family: var(--font-roman);
   font-size: 0.85rem;
@@ -353,21 +371,22 @@ img { max-width: 100%; }
 .event-daynum { font-size: 1.1em; color: var(--red-brush); }
 .event-title {
   font-family: var(--font-script);
-  font-size: 2.3rem;
-  font-weight: 600;
+  font-size: 2rem;
   color: var(--green-dark);
   margin: 0.3rem 0 0.2rem;
+  line-height: 1.4;
 }
 .event-venue { font-size: 1.25rem; font-weight: 600; color: var(--ink); }
 .event-address { color: var(--ink); }
 .event-note {
   display: inline-block;
-  font-size: 0.95rem;
-  font-style: italic;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 1.15rem;
   color: var(--ochre);
-  background-color: rgba(238, 189, 62, 0.14);
+  background-color: rgba(238, 189, 62, 0.16);
   border-radius: 999px;
-  padding: 0.15rem 0.9rem;
+  padding: 0.1rem 0.9rem;
   margin-top: 0.5rem;
 }
 .event-desc { margin-top: 0.7rem; }
@@ -384,17 +403,18 @@ img { max-width: 100%; }
 .hotel-info { padding: 2.2rem; }
 .hotel-info h3 {
   font-family: var(--font-script);
-  font-size: 2.1rem;
-  font-weight: 600;
+  font-size: 1.8rem;
   color: var(--green-dark);
+  line-height: 1.4;
 }
 .stars { color: var(--lemon); font-size: 1.1rem; letter-spacing: 0.1em; }
 .hotel-address { font-weight: 600; margin-top: 0.3rem; }
 .hotel-desc { margin-top: 0.8rem; }
 .hotel-note {
   display: inline-block;
-  font-size: 0.95rem;
-  font-style: italic;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 1.15rem;
   color: var(--red-brush);
   background-color: rgba(169, 30, 34, 0.08);
   border-radius: 999px;
@@ -411,6 +431,7 @@ img { max-width: 100%; }
   gap: 1.6rem;
 }
 .info { padding: 1.8rem 2rem; border-top: 5px solid var(--green-leaf); }
+.info-illu { width: 130px; display: block; margin: 0 auto 0.8rem; }
 .info h3 {
   font-family: var(--font-roman);
   font-size: 1.05rem;
@@ -519,9 +540,9 @@ img { max-width: 100%; }
 }
 .footer-names {
   font-family: var(--font-script);
-  font-size: 2.4rem;
-  font-weight: 700;
+  font-size: 2rem;
   color: var(--red-brush);
+  line-height: 1.4;
 }
 .footer-date {
   font-family: var(--font-roman);
@@ -532,8 +553,9 @@ img { max-width: 100%; }
   margin-top: 0.4rem;
 }
 .footer-love {
-  font-family: var(--font-script);
-  font-size: 1.5rem;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  font-size: 1.6rem;
   color: var(--ochre);
   margin-top: 1rem;
 }
@@ -548,6 +570,12 @@ img { max-width: 100%; }
   .nav-links a { font-size: 0.72rem; letter-spacing: 0.1em; }
   html { scroll-padding-top: 96px; }
   .hero { padding-top: 8rem; }
-  .event { padding: 1.6rem 1.4rem; }
+  .lemon-fruit { display: none; }
+  .branch { width: 46vw; }
+  .branch-l { top: 6.5rem; }
+  .branch-r { top: 6.2rem; }
+  .event { grid-template-columns: 1fr; gap: 1rem; padding: 1.6rem 1.4rem; }
+  .event-reverse .event-illu { order: 0; }
+  .event-illu { width: 170px; }
   .rsvp { padding: 1.8rem 1.3rem; }
 }
