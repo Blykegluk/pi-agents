@@ -125,23 +125,4 @@
       .finally(function () { rsvpButton.disabled = false; });
   });
 
-  // ============================================================
-  // Galerie : masquer les photos manquantes
-  // ============================================================
-  var gallery = document.querySelector(".gallery");
-  var items = gallery.querySelectorAll(".gallery-item img");
-  var visible = items.length;
-  items.forEach(function (img) {
-    img.addEventListener("error", function () {
-      img.closest(".gallery-item").remove();
-      visible -= 1;
-      if (visible === 0) {
-        var note = document.createElement("p");
-        note.className = "section-sub";
-        note.style.textAlign = "center";
-        note.textContent = "Les photos arrivent bientôt…";
-        gallery.replaceWith(note);
-      }
-    });
-  });
 })();

@@ -14,7 +14,7 @@
 </head>
 <body>
 
-  <!-- ===================== PORTE D'ENTRÉE (MOT DE PASSE) ===================== -->
+  <!-- ===================== PORTE D'ENTRÉE ===================== -->
   <div id="gate" class="gate">
     <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
     <img class="branch branch-l" src="assets/art/redoute.jpg" alt="" aria-hidden="true" />
@@ -44,18 +44,19 @@
         <a href="#hotel">H&ocirc;tel</a>
         <a href="#infos">Infos</a>
         <a href="#rsvp">RSVP</a>
-        <a href="#galerie">Galerie</a>
       </div>
     </nav>
 
     <!-- ============ ACCUEIL ============ -->
     <header id="accueil" class="hero">
       <img class="washes-img" src="assets/art/washes.svg" alt="" aria-hidden="true" />
-      <img class="std-branch std-branch-l" src="assets/std/branch-left.jpg" alt="" aria-hidden="true" />
-      <img class="std-branch std-branch-r" src="assets/std/branch-right.jpg" alt="" aria-hidden="true" />
+      <img class="branch branch-l" src="assets/art/redoute.jpg" alt="" aria-hidden="true" />
+      <img class="branch branch-r" src="assets/art/redoute.jpg" alt="" aria-hidden="true" />
+
       <div class="hero-inner">
-        <h1 class="sr-only">Millamore &mdash; Sara &amp; John se marient les 27 et 28 juin 2027 &agrave; Rome</h1>
-        <img class="std-full" src="assets/gallery/save-the-date.jpg" alt="Save the date — Millamore, Sara & John, 27-28 juin 2027, Rome" />
+        <h1 class="hero-kicker">Millamore</h1>
+        <p class="hero-names">Sara <span class="amp">&amp;</span> John</p>
+        <p class="hero-date">27 &ndash; 28 juin 2027 &middot; Rome</p>
 
         <div id="countdown" class="countdown" aria-label="Compte à rebours jusqu'au mariage">
           <div class="cd-box"><span id="cd-days" class="cd-num">–</span><span class="cd-label">jours</span></div>
@@ -66,6 +67,8 @@
 
         <a href="#rsvp" class="btn btn-green hero-cta">Confirmer ma pr&eacute;sence</a>
       </div>
+
+      <img class="hero-maries" src="assets/std/maries.png" alt="Sara et John" />
     </header>
 
     <!-- ============ PROGRAMME ============ -->
@@ -73,45 +76,77 @@
       <div class="section-head">
         <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
         <h2>Programme</h2>
-        <p class="section-sub">Deux jours de f&ecirc;te sous le soleil de Rome</p>
       </div>
 
-      <div class="timeline">
-        <article class="event card">
-          <div class="event-body">
-            <p class="event-day">Samedi <span class="event-daynum">27</span> juin 2027</p>
-            <h3 class="event-title">Welcome Party</h3>
-            <p class="event-venue">L&rsquo;Instituto &middot; Rome</p>
-            <p class="event-note">Adresse et horaires &agrave; confirmer</p>
-            <p class="event-desc">On lance les festivit&eacute;s&nbsp;! Retrouvons-nous pour une premi&egrave;re soir&eacute;e tous ensemble, &agrave; la romaine.</p>
-          </div>
-        </article>
+      <img class="fleur fleur-1" src="assets/art/fleur.jpg" alt="" aria-hidden="true" />
+      <img class="fleur fleur-2" src="assets/art/fleur.jpg" alt="" aria-hidden="true" />
+      <img class="fleur fleur-3" src="assets/art/fleur.jpg" alt="" aria-hidden="true" />
 
-        <article class="event card">
-          <div class="event-body">
-            <p class="event-day">Dimanche <span class="event-daynum">28</span> juin 2027</p>
-            <h3 class="event-title">Houppa &amp; Soir&eacute;e</h3>
-            <p class="event-venue">Castello Odescalchi di Bracciano</p>
-            <p class="event-address">Via Giulio Volpi 12, 00062 Bracciano (Rome)</p>
-            <p class="event-note">Horaires &agrave; confirmer &middot; navettes pr&eacute;vues depuis l&rsquo;h&ocirc;tel</p>
-            <p class="event-desc">Le grand jour&nbsp;: la houppa puis la f&ecirc;te dans un ch&acirc;teau du XV<sup>e</sup> si&egrave;cle surplombant le lac de Bracciano.</p>
-            <p class="event-links">
-              <a href="https://odescalchi.it/" target="_blank" rel="noopener">D&eacute;couvrir le ch&acirc;teau</a>
-              <span aria-hidden="true">&middot;</span>
-              <a href="https://maps.google.com/?q=Castello+Odescalchi,+Via+Giulio+Volpi+12,+Bracciano" target="_blank" rel="noopener">Voir sur la carte</a>
-            </p>
-          </div>
-        </article>
+      <article class="ev">
+        <p class="ev-quand">Samedi 27 juin 2027 &middot; Rome</p>
+        <h3 class="ev-titre">Welcome Party</h3>
+        <div class="ev-filet"></div>
+        <p class="ev-lieu">L&rsquo;Instituto</p>
+        <p class="ev-note">adresse et horaires &agrave; confirmer</p>
+        <p class="ev-desc">On lance les festivit&eacute;s&nbsp;! Une premi&egrave;re soir&eacute;e tous ensemble, &agrave; la romaine.</p>
+        <svg class="ev-sk" viewBox="0 0 64 64" fill="none" stroke="#6b5133" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17 10 L47 10 C47 22 41 29 32 29 C23 29 17 22 17 10 Z" stroke-width="1.7"/>
+          <path d="M32 29 L32 50 M23 53 C26 51 38 51 41 53" stroke-width="1.7"/>
+          <path d="M20 13 C21 20 24 25 28 27 M23 12 C24 18 26 22 29 25" stroke-width="0.9" opacity="0.8"/>
+          <path d="M44 13 C43 19 41 23 38 26" stroke-width="0.9" opacity="0.6"/>
+          <path d="M25 6 C27 4 30 4 32 6 M35 5 L36 3 M39 6 L41 4" stroke-width="1.1" opacity="0.85"/>
+        </svg>
+      </article>
 
-        <article class="event card">
-          <div class="event-body">
-            <p class="event-day">Date &agrave; confirmer</p>
-            <h3 class="event-title">La Mairie</h3>
-            <p class="event-venue">Mairie de Boulogne</p>
-            <p class="event-desc">La c&eacute;r&eacute;monie civile, suivie d&rsquo;une after party pour prolonger la f&ecirc;te.</p>
-          </div>
-        </article>
-      </div>
+      <article class="ev">
+        <p class="ev-quand">Dimanche 28 juin 2027 &middot; Bracciano</p>
+        <h3 class="ev-titre">Houppa &amp; Soir&eacute;e</h3>
+        <div class="ev-filet"></div>
+        <p class="ev-lieu">Castello Odescalchi di Bracciano</p>
+        <p class="ev-adr">Via Giulio Volpi 12, 00062 Bracciano</p>
+        <p class="ev-note">horaires &agrave; confirmer &middot; navettes depuis l&rsquo;h&ocirc;tel</p>
+        <p class="ev-desc">Le grand jour&nbsp;: la houppa puis la f&ecirc;te dans un ch&acirc;teau du XV<sup>e</sup> si&egrave;cle au-dessus du lac.</p>
+        <p class="ev-liens">
+          <a href="https://odescalchi.it/" target="_blank" rel="noopener">D&eacute;couvrir le ch&acirc;teau</a>
+          <span aria-hidden="true">&middot;</span>
+          <a href="https://maps.google.com/?q=Castello+Odescalchi,+Via+Giulio+Volpi+12,+Bracciano" target="_blank" rel="noopener">Voir sur la carte</a>
+        </p>
+        <svg class="ev-sk" viewBox="0 0 64 64" fill="none" stroke="#6b5133" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 52 L10 22 M22 52 L22 22 M10 22 L8 22 L8 17 L11 17 L11 19 L14 19 L14 17 L18 17 L18 19 L21 19 L21 17 L24 17 L24 22 L22 22" stroke-width="1.6"/>
+          <path d="M42 52 L42 22 M54 52 L54 22 M42 22 L40 22 L40 17 L43 17 L43 19 L46 19 L46 17 L50 17 L50 19 L53 19 L53 17 L56 17 L56 22 L54 22" stroke-width="1.6"/>
+          <path d="M22 30 L42 30 M22 26 L42 26" stroke-width="1.4"/>
+          <path d="M28 52 L28 40 C28 36 36 36 36 40 L36 52" stroke-width="1.5"/>
+          <path d="M6 52 L58 52" stroke-width="1.7"/>
+          <path d="M12 26 C13 32 13 40 12 48 M19 26 C20 32 20 40 19 48" stroke-width="0.8" opacity="0.7"/>
+          <path d="M45 26 C46 32 46 40 45 48 M51 26 C52 32 52 40 51 48" stroke-width="0.8" opacity="0.7"/>
+        </svg>
+      </article>
+
+      <article class="ev">
+        <p class="ev-quand">Date &agrave; confirmer &middot; Boulogne</p>
+        <h3 class="ev-titre">La Mairie</h3>
+        <div class="ev-filet"></div>
+        <p class="ev-lieu">Mairie de Boulogne</p>
+        <p class="ev-desc">La c&eacute;r&eacute;monie civile, suivie d&rsquo;une after party pour prolonger la f&ecirc;te.</p>
+        <svg class="ev-sk" viewBox="0 0 64 64" fill="none" stroke="#6b5133" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 51 L12 26 L52 26 L52 51 M8 51 L56 51" stroke-width="1.6"/>
+          <path d="M8 26 L32 12 L56 26" stroke-width="1.6"/>
+          <path d="M27 51 L27 38 C27 34 37 34 37 38 L37 51" stroke-width="1.5"/>
+          <path d="M17 32 L17 42 M47 32 L47 42" stroke-width="1.2"/>
+          <path d="M15 29 C 21 35 21 41 15 47 M49 29 C 43 35 43 41 49 47" stroke-width="0.8" opacity="0.6"/>
+          <path d="M24 12 L24 4 L31 5.5 L24 8 M40 12 L40 4 L47 5.5 L40 8" stroke-width="1.2"/>
+          <path d="M32 18.5 C 31 16.8 28.6 17 28.6 19 C 28.6 20.6 30.9 22 32 22.8 C 33.1 22 35.4 20.6 35.4 19 C 35.4 17 33 16.8 32 18.5 Z" fill="#6b5133" stroke="none"/>
+        </svg>
+      </article>
+
+      <p class="ev-navette">
+        <svg viewBox="0 0 64 64" fill="none" stroke="#6b5133" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 44 L8 22 C8 18 11 15 15 15 L47 15 C53 15 57 19 57 26 L57 44 L51 44 M14 44 L13 44 M26 44 L39 44" stroke-width="1.7"/>
+          <circle cx="19.5" cy="45.5" r="5.5" stroke-width="1.6"/><circle cx="45" cy="45.5" r="5.5" stroke-width="1.6"/>
+          <path d="M13 21 L23 21 L23 30 L13 30 Z M28 21 L38 21 L38 30 L28 30 Z M43 21 L51 21 L51 30 L43 30 Z" stroke-width="1.3"/>
+        </svg>
+        <span>Des navettes vous emm&egrave;neront de l&rsquo;h&ocirc;tel &agrave; chaque lieu &mdash; horaires &agrave; venir.</span>
+      </p>
     </section>
 
     <!-- ============ HÔTEL ============ -->
@@ -120,16 +155,16 @@
       <div class="section-head">
         <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
         <h2>O&ugrave; dormir</h2>
-        <p class="section-sub">Nous vous donnons rendez-vous au m&ecirc;me h&ocirc;tel</p>
       </div>
 
-      <div class="hotel card">
+      <div class="hotel">
         <div class="hotel-info">
           <h3>H&ocirc;tel Villa Pamphili Roma <span class="stars" aria-label="4 étoiles">&#9733;&#9733;&#9733;&#9733;</span></h3>
+          <div class="ev-filet"></div>
           <p class="hotel-address">Via della Nocetta 105, 00164 Rome</p>
           <p class="hotel-desc">Une oasis de verdure en bordure du parc de la Villa Doria Pamphilj, le plus grand parc de Rome &mdash; piscine, jardins et le centre historique &agrave; quelques minutes. C&rsquo;est de l&agrave; que partiront les navettes pour chaque &eacute;v&eacute;nement.</p>
           <p class="hotel-note">Code et lien de r&eacute;servation &agrave; venir &mdash; ne r&eacute;servez pas encore&nbsp;!</p>
-          <p class="event-links">
+          <p class="ev-liens">
             <a href="https://www.hotelvillapamphiliroma.com/" target="_blank" rel="noopener">Site de l&rsquo;h&ocirc;tel</a>
             <span aria-hidden="true">&middot;</span>
             <a href="https://maps.google.com/?q=Hotel+Villa+Pamphili+Roma,+Via+della+Nocetta+105,+Roma" target="_blank" rel="noopener">Itin&eacute;raire</a>
@@ -152,15 +187,15 @@
       </div>
 
       <div class="infos-grid">
-        <div class="info card">
+        <div class="info">
           <h3>Navettes</h3>
           <p>Des bus et navettes vous emm&egrave;neront de l&rsquo;h&ocirc;tel &agrave; chaque lieu de f&ecirc;te, et vous ram&egrave;neront. Horaires communiqu&eacute;s prochainement.</p>
         </div>
-        <div class="info card">
+        <div class="info">
           <h3>Venir &agrave; Rome</h3>
           <p>A&eacute;roports de Rome Fiumicino (FCO) ou Ciampino (CIA), &agrave; environ 30&nbsp;minutes de l&rsquo;h&ocirc;tel. Vols directs quotidiens depuis Paris.</p>
         </div>
-        <div class="info card">
+        <div class="info">
           <h3>Fin juin &agrave; Rome</h3>
           <p>Il fera beau et chaud (25&ndash;32&nbsp;&deg;C). Pr&eacute;voyez lunettes de soleil, tenues l&eacute;g&egrave;res&hellip; et de quoi danser jusqu&rsquo;au bout de la nuit.</p>
         </div>
@@ -175,7 +210,7 @@
         <p class="section-sub">Merci de confirmer votre pr&eacute;sence pour chaque &eacute;v&eacute;nement</p>
       </div>
 
-      <form id="rsvp-form" class="rsvp card" novalidate>
+      <form id="rsvp-form" class="rsvp" novalidate>
         <div class="form-row two-cols">
           <div class="field">
             <label for="rsvp-firstname">Pr&eacute;nom</label>
@@ -230,27 +265,12 @@
       </form>
     </section>
 
-    <!-- ============ GALERIE ============ -->
-    <section id="galerie" class="section">
-      <div class="section-head">
-        <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
-        <h2>Galerie</h2>
-      </div>
-      <div class="gallery">
-        <figure class="gallery-item"><img src="assets/gallery/save-the-date.jpg" alt="Save the date aquarelle — Sara & John, Rome" loading="lazy" /></figure>
-        <figure class="gallery-item"><img src="assets/gallery/photo-1.jpg" alt="Sara & John" loading="lazy" /></figure>
-        <figure class="gallery-item"><img src="assets/gallery/photo-2.jpg" alt="Sara & John" loading="lazy" /></figure>
-        <figure class="gallery-item"><img src="assets/gallery/photo-3.jpg" alt="Sara & John" loading="lazy" /></figure>
-        <figure class="gallery-item"><img src="assets/gallery/photo-4.jpg" alt="Sara & John" loading="lazy" /></figure>
-        <figure class="gallery-item"><img src="assets/gallery/photo-5.jpg" alt="Sara & John" loading="lazy" /></figure>
-      </div>
-    </section>
-
-    <section id="fin" class="fin" aria-label="Les fiancés">
-      <img class="fin-photo" src="assets/std/fiances.jpg" alt="Sara et John" />
+    <!-- ============ À TRÈS VITE À ROME ============ -->
+    <section id="fin" class="fin" aria-label="Sara et John">
+      <img class="fin-photo" src="assets/std/fin-photo.jpg" alt="Sara et John" />
       <div class="fin-overlay">
-        <p class="fin-script">A tr&egrave;s vite &agrave; Rome</p>
-        <p class="fin-names">Sara <span class="amp">&amp;</span> John</p>
+        <p class="fin-script">&Agrave; tr&egrave;s vite &agrave; Rome</p>
+        <p class="fin-names">Sara &amp; John</p>
       </div>
     </section>
 
@@ -258,7 +278,6 @@
       <img class="divider" src="assets/lemon-divider.svg" alt="" aria-hidden="true" />
       <p class="footer-names">Sara <span class="amp">&amp;</span> John</p>
       <p class="footer-date">27 &ndash; 28 juin 2027 &middot; Rome</p>
-      <p class="footer-love">Millamore</p>
     </footer>
   </div>
 
