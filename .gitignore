@@ -22,3 +22,6 @@ dashboard/build/
 
 # OS
 Thumbs.db
+
+# Lien local vers les polices (captures d’écran hors ligne)
+wedding-site/__fonts
