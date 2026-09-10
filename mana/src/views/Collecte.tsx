@@ -1,9 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Magasin } from '../types'
 import { RESEAUX_COLLECTEURS, recommanderFrequence } from '../lib/annuaire'
 import { pdfAfficheTri, pdfBordereau } from '../lib/pdf'
-import { IconMagasins } from '../components/Icons'
+import {
+  IconBalance,
+  IconCagette,
+  IconCalendrier,
+  IconDrapeau,
+  IconMagasins,
+  IconRelation,
+  IconTri,
+} from '../components/Icons'
 import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { fmtNum } from '../lib/format'
@@ -22,6 +30,15 @@ const ETAPES = [
   { id: 'pesee', titre: 'Organiser la pesée et les bordereaux' },
   { id: 'premiere', titre: 'Réussir la première collecte' },
 ] as const
+
+const PICTOS: Record<string, ReactNode> = {
+  gisement: <IconCagette />,
+  collecteurs: <IconRelation />,
+  calendrier: <IconCalendrier />,
+  tri: <IconTri />,
+  pesee: <IconBalance />,
+  premiere: <IconDrapeau />,
+}
 
 const FREQUENCES = ['Quotidienne', '2 à 3 fois par semaine', 'Hebdomadaire'] as const
 const PLAGES = ['Matin (7 h – 10 h)', 'Midi (11 h – 14 h)', 'Fin de journée (17 h – 20 h)'] as const
@@ -152,6 +169,20 @@ export function Collecte({
     )
   }
 
+  /** En-tête d'une carte d'étape : picto, numéro, titre, action de droite. */
+  function TeteEtape({ id, num, action }: { id: (typeof ETAPES)[number]['id']; num: number; action?: ReactNode }) {
+    return (
+      <div className="etape-tete">
+        <span className="etape-pic">{PICTOS[id]}</span>
+        <div className="etape-titres">
+          <span className="num">Étape {num}</span>
+          <h3>{ETAPES[num - 1].titre}</h3>
+        </div>
+        {action ?? <CaseEtape id={id} />}
+      </div>
+    )
+  }
+
   return (
     <div>
       <h2>Mettre en place ma collecte</h2>
@@ -166,6 +197,7 @@ export function Collecte({
         </div>
       )}
 
+      <div className="etapes">
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
           <h3 style={{ margin: 0 }}>{magasin.nom}</h3>
@@ -188,11 +220,8 @@ export function Collecte({
       </div>
 
       {/* Étape 1 — estimer les invendus */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>1. Estimer vos invendus</h3>
-          <CaseEtape id="gisement" />
-        </div>
+      <div className={`card ${estFaite('gisement') ? 'faite' : ''}`}>
+        <TeteEtape id="gisement" num={1} />
         <p className="muted">
           Pendant 2 ou 3 jours, regardez ce qui part à la poubelle alors que c’est encore consommable. Repère simple :
           une cagette de fruits &amp; légumes pleine ≈ 8 à 10 kg ; un bac de produits frais ≈ 5 kg.
@@ -225,11 +254,8 @@ export function Collecte({
       </div>
 
       {/* Étape 2 — besoin + mise en relation */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>2. Définir votre besoin et trouver votre association</h3>
-          <CaseEtape id="collecteurs" />
-        </div>
+      <div className={`card pleine ${estFaite('collecteurs') ? 'faite' : ''}`}>
+        <TeteEtape id="collecteurs" num={2} />
 
         {demandeDuMagasin ? (
           <div className="info-banner vert">
@@ -245,6 +271,7 @@ export function Collecte({
               associations adaptées de votre secteur (deux associations combinées si vous voulez des passages
               quotidiens) et vous suit jusqu’à la première collecte.
             </p>
+            <div className="colonnes-2">
             <label className="field">
               <span>Fréquence de ramassage souhaitée</span>
               <div className="chips" style={{ marginBottom: 0 }}>
@@ -276,6 +303,7 @@ export function Collecte({
               <span>Précisions (facultatif)</span>
               <textarea rows={2} value={precision} onChange={(e) => setPrecision(e.target.value)} placeholder="Ex. beaucoup de frais, accès quai de livraison, fermé le lundi…" />
             </label>
+            </div>
             {kgJour <= 0 && <p className="muted" style={{ color: 'var(--ambre-texte)' }}>Complétez d’abord l’étape 1 (estimation des invendus).</p>}
             {session ? (
               <button
@@ -305,6 +333,7 @@ export function Collecte({
           <p className="muted" style={{ margin: '8px 0' }}>
             Vous gardez votre relation directe — aucune exclusivité. Confirmez toujours le rythme réel avec l’antenne locale.
           </p>
+          <div className="reseaux">
           {RESEAUX_COLLECTEURS.map((r) => (
             <div className="reseau" key={r.nom}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
@@ -319,19 +348,21 @@ export function Collecte({
               </div>
             </div>
           ))}
+          </div>
         </details>
       </div>
 
       {/* Étape 3 — calendrier */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>3. Caler le calendrier de passage</h3>
-          {magasin.collecteurs.length > 0 ? (
-            <span className="verif-badge">✓ {magasin.collecteurs.length} collecteur{magasin.collecteurs.length > 1 ? 's' : ''}</span>
-          ) : (
-            <CaseEtape id="calendrier" />
-          )}
-        </div>
+      <div className={`card ${estFaite('calendrier') ? 'faite' : ''}`}>
+        <TeteEtape
+          id="calendrier"
+          num={3}
+          action={
+            magasin.collecteurs.length > 0 ? (
+              <span className="verif-badge">✓ {magasin.collecteurs.length} collecteur{magasin.collecteurs.length > 1 ? 's' : ''}</span>
+            ) : undefined
+          }
+        />
         <p className="muted">
           Une fois la mise en relation faite, enregistrez chaque association et ses jours de passage — ils s’affichent
           sur la fiche du magasin et dans l’état annuel (reçus fiscaux attendus).
@@ -361,11 +392,8 @@ export function Collecte({
       </div>
 
       {/* Étape 4 — tri */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>4. Former l’équipe au tri</h3>
-          <CaseEtape id="tri" />
-        </div>
+      <div className={`card ${estFaite('tri') ? 'faite' : ''}`}>
+        <TeteEtape id="tri" num={4} />
         <p className="muted">
           Le geste ne change pas : pendant la tournée DLC, le produit donnable part dans le bac « don » au lieu de la
           poubelle, scanné avec un motif de démarque « don » dédié si votre back-office le permet.
@@ -382,11 +410,8 @@ export function Collecte({
       </div>
 
       {/* Étape 5 — pesée */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>5. Organiser la pesée et les bordereaux</h3>
-          <CaseEtape id="pesee" />
-        </div>
+      <div className={`card ${estFaite('pesee') ? 'faite' : ''}`}>
+        <TeteEtape id="pesee" num={5} />
         <p className="muted">
           Les produits emballés sont valorisés par leur montant de démarque — rien à peser, on compte juste les colis
           remis (bacs, cartons ou sacs). Seuls les fruits &amp; légumes partent au poids : pesez chaque cagette ou sac
@@ -400,11 +425,8 @@ export function Collecte({
       </div>
 
       {/* Étape 6 — première collecte */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-          <h3>6. Réussir la première collecte</h3>
-          <CaseEtape id="premiere" />
-        </div>
+      <div className={`card ${estFaite('premiere') ? 'faite' : ''}`}>
+        <TeteEtape id="premiere" num={6} />
         <p className="muted">La veille du premier passage :</p>
         <div className="detail-lignes">
           <div className="ligne"><span>Le bac « don » est en réserve, au froid pour le frais, affiche au mur</span></div>
@@ -415,6 +437,8 @@ export function Collecte({
         <button className="btn btn-ambre btn-block" style={{ marginTop: 12 }} onClick={onAllerSaisie}>
           Faire ma première saisie
         </button>
+      </div>
+
       </div>
 
       <footer className="legal">

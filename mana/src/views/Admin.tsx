@@ -10,6 +10,7 @@ import {
   type Demande,
   type Message,
 } from '../lib/cloud'
+import { Composer } from '../components/Composer'
 import { aggParSociete } from '../lib/selectors'
 import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
 import { LIBELLES_STATUT } from '../components/Aide'
@@ -25,7 +26,6 @@ export function Admin({ session }: { session: Session }) {
   const [clients, setClients] = useState<ClientAdmin[]>([])
   const [ouverte, setOuverte] = useState<string | null>(null)
   const [fil, setFil] = useState<Message[]>([])
-  const [reponse, setReponse] = useState('')
   const [erreur, setErreur] = useState('')
   const exercice = exerciceCourant()
 
@@ -51,11 +51,10 @@ export function Admin({ session }: { session: Session }) {
 
   const nouvelles = useMemo(() => demandes.filter((d) => d.statut === 'nouvelle').length, [demandes])
 
-  async function repondre(d: Demande) {
-    if (!reponse.trim()) return
-    await envoyerMessage(d.id, d.user_id, 'mana', reponse)
+  async function repondre(d: Demande, texte: string) {
+    if (!texte.trim()) return
+    await envoyerMessage(d.id, d.user_id, 'mana', texte)
     if (d.statut === 'nouvelle') await majStatutDemande(d.id, 'en_cours')
-    setReponse('')
     setFil(await messagesDe(d.id))
     setDemandes(await mesDemandes())
   }
@@ -131,12 +130,7 @@ export function Admin({ session }: { session: Session }) {
                       {m.texte}
                     </div>
                   ))}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <input type="text" placeholder="Répondre au client…" value={reponse} onChange={(e) => setReponse(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && repondre(d)} style={{ flex: 1 }} />
-                    <button className="btn btn-primary btn-sm" onClick={() => repondre(d)} disabled={!reponse.trim()} style={{ opacity: reponse.trim() ? 1 : 0.5 }}>
-                      Envoyer
-                    </button>
-                  </div>
+                  <Composer placeholder="Votre réponse au client…" onEnvoyer={(texte) => repondre(d, texte)} />
                 </div>
               )}
             </div>

@@ -110,3 +110,78 @@ export function LogoMana({ taille = 26, couleur = '#234F3E' }: { taille?: number
     </svg>
   )
 }
+
+/* ---------- Pictos des étapes de mise en place de la collecte ---------- */
+
+/** Étape 1 — estimer : une cagette pleine, à jauger. */
+export function IconCagette() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <path d="M3 9.5 h18 l-1.6 10.5 H4.6 Z" />
+      <path d="M3 9.5 5.8 4 h12.4 L21 9.5" />
+      <line x1="9" y1="4" x2="8.2" y2="9.5" />
+      <line x1="15" y1="4" x2="15.8" y2="9.5" />
+    </svg>
+  )
+}
+
+/** Étape 2 — mise en relation : deux parties reliées par Mana. */
+export function IconRelation() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <circle cx="6" cy="7.5" r="3" />
+      <circle cx="18" cy="7.5" r="3" />
+      <path d="M2 20 v-1.8 A4 4 0 0 1 6 14.4 h0 A4 4 0 0 1 10 18.2 V20" />
+      <path d="M14 20 v-1.8 a4 4 0 0 1 4-3.8 h0 a4 4 0 0 1 4 3.8 V20" />
+      <line x1="10.2" y1="10.5" x2="13.8" y2="10.5" />
+    </svg>
+  )
+}
+
+/** Étape 3 — calendrier des passages. */
+export function IconCalendrier() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="8" y1="2.8" x2="8" y2="6.5" />
+      <line x1="16" y1="2.8" x2="16" y2="6.5" />
+      <circle cx="8.5" cy="14.5" r="0.5" />
+      <circle cx="15.5" cy="14.5" r="0.5" />
+      <circle cx="12" cy="17.8" r="0.5" />
+    </svg>
+  )
+}
+
+/** Étape 4 — le tri : deux destinations, un seul geste. */
+export function IconTri() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <path d="M2.8 4 h18.4 l-7.2 8.6 v6.2 l-4 2.6 v-8.8 Z" />
+      <line x1="7.5" y1="7.6" x2="16.5" y2="7.6" />
+    </svg>
+  )
+}
+
+/** Étape 5 — la pesée et les bordereaux. */
+export function IconBalance() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <line x1="12" y1="4.5" x2="12" y2="20.5" />
+      <line x1="7" y1="20.5" x2="17" y2="20.5" />
+      <line x1="4" y1="7.5" x2="20" y2="7.5" />
+      <path d="M4 7.5 1.5 14 a3.4 3.4 0 0 0 5 0 Z" />
+      <path d="M20 7.5 17.5 14 a3.4 3.4 0 0 0 5 0 Z" />
+    </svg>
+  )
+}
+
+/** Étape 6 — la première collecte réussie. */
+export function IconDrapeau() {
+  return (
+    <svg {...base} width={22} height={22}>
+      <line x1="5.5" y1="3" x2="5.5" y2="21" />
+      <path d="M5.5 4.5 h11.5 l-2.6 4 2.6 4 H5.5 Z" />
+    </svg>
+  )
+}

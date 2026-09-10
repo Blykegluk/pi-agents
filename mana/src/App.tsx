@@ -61,9 +61,11 @@ export default function App() {
     else setAdmin(false)
   }, [session?.user.id])
 
-  // Changement d'onglet → retour en haut de page
+  // Changement d'onglet → retour en haut de page, et largeur de colonne adaptée :
+  // l'assistant de collecte s'étale sur deux colonnes en grand écran.
   useEffect(() => {
     window.scrollTo(0, 0)
+    document.getElementById('root')?.setAttribute('data-large', tab === 'collecte' ? 'oui' : 'non')
   }, [tab])
 
   /** Applique un état venu du cloud sans le re-pousser. */

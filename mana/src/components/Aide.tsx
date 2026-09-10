@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { FAQ } from '../lib/faq'
 import { creerDemande, envoyerMessage, mesDemandes, messagesDe, type Demande, type Message } from '../lib/cloud'
 import { fmtDateHeure } from '../lib/format'
+import { Composer } from './Composer'
 
 export const LIBELLES_STATUT: Record<Demande['statut'], { texte: string; classe: string }> = {
   nouvelle: { texte: 'envoyée', classe: 'badge' },
@@ -29,7 +30,6 @@ export function Aide({
   const [demandes, setDemandes] = useState<Demande[]>([])
   const [ouverte, setOuverte] = useState<string | null>(null)
   const [fil, setFil] = useState<Message[]>([])
-  const [reponse, setReponse] = useState('')
   const [texteRequete, setTexteRequete] = useState('')
   const [message, setMessage] = useState('')
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
@@ -70,10 +70,9 @@ export function Aide({
     setEnvoiEnCours(false)
   }
 
-  async function repondre(d: Demande) {
-    if (!session || !reponse.trim()) return
-    await envoyerMessage(d.id, d.user_id, 'client', reponse)
-    setReponse('')
+  async function repondre(d: Demande, texte: string) {
+    if (!session || !texte.trim()) return
+    await envoyerMessage(d.id, d.user_id, 'client', texte)
     setFil(await messagesDe(d.id))
   }
 
@@ -157,12 +156,7 @@ export function Aide({
                       </div>
                     ))}
                     {fil.length === 0 && <p className="muted">Demande transmise — réponse de Mana à venir ici.</p>}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                      <input type="text" placeholder="Répondre…" value={reponse} onChange={(e) => setReponse(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && repondre(d)} style={{ flex: 1 }} />
-                      <button className="btn btn-primary btn-sm" onClick={() => repondre(d)} disabled={!reponse.trim()} style={{ opacity: reponse.trim() ? 1 : 0.5 }}>
-                        Envoyer
-                      </button>
-                    </div>
+                    <Composer placeholder="Votre réponse à l’équipe Mana…" onEnvoyer={(texte) => repondre(d, texte)} />
                   </div>
                 )}
               </div>
