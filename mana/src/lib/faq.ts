@@ -85,8 +85,14 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Que dois-je transmettre à mon expert-comptable ?',
     reponse:
-      'L’état annuel de valorisation (onglet Registre), qui récapitule base, plafond et réduction, liste les reçus fiscaux 2041-MEC-SD à obtenir des associations et rappelle le report sur l’imprimé 2069-RCI. Le registre des dons et la note de méthode l’accompagnent. Mana n’est pas un conseil fiscal : c’est votre expert-comptable qui valide.',
+      'L’état annuel de valorisation (onglet Registre), qui récapitule base, plafond et réduction et rappelle le report sur l’imprimé 2069-RCI. Le registre des dons et la note de méthode l’accompagnent. Le reçu fiscal 2041-MEC-SD, lui, est généré prérempli par Mana (même onglet) : vous le faites signer par l’association, qui reste seule à pouvoir le délivrer. Mana n’est pas un conseil fiscal : c’est votre expert-comptable qui valide.',
     motsCles: 'expert comptable etat annuel 2069 2041 cerfa documents liasse',
+  },
+  {
+    question: 'Qui remplit le reçu fiscal (Cerfa 2041-MEC-SD) ?',
+    reponse:
+      'C’est l’association qui délivre le reçu — vous ne pouvez pas vous l’établir à vous-même. Mais la note 5 du formulaire prévoit que l’organisme reporte la valeur des dons en nature indiquée par l’entreprise donatrice : concrètement, Mana génère le reçu prérempli (votre société, le montant en chiffres et en toutes lettres, la période, et une annexe décrivant les biens mois par mois), et l’association n’a plus qu’à compléter son bloc, dater, signer et cacheter. Un seul reçu suffit pour tout l’exercice, même avec un enlèvement par jour : la note 9 autorise un reçu unique par période, à condition qu’elle ne chevauche pas deux exercices.',
+    motsCles: 'recu fiscal cerfa 2041 mec sd 16216 association signature qui remplit annuel',
   },
   {
     question: 'Pourquoi dois-je fournir ma liasse fiscale ?',

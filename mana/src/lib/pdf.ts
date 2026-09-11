@@ -1,10 +1,10 @@
 import { jsPDF } from 'jspdf'
 import type { Facture, Magasin, Societe } from '../types'
-import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct, pdfSafe } from './format'
+import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct, montantEnLettres, pdfSafe } from './format'
 import { weekLabel } from './iso'
 import { baseDeLaSaisie, type AggSociete } from './selectors'
-import { coutEmballes, coutFL } from './calc'
-import { libelleMois } from './facturation'
+import { coutEmballes, coutFL, kgDetournes } from './calc'
+import { libelleMois, moisDeLaSemaine } from './facturation'
 
 const MENTION_LEGALE =
   'Mana n’est pas un conseil fiscal ; ce document est destiné à validation par votre expert-comptable.'
@@ -499,17 +499,26 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
 
   let y = 32
   doc.setFontSize(10)
-  const champ = (label: string, largeur: number, x: number) => {
+  const champ = (label: string, finX: number, x: number, valeur?: string) => {
     doc.setFont('InstrumentSans', 'normal')
     doc.setFontSize(10)
     doc.text(t(label), x, y)
+    const debut = x + doc.getTextWidth(t(label)) + 2
+    if (valeur) {
+      doc.setFont('InstrumentSans', 'bold')
+      doc.text(t(valeur), debut, y)
+      doc.setFont('InstrumentSans', 'normal')
+    }
     doc.setDrawColor(180, 172, 155)
-    doc.line(x + doc.getTextWidth(t(label)) + 2, y + 0.5, x + largeur, y + 0.5)
+    doc.line(debut + (valeur ? doc.getTextWidth(t(valeur)) + 2 : 0), y + 0.5, finX, y + 0.5)
   }
+  // Un seul collecteur pour ce magasin (cas d'une collecte quotidienne confiée
+  // à une seule association) : on préremplit, ça évite de l'écrire chaque jour.
+  const seulCollecteur = magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : undefined
   champ('Date :', 88, 14)
   champ('Heure :', 196, 110)
   y += 9
-  champ('Association bénéficiaire :', 196, 14)
+  champ('Association bénéficiaire :', 196, 14, seulCollecteur)
   y += 9
   champ('Nom du collecteur :', 196, 14)
   y += 9
@@ -535,8 +544,8 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFontSize(11)
   doc.text(t('1. Produits emballés (démarque scannée en magasin)'), 14, y)
   y += 8
-  champ('Nombre de colis remis (bacs, cartons ou sacs) :', 110, 14)
-  champ('Poids indicatif (facultatif, pour l’association) :        kg', 196, 118)
+  champ('Nombre de colis remis (bacs, cartons ou sacs) :', 112, 14)
+  champ('Poids indicatif (kg) :', 196, 120)
   y += 9
   champ('Produits refusés / remarques :', 196, 14)
   y += 12
@@ -673,4 +682,332 @@ function slug(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+/* ------------------------------------------------------------------ *
+ * Reçu fiscal de mécénat — article 238 bis du CGI
+ *
+ * Modèle conforme au formulaire 2041-MEC-SD (Cerfa n° 16216*03). Le BOFiP
+ * admet un document de forme différente dès lors qu'il porte les mêmes
+ * mentions que le modèle officiel. Mana préremplit tout ce qu'il connaît
+ * (donateur, valeur au coût de revient, période, description des biens) ;
+ * l'organisme bénéficiaire complète son bloc, date et signe — c'est lui qui
+ * délivre le reçu. La note 5 du formulaire prévoit expressément que
+ * l'organisme reporte la valeur des dons en nature indiquée par l'entreprise.
+ * ------------------------------------------------------------------ */
+
+/** Trait pointillé à compléter à la main. */
+function ligneAComplerer(doc: jsPDF, label: string, x: number, y: number, finX: number, valeur?: string) {
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(9.5)
+  doc.text(t(label), x, y)
+  const debut = x + doc.getTextWidth(t(label)) + 2
+  if (valeur) {
+    doc.setFont('InstrumentSans', 'bold')
+    doc.text(t(valeur), debut, y)
+    doc.setFont('InstrumentSans', 'normal')
+  }
+  doc.setDrawColor(190, 182, 165)
+  doc.setLineDashPattern([0.6, 0.9], 0)
+  doc.line(debut + (valeur ? doc.getTextWidth(t(valeur)) + 2 : 0), y + 1, finX, y + 1)
+  doc.setLineDashPattern([], 0)
+}
+
+/** Titre de rubrique sur fond vert, comme les rubriques du Cerfa. */
+function rubrique(doc: jsPDF, titre: string, y: number): number {
+  doc.setFillColor(26, 59, 46)
+  doc.rect(14, y, 182, 6.6, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9.5)
+  doc.text(t(titre), 17, y + 4.6)
+  doc.setTextColor(43, 38, 32)
+  doc.setFont('InstrumentSans', 'normal')
+  return y + 11
+}
+
+function caseACocher(doc: jsPDF, texte: string, x: number, y: number, largeur: number): number {
+  doc.setDrawColor(120, 113, 100)
+  doc.rect(x, y - 2.6, 3.2, 3.2)
+  doc.setFontSize(8.5)
+  const lignes = doc.splitTextToSize(t(texte), largeur - 6)
+  doc.text(lignes, x + 5.5, y)
+  return y + lignes.length * 3.9 + 2
+}
+
+export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
+  const societe = agg.societe
+  const valeur = agg.resultat.basePlafonnee
+  entete(doc, 'Reçu de dons — article 238 bis du CGI', `${societe.raisonSociale} — Exercice ${exercice}`)
+
+  let y = 28
+  doc.setFontSize(8)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t(
+      'Modèle conforme au formulaire 2041-MEC-SD (Cerfa n° 16216*03). L’administration admet un document dont la forme ' +
+        'diffère du formulaire dès lors qu’il comporte les mêmes mentions. Reçu délivré, daté et signé par l’organisme bénéficiaire.',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+  y += 8
+  ligneAComplerer(doc, 'Numéro d’ordre du reçu :', 14, y, 90)
+  y += 7
+
+  // --- Organisme bénéficiaire : rempli par l'association ---
+  y = rubrique(doc, 'Organisme bénéficiaire des dons et versements  (à compléter par l’organisme)', y)
+  ligneAComplerer(doc, 'Dénomination :', 14, y, 196)
+  y += 7
+  ligneAComplerer(doc, 'Numéro SIREN ou RNA :', 14, y, 100)
+  ligneAComplerer(doc, 'Objet :', 104, y, 196)
+  y += 7
+  ligneAComplerer(doc, 'Adresse — N° :', 14, y, 70)
+  ligneAComplerer(doc, 'Rue :', 74, y, 196)
+  y += 7
+  ligneAComplerer(doc, 'Code postal :', 14, y, 62)
+  ligneAComplerer(doc, 'Commune :', 66, y, 160)
+  ligneAComplerer(doc, 'Pays :', 164, y, 196)
+  y += 8
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9)
+  doc.text(t('Nature de l’organisme — cochez la case qui vous concerne :'), 14, y)
+  doc.setFont('InstrumentSans', 'normal')
+  y += 5
+  y = caseACocher(
+    doc,
+    'Organisme sans but lucratif fournissant gratuitement une aide alimentaire, des soins médicaux ou des produits ' +
+      'de première nécessité à des personnes en difficulté, ou favorisant leur logement.',
+    16,
+    y,
+    182,
+  )
+  y = caseACocher(
+    doc,
+    'Œuvre ou organisme d’intérêt général ayant un caractère philanthropique, éducatif, scientifique, social, ' +
+      'humanitaire, sportif, familial ou culturel — association loi 1901.',
+    16,
+    y,
+    182,
+  )
+  y = caseACocher(
+    doc,
+    'Association ou fondation reconnue d’utilité publique, fonds de dotation, ou autre catégorie prévue à ' +
+      'l’article 238 bis du CGI (préciser) : ……………………………………………………………………………………………',
+    16,
+    y,
+    182,
+  )
+  y += 0.5
+
+  // --- Entreprise donatrice : prérempli par Mana ---
+  y = rubrique(doc, 'Entreprise donatrice  (prérempli par Mana)', y)
+  ligneAComplerer(doc, 'Dénomination :', 14, y, 130, societe.raisonSociale)
+  ligneAComplerer(doc, 'Forme juridique :', 134, y, 196)
+  y += 7
+  ligneAComplerer(doc, 'Numéro SIREN :', 14, y, 90, societe.siren || undefined)
+  y += 7
+  ligneAComplerer(doc, 'Adresse — N° :', 14, y, 70)
+  ligneAComplerer(doc, 'Rue :', 74, y, 196)
+  y += 7
+  ligneAComplerer(doc, 'Code postal :', 14, y, 62)
+  ligneAComplerer(doc, 'Commune :', 66, y, 196)
+  y += 8
+
+  // --- Dons et versements ---
+  y = rubrique(doc, 'Dons et versements effectués par l’entreprise', y)
+  doc.setFontSize(9.5)
+  doc.text(
+    t(
+      'L’organisme bénéficiaire reconnaît avoir reçu, au titre de la réduction d’impôt prévue à l’article 238 bis du ' +
+        'code général des impôts, des dons en nature pour une valeur en euros égale à :',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  y += 10
+  doc.setFillColor(243, 228, 198)
+  doc.roundedRect(14, y - 5.5, 74, 10, 2, 2, 'F')
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(13)
+  doc.text(t(`${fmtEUR(valeur, 2)}`), 51, y + 1.2, { align: 'center' })
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(9.5)
+  y += 9
+  doc.text(t('Valeur totale des dons en nature en toutes lettres :'), 14, y)
+  y += 5
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9.5)
+  doc.text(t(montantEnLettres(valeur)), 14, y, { maxWidth: 182 })
+  doc.setFont('InstrumentSans', 'normal')
+  y += 8
+
+  doc.text(t('Description exhaustive des biens reçus et acceptés (nature et quantité) :'), 14, y, { maxWidth: 182 })
+  y += 5
+  doc.setFontSize(9)
+  doc.text(
+    t(
+      'Denrées alimentaires invendues et consommables (produits emballés et fruits & légumes) remises à chaque ' +
+        'enlèvement contre bordereau signé. Description détaillée : voir l’annexe jointe au présent reçu, établie à ' +
+        'partir du registre des dons horodaté (note 7 du formulaire 2041-MEC-SD).',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  y += 12
+  doc.setFontSize(9.5)
+  doc.text(t('Versements en numéraire de l’entreprise : néant.'), 14, y)
+  y += 7
+
+  doc.setFont('InstrumentSans', 'bold')
+  doc.text(t(`Montant total des dons et versements reçus par l’organisme : ${fmtEUR(valeur, 2)}`), 14, y)
+  y += 5.5
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(9)
+  doc.text(t(`Soit, en toutes lettres : ${montantEnLettres(valeur)}`), 14, y, { maxWidth: 182 })
+  y += 8
+  doc.setFontSize(9.5)
+  doc.text(t(`Période au cours de laquelle les dons ont été effectués : du 01/01/${exercice} au 31/12/${exercice}.`), 14, y)
+  y += 6
+
+  // --- Date et signature ---
+  y = rubrique(doc, 'Date et signature de l’organisme bénéficiaire', y)
+  ligneAComplerer(doc, 'Fait à :', 14, y, 90)
+  ligneAComplerer(doc, 'Le :', 96, y, 150)
+  y += 5
+  doc.setFontSize(8.5)
+  doc.text(t('Signature et cachet de l’organisme bénéficiaire'), 14, y + 3.5)
+  doc.setDrawColor(180, 172, 155)
+  doc.rect(14, y + 5, 90, 20)
+
+  doc.setFontSize(7.5)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t(
+      'Note 5 du formulaire 2041-MEC-SD : l’organisme bénéficiaire des dons en nature reporte sur le reçu fiscal le ' +
+        'montant indiqué par l’entreprise donatrice. Ce montant est ici la valeur au coût de revient calculée par Mana ' +
+        'et justifiée par le registre des dons et la note de méthode.',
+    ),
+    110,
+    y + 8.5,
+    { maxWidth: 86 },
+  )
+  doc.setTextColor(43, 38, 32)
+
+  // ------------------------------------------------------------------
+  // Annexe — description exhaustive des biens remis (note 7)
+  // ------------------------------------------------------------------
+  doc.addPage()
+  entete(doc, 'Annexe au reçu fiscal — description des biens remis', `${societe.raisonSociale} — Exercice ${exercice}`)
+  y = 30
+  doc.setFontSize(9)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t(
+      'Annexe prévue par la note 7 du formulaire 2041-MEC-SD. Récapitulatif mensuel établi à partir du registre des ' +
+        'dons horodaté de Mana ; le détail enlèvement par enlèvement figure dans le document « Registre des dons » et ' +
+        'dans les bordereaux d’enlèvement signés, conservés par le magasin.',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+  y += 14
+
+  // Regroupement par mois (un enlèvement quotidien ferait 365 lignes)
+  const parMois = new Map<string, { pv: number; kgFL: number; base: number; kg: number }>()
+  for (const s of agg.saisies) {
+    const mois = moisDeLaSemaine(s.semaine)
+    const e = parMois.get(mois) ?? { pv: 0, kgFL: 0, base: 0, kg: 0 }
+    e.pv += coutEmballes(s.pvEmballes, s.margePctAppliquee)
+    e.kgFL += s.kgFL
+    e.base += baseDeLaSaisie(s)
+    e.kg += kgDetournes(s.pvEmballes, s.kgFL)
+    parMois.set(mois, e)
+  }
+
+  const cols = [
+    { x: 14, w: 42, label: 'Période', right: false },
+    { x: 56, w: 52, label: 'Nature des biens', right: false },
+    { x: 108, w: 26, label: 'Quantité (kg)', right: true },
+    { x: 134, w: 30, label: 'Dont F&L (kg)', right: true },
+    { x: 164, w: 32, label: 'Coût de revient (€)', right: true },
+  ]
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(8)
+  for (const c of cols) doc.text(t(c.label), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right', maxWidth: c.w } : { maxWidth: c.w })
+  doc.setFont('InstrumentSans', 'normal')
+  y += 2
+  doc.setDrawColor(26, 59, 46)
+  doc.line(14, y, 196, y)
+  y += 5
+
+  const mois = [...parMois.keys()].sort()
+  for (const m of mois) {
+    const e = parMois.get(m)!
+    const vals = [
+      libelleMois(m),
+      'Denrées alimentaires invendues',
+      fmtNum(e.kg, 0),
+      fmtNum(e.kgFL, 1),
+      fmtEUR(e.base, 2),
+    ]
+    doc.setFontSize(8.5)
+    vals.forEach((v, i) => {
+      const c = cols[i]
+      doc.text(t(v), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right', maxWidth: c.w } : { maxWidth: c.w })
+    })
+    y += 6
+  }
+  doc.setDrawColor(26, 59, 46)
+  doc.line(14, y - 3.5, 196, y - 3.5)
+  y += 1
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9)
+  doc.text(t(`Total exercice ${exercice}`), 14, y)
+  doc.text(t(fmtNum(agg.kgTotal, 0)), 134, y, { align: 'right' })
+  doc.text(t(fmtNum(agg.kgFL, 1)), 164, y, { align: 'right' })
+  doc.text(t(fmtEUR(agg.baseBrute, 2)), 196, y, { align: 'right' })
+  doc.setFont('InstrumentSans', 'normal')
+  y += 10
+
+  if (agg.resultat.excedent > 0) {
+    doc.setFillColor(243, 228, 198)
+    doc.roundedRect(14, y, 182, 16, 2, 2, 'F')
+    doc.setFontSize(8.5)
+    doc.text(
+      t(
+        `Dons remis sur l’exercice : ${fmtEUR(agg.baseBrute, 2)}. Le reçu porte sur ${fmtEUR(valeur, 2)}, montant ` +
+          `retenu dans la limite du plafond de l’article 238 bis (${fmtEUR(agg.resultat.plafond, 2)}). L’excédent de ` +
+          `${fmtEUR(agg.resultat.excedent, 2)} est reportable sur les cinq exercices suivants.`,
+      ),
+      17,
+      y + 5,
+      { maxWidth: 176 },
+    )
+    y += 22
+  }
+
+  // Magasins couverts par le reçu
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9)
+  doc.text(t('Établissements donateurs couverts par le présent reçu'), 14, y)
+  doc.setFont('InstrumentSans', 'normal')
+  y += 6
+  doc.setFontSize(8.5)
+  for (const m of agg.magasins) {
+    const collecteurs = m.collecteurs.map((c) => `${c.nom}${c.jours ? ` (${c.jours})` : ''}`).join(', ')
+    doc.text(t(`• ${m.nom}${collecteurs ? ` — collecte : ${collecteurs}` : ''}`), 14, y, { maxWidth: 182 })
+    y += 5.5
+  }
+
+  piedDePage(doc, 'Reçu prérempli par Mana — à faire dater, signer et cacheter par l’organisme bénéficiaire.')
+  doc.save(`mana-recu-fiscal-238bis-${slug(societe.raisonSociale)}-${exercice}.pdf`)
 }

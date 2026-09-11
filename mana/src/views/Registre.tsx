@@ -5,7 +5,7 @@ import { coutEmballes, coutFL } from '../lib/calc'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { compareWeekIds, weekLabel } from '../lib/iso'
 import { libelleMois } from '../lib/facturation'
-import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRegistre } from '../lib/pdf'
+import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRecuFiscal, pdfRegistre } from '../lib/pdf'
 import { lireFichiers } from '../lib/fichiers'
 import { IconRegistre } from '../components/Icons'
 
@@ -271,6 +271,14 @@ export function Registre({
         <button className="btn btn-primary btn-block" onClick={() => pdfEtatAnnuel(agg, exercice)}>
           ⬇ État annuel {exercice} — {societe.raisonSociale}
         </button>
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => pdfRecuFiscal(agg, exercice)}>
+          ⬇ Reçu fiscal 238 bis prérempli — à faire signer par l’association
+        </button>
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>
+          Modèle conforme au formulaire 2041-MEC-SD (Cerfa n° 16216). Mana préremplit le donateur, le montant en
+          chiffres et en toutes lettres, la période et l’annexe descriptive : l’association complète son bloc, date,
+          signe et cachète. Un seul reçu par exercice, même avec des enlèvements quotidiens.
+        </p>
       </div>
 
       <div className="card">
