@@ -6,6 +6,7 @@ import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, get
 import { chargerEtatDistant, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
+import { completerIdentites } from './lib/identite'
 import { FormulaProvider } from './components/Formula'
 import { Aide } from './components/Aide'
 import { IconAdmin, IconAide, IconCollecte, IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
@@ -67,6 +68,20 @@ export default function App() {
     window.scrollTo(0, 0)
     document.getElementById('root')?.setAttribute('data-large', tab === 'collecte' ? 'oui' : 'non')
   }, [tab])
+
+  // Sociétés vérifiées avant que Mana ne conserve forme juridique et adresse :
+  // complétées une fois depuis le registre (le reçu fiscal en a besoin).
+  useEffect(() => {
+    if (estDemo(state)) return
+    let annule = false
+    completerIdentites(state).then((maj) => {
+      if (maj && !annule) setState(maj)
+    })
+    return () => {
+      annule = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.societes.map((s) => `${s.id}:${s.verification.apiStatut}:${s.verification.formeJuridique ?? ''}`).join('|')])
 
   /** Applique un état venu du cloud sans le re-pousser. */
   function appliquerDistant(etat: AppState, majLe: string) {

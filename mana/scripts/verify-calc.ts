@@ -11,6 +11,7 @@ import {
   simuler,
 } from '../src/lib/calc.ts'
 import { derouleFacturation, tauxCommissionPct } from '../src/lib/facturation.ts'
+import { suiviReports } from '../src/lib/reports.ts'
 
 let echecs = 0
 
@@ -70,6 +71,48 @@ attendre('facture du mois 11 (proratisée au plafond) : 18 % × 2 000', lignes[1
 attendre('facture du mois 12 (plafond atteint → arrêt)', lignes[11].montantHT, 0)
 const totalFacture = lignes.reduce((t, l) => t + l.montantHT, 0)
 attendre('total facturé sur l’exercice = 18 % × 30 000', totalFacture, 5_400)
+
+
+// ---------------------------------------------------------------------------
+// Excédents reportables (art. 238 bis) : imputation après les dons de l'année,
+// dans la limite du plafond, au plus ancien d'abord, expiration à origine + 5.
+// ---------------------------------------------------------------------------
+{
+  const societe = {
+    id: 'S', raisonSociale: 'TEST', siren: '000000000', caHT: 1_000_000, margePct: 30, successFeePct: 30,
+    verification: { apiStatut: 'non_verifie' as const }, creeLe: '',
+  }
+  const magasin = { id: 'M', societeId: 'S', nom: 'M', coutKgFL: 1, collecteurs: [], creeLe: '', versionsParametres: [] }
+  // Une saisie par an, base = pvEmballes × (1 − 0) avec marge 0 → base = pv
+  const saisie = (an: number, pv: number) => ({
+    id: `s${an}`, magasinId: 'M', semaine: `${an}-W10`, type: 'don' as const, pvEmballes: pv, kgFL: 0,
+    justificatifs: [], horodatage: '', margePctAppliquee: 0, coutKgFLApplique: 1,
+  })
+  const etat = (saisies: ReturnType<typeof saisie>[]) => ({
+    schema: 2 as const, societes: [societe], magasins: [magasin], saisies, factures: [], clotures: [],
+  })
+  // 2024 : 26 000 (plafond 20 000) → excédent 6 000. 2025 : 15 000 → marge 5 000, on impute 5 000. 2026 : 21 000 → excédent 1 000, solde 2024 = 1 000.
+  const e = etat([saisie(2024, 26_000), saisie(2025, 15_000), saisie(2026, 21_000)])
+  const r24 = suiviReports(e as never, societe as never, 2024)
+  const r25 = suiviReports(e as never, societe as never, 2025)
+  const r26 = suiviReports(e as never, societe as never, 2026)
+  attendre('2024 : excédent né', r24.nouvelExcedent, 6000)
+  attendre('2025 : imputé sur la marge sous plafond (20 000 − 15 000)', r25.imputeCetExercice, 5000)
+  attendre('2025 : solde 2024 restant', r25.soldesFin[0]?.solde ?? -1, 1000)
+  attendre('2026 : rien d’imputable (dons ≥ plafond)', r26.imputeCetExercice, 0)
+  attendre('2026 : nouvel excédent', r26.nouvelExcedent, 1000)
+  attendre('2026 : deux origines en stock', r26.soldesFin.length, 2)
+  attendre('2026 : le solde 2024 expire fin 2029', r26.soldesFin[0]?.expire ?? -1, 2029)
+  // Imputation immédiate dès qu'une année laisse de la place sous le plafond
+  const e2 = etat([saisie(2020, 30_000), saisie(2021, 12_000)])
+  attendre('2021 : l’excédent 2020 (10 000) s’impute sur la marge 2021 (8 000)', suiviReports(e2 as never, societe as never, 2021).imputeCetExercice, 8000)
+  attendre('2021 : solde 2020 restant', suiviReports(e2 as never, societe as never, 2021).soldesFin[0]?.solde ?? -1, 2000)
+  // Expiration : plafond saturé chaque année de 2021 à 2025, l'excédent 2020 périme fin 2025
+  const e3 = etat([saisie(2020, 30_000), ...[2021, 2022, 2023, 2024, 2025].map((an) => saisie(an, 20_000)), saisie(2026, 10_000)])
+  attendre('2025 : excédent 2020 toujours en stock (jamais de place)', suiviReports(e3 as never, societe as never, 2025).soldesFin.length, 1)
+  attendre('2026 : excédent 2020 périmé — 10 000 de place, rien d’imputé', suiviReports(e3 as never, societe as never, 2026).imputeCetExercice, 0)
+  attendre('2026 : stock vide', suiviReports(e3 as never, societe as never, 2026).soldesFin.length, 0)
+}
 
 console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)
 process.exit(echecs === 0 ? 0 : 1)

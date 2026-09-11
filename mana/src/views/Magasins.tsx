@@ -7,6 +7,7 @@ import { IconMagasins } from '../components/Icons'
 import { uid } from '../lib/storage'
 import { lireFichiers } from '../lib/fichiers'
 import { normaliserSiren, sirenValide, verifierSiren } from '../lib/entreprise'
+import { denomination } from '../lib/identite'
 import { pdfModeleAttestation } from '../lib/pdf'
 
 /**
@@ -89,9 +90,13 @@ export function MagasinsView({
         const sesMagasins = magasins.filter((m) => m.societeId === s.id)
         return (
           <div className="card" key={s.id}>
-            <h3>{s.raisonSociale}</h3>
+            <h3>{denomination(s)}</h3>
             <p className="muted" style={{ margin: '2px 0 8px' }}>
               SIREN {s.siren}
+              {s.verification.formeJuridique ? ` · ${s.verification.formeJuridique}` : ''}
+              {s.verification.adresseSiege
+                ? ` · ${s.verification.adresseSiege.voie}, ${s.verification.adresseSiege.codePostal} ${s.verification.adresseSiege.commune}`
+                : ''}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {s.verification.apiStatut === 'verifie' ? (
@@ -222,18 +227,31 @@ function FormulaireSociete({
   const pieceOK = initial ? true : nouvellePiece !== null
   const valide = raisonSociale.trim() && sirenValide(siren) && caHT > 0 && margePct > 0 && margePct < 100 && pieceOK
 
+  // Dès que 9 ou 14 chiffres sont saisis, on interroge le registre sans attendre un clic.
+  useEffect(() => {
+    const chiffres = siren.replace(/\D/g, '')
+    if ((chiffres.length !== 9 && chiffres.length !== 14) || verifEnCours) return
+    if (verification.apiStatut === 'verifie' && initial && normaliserSiren(siren) === initial.siren) return
+    const timer = window.setTimeout(() => void lancerVerification(), 400)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siren])
+
   async function lancerVerification() {
     setVerifEnCours(true)
     setMessageVerif('')
     const r = await verifierSiren(siren)
     setVerifEnCours(false)
     if (r.ok) {
-      setMessageVerif(`✓ Société trouvée : ${r.raisonSociale}`)
-      if (!raisonSociale.trim() && r.raisonSociale) setRaisonSociale(r.raisonSociale)
+      setMessageVerif(`✓ ${r.raisonSociale}${r.formeJuridique ? ` (${r.formeJuridique})` : ''}${r.adresse ? ` — ${r.adresse.voie}, ${r.adresse.codePostal} ${r.adresse.commune}` : ''}`)
+      // La dénomination du registre fait foi : c'est elle qui ira sur le reçu fiscal.
+      if (r.raisonSociale) setRaisonSociale(r.raisonSociale)
       setVerification((v) => ({
         ...v,
         apiStatut: 'verifie',
         raisonSocialeAPI: r.raisonSociale,
+        formeJuridique: r.formeJuridique,
+        adresseSiege: r.adresse,
         apiVerifieLe: new Date().toISOString(),
       }))
     } else {
@@ -283,14 +301,14 @@ function FormulaireSociete({
       <div className="card">
         <h3>Identité (vérifiée au registre national)</h3>
         <label className="field">
-          <span>SIREN *</span>
+          <span>SIREN ou SIRET *</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="text"
               inputMode="numeric"
               value={siren}
               onChange={(e) => setSiren(e.target.value)}
-              placeholder="9 chiffres"
+              placeholder="9 chiffres (SIREN) ou 14 (SIRET)"
               style={{ flex: 1 }}
             />
             <button className="btn btn-ghost" onClick={lancerVerification} disabled={verifEnCours || !sirenValide(siren)} style={{ opacity: sirenValide(siren) ? 1 : 0.5 }}>
@@ -298,11 +316,27 @@ function FormulaireSociete({
             </button>
           </div>
           {messageVerif && <span className="aide" style={{ color: messageVerif.startsWith('✓') ? 'var(--vert)' : 'var(--rouge)' }}>{messageVerif}</span>}
-          <span className="aide">Vérification gratuite via l’API Recherche d’Entreprises (api.gouv.fr).</span>
+          <span className="aide">
+            Le registre national (api.gouv.fr) fournit la dénomination, la forme juridique et l’adresse du siège —
+            reprises telles quelles sur le reçu fiscal et les documents.
+          </span>
         </label>
         <label className="field" style={{ marginBottom: 0 }}>
-          <span>Raison sociale *</span>
-          <input type="text" value={raisonSociale} onChange={(e) => setRaisonSociale(e.target.value)} placeholder="Ex. SARL Delmas Distribution" />
+          <span>Dénomination {verification.apiStatut === 'verifie' ? '(registre national)' : '*'}</span>
+          <input
+            type="text"
+            value={raisonSociale}
+            onChange={(e) => setRaisonSociale(e.target.value)}
+            placeholder="Renseignée automatiquement depuis le SIREN"
+            readOnly={verification.apiStatut === 'verifie'}
+            style={verification.apiStatut === 'verifie' ? { background: 'var(--sable)', fontWeight: 600 } : undefined}
+          />
+          {verification.apiStatut === 'verifie' && (
+            <span className="aide">
+              {verification.formeJuridique ?? 'Forme juridique inconnue'}
+              {verification.adresseSiege ? ` · ${verification.adresseSiege.voie}, ${verification.adresseSiege.codePostal} ${verification.adresseSiege.commune}` : ''}
+            </span>
+          )}
         </label>
       </div>
 
@@ -409,6 +443,7 @@ function FormulaireMagasin({
   const [enseigne, setEnseigne] = useState(initial?.enseigne ?? '')
   const [coutKgFL, setCoutKgFL] = useState(initial?.coutKgFL ?? 2.2)
   const [frequence, setFrequence] = useState<'hebdomadaire' | 'quotidienne'>(initial?.frequenceSaisie ?? 'hebdomadaire')
+  const [modeFL, setModeFL] = useState<'poids' | 'inclus'>(initial?.modeFL ?? 'poids')
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
     initial?.collecteurs?.length ? initial.collecteurs : [{ nom: '', contact: '', jours: '' }],
   )
@@ -433,6 +468,7 @@ function FormulaireMagasin({
       enseigne: enseigne.trim() || undefined,
       coutKgFL,
       frequenceSaisie: frequence,
+      modeFL,
       collecteurs: collecteurs.filter((c) => c.nom.trim()),
       creeLe: initial?.creeLe ?? maintenant,
       versionsParametres: versions,
@@ -458,6 +494,21 @@ function FormulaireMagasin({
             <em>€/kg</em>
           </div>
           <span className="aide">Préréglé à 2,20 €/kg. Source : total des achats F&amp;L annuels ÷ tonnage acheté, ou échantillonnage sur 2 semaines.</span>
+        </label>
+        <label className="field">
+          <span>Fruits &amp; légumes</span>
+          <div className="chips" style={{ marginBottom: 0 }}>
+            <button type="button" className={`chip ${modeFL === 'poids' ? 'active' : ''}`} onClick={() => setModeFL('poids')}>
+              Pesés à l’enlèvement (kg)
+            </button>
+            <button type="button" className={`chip ${modeFL === 'inclus' ? 'active' : ''}`} onClick={() => setModeFL('inclus')}>
+              Inclus dans le montant scanné
+            </button>
+          </div>
+          <span className="aide">
+            Pesés : valorisés au coût moyen du kilo ci-dessus. Inclus : votre démarque « don » comprend déjà les F&amp;L,
+            un seul montant à saisir, pas de pesée. Modifiable à chaque saisie.
+          </span>
         </label>
         <label className="field" style={{ marginBottom: 0 }}>
           <span>Fréquence de saisie des pertes</span>

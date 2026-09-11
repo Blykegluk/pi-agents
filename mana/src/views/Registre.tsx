@@ -8,6 +8,7 @@ import { libelleMois } from '../lib/facturation'
 import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRecuFiscal, pdfRegistre } from '../lib/pdf'
 import { lireFichiers } from '../lib/fichiers'
 import { IconRegistre } from '../components/Icons'
+import { denomination } from '../lib/identite'
 
 /** Registre & documents (spec §4.5) + factures mensuelles et clôture d'exercice (complément §1 et §3). */
 export function Registre({
@@ -64,7 +65,7 @@ export function Registre({
         const m = magasinDe(s.magasinId)
         const num = (n: number) => n.toFixed(2).replace('.', ',')
         return [
-          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don', m?.nom ?? '', societe.raisonSociale,
+          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don', m?.nom ?? '', denomination(societe),
           num(s.pvEmballes), String(s.margePctAppliquee).replace('.', ','),
           num(coutEmballes(s.pvEmballes, s.margePctAppliquee)), String(s.kgFL).replace('.', ','),
           num(s.coutKgFLApplique), num(coutFL(s.kgFL, s.coutKgFLApplique)), num(baseDeLaSaisie(s)),
@@ -101,7 +102,7 @@ export function Registre({
                 setMessageFactures('')
               }}
             >
-              {a.societe.raisonSociale}
+              {denomination(a.societe)}
             </button>
           ))}
         </div>
@@ -254,31 +255,77 @@ export function Registre({
         </p>
         <div className="detail-lignes" style={{ marginBottom: 12 }}>
           <div className="ligne">
-            <span>Base retenue (plafonnée)</span>
-            <strong>{fmtEUR(agg.resultat.basePlafonnee, 2)}</strong>
+            <span>Dons de l’exercice (total des reçus)</span>
+            <strong>{fmtEUR(agg.baseBrute, 2)}</strong>
           </div>
           <div className="ligne">
-            <span>Réduction d’IS (60 %)</span>
-            <strong>{fmtEUR(agg.resultat.reductionIS, 2)}</strong>
+            <span>Retenus dans la limite du plafond</span>
+            <strong>{fmtEUR(agg.resultat.basePlafonnee, 2)}</strong>
           </div>
-          {agg.resultat.excedent > 0 && (
+          {agg.reports.imputeCetExercice > 0 && (
             <div className="ligne">
-              <span>Excédent reportable 5 exercices</span>
-              <strong>{fmtEUR(agg.resultat.excedent, 2)}</strong>
+              <span>Excédents antérieurs imputés</span>
+              <strong>{fmtEUR(agg.reports.imputeCetExercice, 2)}</strong>
+            </div>
+          )}
+          <div className="ligne">
+            <span>Réduction d’IS (60 %)</span>
+            <strong>{fmtEUR(agg.reductionISTotale, 2)}</strong>
+          </div>
+          {agg.reports.nouvelExcedent > 0 && (
+            <div className="ligne">
+              <span>Excédent {exercice} à reporter (jusqu’en {exercice + 5})</span>
+              <strong>{fmtEUR(agg.reports.nouvelExcedent, 2)}</strong>
             </div>
           )}
         </div>
+        {agg.reports.soldesFin.length > 0 && (
+          <div className="info-banner" style={{ marginBottom: 12 }}>
+            <strong>Stock d’excédents reportables au 31/12/{exercice} :</strong>{' '}
+            {agg.reports.soldesFin.map((r) => `${fmtEUR(r.solde, 2)} (origine ${r.origine}, imputable jusqu’en ${r.expire})`).join(' · ')}.
+            Il ne figure sur aucun reçu : c’est l’état annuel qui le suit d’une année sur l’autre, pour l’imprimé 2069-RCI.
+          </div>
+        )}
         <button className="btn btn-primary btn-block" onClick={() => pdfEtatAnnuel(agg, exercice)}>
-          ⬇ État annuel {exercice} — {societe.raisonSociale}
+          ⬇ État annuel {exercice} — {denomination(societe)}
         </button>
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => pdfRecuFiscal(agg, exercice)}>
-          ⬇ Reçu fiscal 238 bis prérempli — à faire signer par l’association
-        </button>
-        <p className="muted" style={{ margin: '8px 0 0', fontSize: 13 }}>
-          Modèle conforme au formulaire 2041-MEC-SD (Cerfa n° 16216). Mana préremplit le donateur, le montant en
-          chiffres et en toutes lettres, la période et l’annexe descriptive : l’association complète son bloc, date,
-          signe et cachète. Un seul reçu par exercice, même avec des enlèvements quotidiens.
+      </div>
+
+      <div className="card">
+        <h3>Reçus fiscaux 2041-MEC-SD</h3>
+        <p className="muted">
+          Un reçu par association, pour la valeur totale qu’elle a reçue — c’est elle qui le délivre, Mana le
+          préremplit (donateur lu au registre national, montant en chiffres et en toutes lettres, période, annexe
+          mensuelle). Un seul reçu par exercice et par association, même avec un enlèvement par jour.
         </p>
+        {(() => {
+          const parCollecteur = new Map<string, number>()
+          for (const s of agg.saisies) parCollecteur.set(s.collecteur ?? '', (parCollecteur.get(s.collecteur ?? '') ?? 0) + baseDeLaSaisie(s))
+          const tous = agg.magasins.flatMap((m) => m.collecteurs.map((c) => c.nom))
+          const unSeul = new Set(tous).size === 1 ? tous[0] : undefined
+          const entrees = [...parCollecteur.entries()].sort((a, b) => b[1] - a[1])
+          if (entrees.length === 0) return <p className="muted">Aucun don enregistré sur l’exercice.</p>
+          return entrees.map(([nom, montant]) => {
+            const sansNom = nom === ''
+            return (
+              <div className="row-actions" key={nom || '—'} style={{ marginBottom: 8, alignItems: 'center', gap: 10 }}>
+                <button
+                  className={`btn btn-sm ${sansNom && !unSeul ? 'btn-ghost' : 'btn-primary'}`}
+                  onClick={() => pdfRecuFiscal(agg, exercice, sansNom ? undefined : nom)}
+                  style={{ flex: 1 }}
+                >
+                  ⬇ Reçu {exercice} — {nom || unSeul || 'association non précisée'} · {fmtEUR(montant, 2)}
+                </button>
+              </div>
+            )
+          })
+        })()}
+        {agg.magasins.some((m) => m.collecteurs.length >= 2) && agg.saisies.some((s) => !s.collecteur) && (
+          <p className="muted" style={{ color: 'var(--ambre-texte)', margin: '4px 0 0' }}>
+            Certaines saisies n’indiquent pas quelle association a enlevé les denrées : précisez-le dans la saisie
+            concernée pour que chaque reçu porte le bon montant.
+          </p>
+        )}
       </div>
 
       <div className="card">

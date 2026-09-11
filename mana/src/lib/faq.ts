@@ -91,8 +91,14 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Qui remplit le reçu fiscal (Cerfa 2041-MEC-SD) ?',
     reponse:
-      'C’est l’association qui délivre le reçu — vous ne pouvez pas vous l’établir à vous-même. Mais la note 5 du formulaire prévoit que l’organisme reporte la valeur des dons en nature indiquée par l’entreprise donatrice : concrètement, Mana génère le reçu prérempli (votre société, le montant en chiffres et en toutes lettres, la période, et une annexe décrivant les biens mois par mois), et l’association n’a plus qu’à compléter son bloc, dater, signer et cacheter. Un seul reçu suffit pour tout l’exercice, même avec un enlèvement par jour : la note 9 autorise un reçu unique par période, à condition qu’elle ne chevauche pas deux exercices.',
+      'C’est l’association qui délivre le reçu — vous ne pouvez pas vous l’établir à vous-même. Mais la note 5 du formulaire prévoit que l’organisme reporte la valeur des dons en nature indiquée par l’entreprise donatrice : concrètement, Mana génère le reçu prérempli (votre société lue au registre national, le montant en chiffres et en toutes lettres, la période, et une annexe décrivant les biens mois par mois), et l’association n’a plus qu’à compléter son bloc, dater, signer et cacheter. Un reçu par association et par exercice, pour la valeur totale qu’elle a reçue — même avec un enlèvement par jour (la note 9 autorise un reçu unique par période, à condition qu’elle ne chevauche pas deux exercices). Si vous travaillez avec plusieurs associations, indiquez à chaque saisie laquelle est passée : chacune reçoit son propre reçu.',
     motsCles: 'recu fiscal cerfa 2041 mec sd 16216 association signature qui remplit annuel',
+  },
+  {
+    question: 'Où est suivi l’excédent au-delà du plafond ? Comment le récupérer l’année suivante ?',
+    reponse:
+      'L’excédent ne figure sur aucun reçu fiscal : le reçu atteste ce que l’association a reçu en totalité, sans plafond. C’est votre déclaration qui porte le plafonnement et le report, sur l’imprimé 2069-RCI joint à la liasse (dons de l’exercice, excédents antérieurs imputés, base retenue, excédent à reporter). L’état annuel de Mana tient ce suivi d’une année sur l’autre : origine de chaque excédent, montant imputé, solde, dernier exercice d’imputation (origine + 5). L’imputation se fait après les dons de l’année, dans la limite du plafond restant, au plus ancien d’abord — rien à faire signer à l’association.',
+    motsCles: 'excedent report reportable 5 ans plafond 2069 rci suivi stock recuperer',
   },
   {
     question: 'Pourquoi dois-je fournir ma liasse fiscale ?',

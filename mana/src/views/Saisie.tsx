@@ -92,6 +92,8 @@ export function SaisieView({
   const [kg, setKg] = useState('')
   const [note, setNote] = useState('')
   const [justificatifs, setJustificatifs] = useState<Justificatif[]>([])
+  const [collecteur, setCollecteur] = useState('')
+  const [flInclus, setFlInclus] = useState(false)
   const [confirmation, setConfirmation] = useState(false)
 
   // Recharge le formulaire quand on change de magasin, de semaine ou de mode
@@ -107,6 +109,9 @@ export function SaisieView({
       setNote(existante?.note ?? '')
       setJustificatifs(existante?.justificatifs ?? [])
     }
+    // Un seul collecteur : attribué d'office. Plusieurs : à choisir à chaque saisie.
+    setCollecteur(existante?.collecteur ?? (magasin?.collecteurs.length === 1 ? magasin.collecteurs[0].nom : ''))
+    setFlInclus(existante?.flInclus ?? magasin?.modeFL === 'inclus')
     setConfirmation(false)
   }, [existante, magasinId, semaine, jour, modeCorrection])
 
@@ -122,7 +127,9 @@ export function SaisieView({
   }
 
   const pvNum = Number(pv) || 0
-  const kgNum = Number(kg) || 0
+  const kgNum = flInclus && !modeCorrection ? 0 : Number(kg) || 0
+  const plusieursCollecteurs = magasin.collecteurs.length >= 2
+  const collecteurManquant = plusieursCollecteurs && !modeCorrection && !collecteur
   const cEmb = coutEmballes(pvNum, societe.margePct)
   const cFL = coutFL(kgNum, magasin.coutKgFL)
   const base = baseSemaine(pvNum, societe.margePct, kgNum, magasin.coutKgFL)
@@ -131,7 +138,7 @@ export function SaisieView({
   const correctionValide = modeCorrection
     ? semainePassee && (pvNum < 0 || kgNum < 0) && pvNum <= 0 && kgNum <= 0 && justificatifs.length > 0
     : true
-  const formulaireValide = modeCorrection ? correctionValide : pvNum > 0 || kgNum > 0
+  const formulaireValide = modeCorrection ? correctionValide : (pvNum > 0 || kgNum > 0) && !collecteurManquant
 
   async function ajouterFichiers(files: FileList | null) {
     const nouveaux = await lireFichiers(files)
@@ -148,6 +155,8 @@ export function SaisieView({
       type: modeCorrection ? 'correction' : 'don',
       pvEmballes: pvNum,
       kgFL: kgNum,
+      flInclus: flInclus && !modeCorrection ? true : undefined,
+      collecteur: collecteur || undefined,
       note: note.trim() || (modeCorrection ? 'Dons refusés par l’association' : undefined),
       justificatifs,
       horodatage: new Date().toISOString(),
@@ -257,14 +266,47 @@ export function SaisieView({
       )}
 
       <div className="card">
+        {plusieursCollecteurs && !modeCorrection && (
+          <label className="field">
+            <span>Association qui a enlevé les denrées *</span>
+            <div className="chips" style={{ marginBottom: 0 }}>
+              {magasin.collecteurs.map((c) => (
+                <button key={c.nom} type="button" className={`chip ${collecteur === c.nom ? 'active' : ''}`} onClick={() => setCollecteur(c.nom)}>
+                  {c.nom}
+                </button>
+              ))}
+            </div>
+            <span className="aide">Chaque association délivre son propre reçu fiscal : Mana totalise par association.</span>
+          </label>
+        )}
+        {!modeCorrection && (
+          <label className="field">
+            <span>Fruits &amp; légumes</span>
+            <div className="chips" style={{ marginBottom: 0 }}>
+              <button type="button" className={`chip ${!flInclus ? 'active' : ''}`} onClick={() => setFlInclus(false)}>
+                Pesés (kg)
+              </button>
+              <button type="button" className={`chip ${flInclus ? 'active' : ''}`} onClick={() => setFlInclus(true)}>
+                Inclus dans le montant
+              </button>
+            </div>
+          </label>
+        )}
         <label className="field">
-          <span>{modeCorrection ? 'Correction — produits emballés (prix de vente)' : 'Démarque « don » — produits emballés (prix de vente)'}</span>
+          <span>
+            {modeCorrection
+              ? 'Correction — produits emballés (prix de vente)'
+              : flInclus
+                ? 'Démarque « don » — tous produits, F&L compris (prix de vente)'
+                : 'Démarque « don » — produits emballés (prix de vente)'}
+          </span>
           <div className="suffixe">
             <input type="number" inputMode="decimal" step={1} max={modeCorrection ? 0 : undefined} min={modeCorrection ? undefined : 0} value={pv} onChange={(e) => setPv(e.target.value)} placeholder={modeCorrection ? 'Ex. −120' : 'Ex. 1 150'} />
             <em>€</em>
           </div>
           {!modeCorrection && <span className="aide">Montant lu dans l’export démarque de votre back-office (motif « don »).</span>}
         </label>
+        {(modeCorrection || !flInclus) && (
         <label className="field">
           <span>{modeCorrection ? 'Correction — fruits & légumes (poids)' : 'Fruits & légumes donnés (poids total)'}</span>
           <div className="suffixe">
@@ -273,6 +315,7 @@ export function SaisieView({
           </div>
           {!modeCorrection && <span className="aide">Poids global pesé par le collecteur (bordereau d’enlèvement).</span>}
         </label>
+        )}
         <label className="field">
           <span>Justificatifs (photos ou PDF){modeCorrection ? ' *' : ''}</span>
           <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => ajouterFichiers(e.target.files)} />
@@ -316,6 +359,12 @@ export function SaisieView({
               <strong>{fmtEUR(cEmb, 2)}</strong>
             </Amount>
           </div>
+          {flInclus && !modeCorrection ? (
+            <div className="ligne">
+              <span>Fruits &amp; légumes</span>
+              <span className="muted">inclus dans le montant scanné</span>
+            </div>
+          ) : (
           <div className="ligne">
             <span>Valorisation F&amp;L</span>
             <Amount
@@ -329,6 +378,7 @@ export function SaisieView({
               <strong>{fmtEUR(cFL, 2)}</strong>
             </Amount>
           </div>
+          )}
           <div className="ligne">
             <span>{quotidien ? 'Total de la journée (base fiscale)' : 'Total de la semaine (base fiscale)'}</span>
             <Amount

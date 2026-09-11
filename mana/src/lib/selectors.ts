@@ -8,6 +8,7 @@ import {
   plafondAnnuel,
   repasSauves,
   resultatAnnuel,
+  TAUX_REDUCTION,
   type ResultatAnnuel,
 } from './calc'
 import { compareWeekIds, mondayOfWeek, parseWeekId, weeksInYear } from './iso'
@@ -24,6 +25,7 @@ import {
   type LigneFacturation,
 } from './facturation'
 import { fmtEUR } from './format'
+import { suiviReports, type SuiviReports } from './reports'
 import { uid } from './storage'
 
 export function saisiesDuMagasin(state: AppState, magasinId: string, exercice: number): Saisie[] {
@@ -66,7 +68,13 @@ export interface AggSociete {
   saisiesEnAlerte: Set<string>
   /** Date estimée d'atteinte du plafond au rythme actuel (null si atteint ou hors de portée). */
   datePlafondEstimee: Date | null
+  /** Excédents reportables (art. 238 bis) : stock, imputation et soldes. */
+  reports: SuiviReports
+  /** Base ouvrant droit à réduction sur l'exercice : plafonnée de l'année + reports antérieurs imputés. */
+  baseRetenueTotale: number
+  reductionISTotale: number
 }
+
 
 /** Agrégats par société — plafond fiscal, facturation et vérification s'apprécient PAR SOCIÉTÉ. */
 export function aggParSociete(state: AppState, exercice: number): AggSociete[] {
@@ -110,12 +118,19 @@ export function aggParSociete(state: AppState, exercice: number): AggSociete[] {
       datePlafondEstimee = d
     }
 
+    const reports = suiviReports(state, societe, exercice)
+    const baseRetenueTotale = resultat.basePlafonnee + reports.imputeCetExercice
+    const reductionISTotale = TAUX_REDUCTION * baseRetenueTotale
+
     return {
       societe,
       magasins,
       saisies,
       baseBrute,
       resultat,
+      reports,
+      baseRetenueTotale,
+      reductionISTotale,
       kgFL,
       kgTotal,
       repas: repasSauves(kgTotal),

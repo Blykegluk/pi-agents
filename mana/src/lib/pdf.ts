@@ -5,6 +5,7 @@ import { weekLabel } from './iso'
 import { baseDeLaSaisie, type AggSociete } from './selectors'
 import { coutEmballes, coutFL, kgDetournes } from './calc'
 import { libelleMois, moisDeLaSemaine } from './facturation'
+import { denomination } from './identite'
 
 const MENTION_LEGALE =
   'Mana n’est pas un conseil fiscal ; ce document est destiné à validation par votre expert-comptable.'
@@ -62,7 +63,7 @@ function piedDePage(doc: jsPDF, mention: string = MENTION_LEGALE) {
 export async function pdfRegistre(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
   await marque(doc)
-  entete(doc, 'Registre des dons', `${agg.societe.raisonSociale} — Exercice ${exercice}`)
+  entete(doc, 'Registre des dons', `${denomination(agg.societe)} — Exercice ${exercice}`)
 
   const cols = [
     { x: 14, w: 38, label: 'Semaine' },
@@ -93,7 +94,7 @@ export async function pdfRegistre(agg: AggSociete, exercice: number) {
   for (const s of agg.saisies) {
     if (y > 182) {
       doc.addPage()
-      entete(doc, 'Registre des dons (suite)', `${agg.societe.raisonSociale} — Exercice ${exercice}`)
+      entete(doc, 'Registre des dons (suite)', `${denomination(agg.societe)} — Exercice ${exercice}`)
       y = 32
     }
     const enAlerte = agg.saisiesEnAlerte.has(s.id)
@@ -156,7 +157,7 @@ export async function pdfRegistre(agg: AggSociete, exercice: number) {
   }
 
   piedDePage(doc)
-  doc.save(`mana-registre-${slug(agg.societe.raisonSociale)}-${exercice}.pdf`)
+  doc.save(`mana-registre-${slug(denomination(agg.societe))}-${exercice}.pdf`)
 }
 
 /** Note de méthode — 1 page par magasin, datée et versionnée. */
@@ -164,7 +165,7 @@ export async function pdfNoteDeMethode(societe: Societe, magasin: Magasin, exerc
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   await marque(doc)
   const version = magasin.versionsParametres[magasin.versionsParametres.length - 1]
-  entete(doc, 'Note de méthode de valorisation', `${societe.raisonSociale} — ${magasin.nom}`)
+  entete(doc, 'Note de méthode de valorisation', `${denomination(societe)} — ${magasin.nom}`)
 
   let y = 34
   const p = (txt: string, opts?: { bold?: boolean; size?: number; gap?: number }) => {
@@ -234,7 +235,7 @@ export async function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   await marque(doc)
   const societe = agg.societe
-  entete(doc, 'État annuel de valorisation des dons', `${societe.raisonSociale} — Exercice ${exercice}`)
+  entete(doc, 'État annuel de valorisation des dons', `${denomination(societe)} — Exercice ${exercice}`)
 
   let y = 30
   doc.setFontSize(9)
@@ -265,34 +266,105 @@ export async function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   y += 8
 
   const r = agg.resultat
+  const rep = agg.reports
   ligne('Chiffre d’affaires HT de référence (vérifié)', fmtEUR(societe.caHT))
-  ligne('Base de dons valorisée au coût de revient', fmtEUR(r.baseBrute, 2))
+  ligne('Dons de l’exercice valorisés au coût de revient (total des reçus fiscaux)', fmtEUR(r.baseBrute, 2))
   ligne('Plafond annuel — max(20 000 € ; 0,5 % × CA HT)', fmtEUR(r.plafond))
-  ligne('Base retenue (plafonnée)', fmtEUR(r.basePlafonnee, 2), true)
-  if (r.excedent > 0) ligne('Excédent au-delà du plafond — reportable 5 exercices', fmtEUR(r.excedent, 2))
-  ligne(`Réduction d’impôt sur les sociétés (60 %)`, fmtEUR(r.reductionIS, 2), true)
+  ligne('Dons de l’exercice retenus dans la limite du plafond', fmtEUR(r.basePlafonnee, 2))
+  if (rep.imputeCetExercice > 0) ligne('Excédents d’exercices antérieurs imputés cette année', fmtEUR(rep.imputeCetExercice, 2))
+  ligne('Base totale ouvrant droit à réduction', fmtEUR(agg.baseRetenueTotale, 2), true)
+  ligne(`Réduction d’impôt sur les sociétés (60 %)`, fmtEUR(agg.reductionISTotale, 2), true)
+  if (rep.nouvelExcedent > 0) ligne(`Excédent ${exercice} au-delà du plafond — à reporter (jusqu’à ${exercice + 5})`, fmtEUR(rep.nouvelExcedent, 2))
   y += 2
   ligne(`Commissions Mana facturées sur l'exercice (HT)`, fmtEUR(agg.commissionsHT, 2))
-  ligne('Gain net pour la société (réduction − commissions)', fmtEUR(r.reductionIS - agg.commissionsHT, 2), true)
+  ligne('Gain net pour la société (réduction − commissions)', fmtEUR(agg.reductionISTotale - agg.commissionsHT, 2), true)
 
   y += 4
   doc.setDrawColor(26, 59, 46)
   doc.line(14, y, 196, y)
   y += 8
 
+  // --- Suivi des excédents reportables — ce que l'expert-comptable porte sur la 2069-RCI ---
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
-  doc.text(t('Reçus fiscaux attendus des associations'), 14, y)
+  doc.text(t('Excédents reportables — suivi pour l’imprimé 2069-RCI'), 14, y)
+  y += 6
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t(
+      'L’excédent de dons au-delà du plafond n’apparaît sur aucun reçu fiscal : il se suit dans la déclaration de ' +
+        'l’entreprise (imprimé 2069-RCI-SD, cadre mécénat) et s’impute sur les cinq exercices suivants, dans la limite ' +
+        'du plafond de chaque année, après les dons de l’année, au plus ancien d’abord. Le tableau ci-dessous tient ce ' +
+        'suivi ; il se reconduit d’un état annuel à l’autre.',
+    ),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+  y += 15
+  if (rep.soldesFin.length === 0 && rep.imputeCetExercice === 0) {
+    doc.setFontSize(9.5)
+    doc.text(t(`Aucun excédent en stock au ${31}/12/${exercice}.`), 14, y)
+    y += 8
+  } else {
+    const cols = [
+      { x: 14, w: 34, label: 'Origine', right: false },
+      { x: 48, w: 36, label: 'Excédent initial', right: true },
+      { x: 84, w: 36, label: `Imputé jusqu’en ${exercice}`, right: true },
+      { x: 120, w: 36, label: `Solde au 31/12/${exercice}`, right: true },
+      { x: 156, w: 40, label: 'Imputable jusqu’en', right: true },
+    ]
+    doc.setFont('InstrumentSans', 'bold')
+    doc.setFontSize(8)
+    for (const c of cols) doc.text(t(c.label), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right' } : undefined)
+    doc.setFont('InstrumentSans', 'normal')
+    y += 2
+    doc.line(14, y, 196, y)
+    y += 5
+    // On liste les soldes de fin, plus les origines totalement imputées cette année
+    const lignesReports = [...rep.soldesFin]
+    for (const d of rep.disponibles) {
+      if (!lignesReports.some((x) => x.origine === d.origine)) lignesReports.push({ ...d, impute: d.initial, solde: 0 })
+    }
+    lignesReports.sort((a, b) => a.origine - b.origine)
+    doc.setFontSize(9)
+    for (const l of lignesReports) {
+      const vals = [`Exercice ${l.origine}`, fmtEUR(l.initial, 2), fmtEUR(l.impute, 2), fmtEUR(l.solde, 2), String(l.expire)]
+      vals.forEach((v, i) => {
+        const c = cols[i]
+        doc.text(t(v), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right' } : undefined)
+      })
+      y += 6
+    }
+    y += 3
+  }
+
+  doc.setDrawColor(26, 59, 46)
+  doc.line(14, y, 196, y)
+  y += 8
+
+  // --- Reçus fiscaux : un par association, pour le montant qu'elle a reçu ---
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(11)
+  doc.text(t('Reçus fiscaux 2041-MEC-SD — un par organisme bénéficiaire'), 14, y)
   y += 7
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(10)
-  const collecteurs = agg.magasins.flatMap((m) => m.collecteurs.map((c) => ({ magasin: m.nom, ...c })))
-  if (collecteurs.length === 0) {
-    doc.text(t('Aucun collecteur renseigné.'), 14, y)
+  const parCollecteur = new Map<string, number>()
+  for (const sa of agg.saisies) {
+    const k = sa.collecteur ?? ''
+    parCollecteur.set(k, (parCollecteur.get(k) ?? 0) + baseDeLaSaisie(sa))
+  }
+  if (parCollecteur.size === 0) {
+    doc.text(t('Aucun don enregistré sur l’exercice.'), 14, y)
     y += 7
   } else {
-    for (const c of collecteurs) {
-      const lines = doc.splitTextToSize(t(`• ${c.nom} (${c.magasin}) — reçu 2041-MEC-SD à obtenir pour l’exercice ${exercice}`), 182)
+    for (const [nomC, montant] of [...parCollecteur.entries()].sort((a, b) => b[1] - a[1])) {
+      const libelle = nomC || (agg.magasins.flatMap((m) => m.collecteurs).length === 1 ? agg.magasins.flatMap((m) => m.collecteurs)[0].nom : 'Association non précisée à la saisie')
+      const lines = doc.splitTextToSize(t(`• ${libelle} — reçu attendu pour ${fmtEUR(montant, 2)} (généré prérempli par Mana, à faire signer)`), 182)
       doc.text(lines, 14, y)
       y += lines.length * 5 + 2
     }
@@ -306,8 +378,8 @@ export async function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(9.5)
   const obligations = [
-    'Obtenir de chaque association bénéficiaire le reçu fiscal 2041-MEC-SD couvrant les dons de l’exercice.',
-    'Reporter la réduction d’impôt sur l’imprimé 2069-RCI joint à la liasse fiscale.',
+    'Faire signer à chaque association bénéficiaire le reçu fiscal 2041-MEC-SD prérempli par Mana, pour la valeur totale qu’elle a reçue.',
+    'Reporter sur l’imprimé 2069-RCI joint à la liasse : dons de l’exercice, excédents antérieurs imputés, base retenue, excédent à reporter.',
     'Au-delà de 10 000 € de dons sur l’exercice : déclaration des montants, dates, bénéficiaires et contreparties ' +
       '(déclaration spécifique dématérialisée).',
     'Conserver le registre des dons, la note de méthode et les bordereaux d’enlèvement signés à l’appui de la valorisation.',
@@ -321,7 +393,7 @@ export async function pdfEtatAnnuel(agg: AggSociete, exercice: number) {
   }
 
   piedDePage(doc)
-  doc.save(`mana-etat-annuel-${slug(societe.raisonSociale)}-${exercice}.pdf`)
+  doc.save(`mana-etat-annuel-${slug(denomination(societe))}-${exercice}.pdf`)
 }
 
 /** Facture (commission mensuelle, complément ou avoir) — mentions légales françaises. */
@@ -341,7 +413,7 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
   doc.text(t('SIREN : [SIREN Mana] — TVA : [N° TVA Mana]'), 14, y + 10)
 
   doc.setFont('InstrumentSans', 'bold')
-  doc.text(t(societe.raisonSociale), 196, y, { align: 'right' })
+  doc.text(t(denomination(societe)), 196, y, { align: 'right' })
   doc.setFont('InstrumentSans', 'normal')
   doc.text(t(`SIREN : ${societe.siren}`), 196, y + 5, { align: 'right' })
   if (facture.periode.length === 7) {
@@ -416,7 +488,7 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
   }
 
   piedDePage(doc, 'Facture établie par Mana SAS. Pas d’économie d’impôt = pas de facture.')
-  doc.save(`${facture.numero.toLowerCase()}-${slug(societe.raisonSociale)}.pdf`)
+  doc.save(`${facture.numero.toLowerCase()}-${slug(denomination(societe))}.pdf`)
 }
 
 /** Affiche A4 « Le bac don — règles de tri » à imprimer pour la réserve. */
@@ -677,6 +749,8 @@ export async function pdfModeleAttestation(raisonSociale?: string, siren?: strin
 
 function slug(s: string): string {
   return s
+    .replace(/œ/g, 'oe')
+    .replace(/æ/g, 'ae')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
@@ -735,12 +809,23 @@ function caseACocher(doc: jsPDF, texte: string, x: number, y: number, largeur: n
   return y + lignes.length * 3.9 + 2
 }
 
-export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
+/**
+ * Un reçu par organisme bénéficiaire : chaque association atteste de ce qu'elle
+ * a reçu, elle. `collecteur` restreint aux saisies attribuées à cette
+ * association ; sans argument, le reçu couvre toutes les saisies (cas d'un
+ * seul collecteur). Le montant est la valeur TOTALE remise — le plafond de
+ * l'article 238 bis et le report de l'excédent sont l'affaire de l'entreprise
+ * (imprimé 2069-RCI), jamais du reçu.
+ */
+export async function pdfRecuFiscal(agg: AggSociete, exercice: number, collecteur?: string) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   await marque(doc)
   const societe = agg.societe
-  const valeur = agg.resultat.basePlafonnee
-  entete(doc, 'Reçu de dons — article 238 bis du CGI', `${societe.raisonSociale} — Exercice ${exercice}`)
+  const nom = denomination(societe)
+  const saisies = collecteur ? agg.saisies.filter((s) => (s.collecteur ?? '') === collecteur) : agg.saisies
+  const valeur = saisies.reduce((t, s) => t + baseDeLaSaisie(s), 0)
+  const sousTitre = `${nom} — Exercice ${exercice}${collecteur ? ` — ${collecteur}` : ''}`
+  entete(doc, 'Reçu de dons — article 238 bis du CGI', sousTitre)
 
   let y = 28
   doc.setFontSize(8)
@@ -759,9 +844,9 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   ligneAComplerer(doc, 'Numéro d’ordre du reçu :', 14, y, 90)
   y += 7
 
-  // --- Organisme bénéficiaire : rempli par l'association ---
+  // --- Organisme bénéficiaire : complété par l'association (nom prérempli si connu) ---
   y = rubrique(doc, 'Organisme bénéficiaire des dons et versements  (à compléter par l’organisme)', y)
-  ligneAComplerer(doc, 'Dénomination :', 14, y, 196)
+  ligneAComplerer(doc, 'Dénomination :', 14, y, 196, collecteur)
   y += 7
   ligneAComplerer(doc, 'Numéro SIREN ou RNA :', 14, y, 100)
   ligneAComplerer(doc, 'Objet :', 104, y, 196)
@@ -804,18 +889,18 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   )
   y += 0.5
 
-  // --- Entreprise donatrice : prérempli par Mana ---
-  y = rubrique(doc, 'Entreprise donatrice  (prérempli par Mana)', y)
-  ligneAComplerer(doc, 'Dénomination :', 14, y, 130, societe.raisonSociale)
-  ligneAComplerer(doc, 'Forme juridique :', 134, y, 196)
+  // --- Entreprise donatrice : identité lue au registre national ---
+  const v = societe.verification
+  y = rubrique(doc, 'Entreprise donatrice  (identité du registre national, préremplie par Mana)', y)
+  ligneAComplerer(doc, 'Dénomination :', 14, y, 130, nom)
+  ligneAComplerer(doc, 'Forme juridique :', 134, y, 196, v.formeJuridique)
   y += 7
   ligneAComplerer(doc, 'Numéro SIREN :', 14, y, 90, societe.siren || undefined)
   y += 7
-  ligneAComplerer(doc, 'Adresse — N° :', 14, y, 70)
-  ligneAComplerer(doc, 'Rue :', 74, y, 196)
+  ligneAComplerer(doc, 'Adresse :', 14, y, 196, v.adresseSiege?.voie)
   y += 7
-  ligneAComplerer(doc, 'Code postal :', 14, y, 62)
-  ligneAComplerer(doc, 'Commune :', 66, y, 196)
+  ligneAComplerer(doc, 'Code postal :', 14, y, 62, v.adresseSiege?.codePostal)
+  ligneAComplerer(doc, 'Commune :', 66, y, 196, v.adresseSiege?.commune)
   y += 8
 
   // --- Dons et versements ---
@@ -891,7 +976,7 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   doc.text(
     t(
       'Note 5 du formulaire 2041-MEC-SD : l’organisme bénéficiaire des dons en nature reporte sur le reçu fiscal le ' +
-        'montant indiqué par l’entreprise donatrice. Ce montant est ici la valeur au coût de revient calculée par Mana ' +
+        'montant indiqué par l’entreprise donatrice. Ce montant est la valeur au coût de revient calculée par Mana ' +
         'et justifiée par le registre des dons et la note de méthode.',
     ),
     110,
@@ -904,41 +989,43 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   // Annexe — description exhaustive des biens remis (note 7)
   // ------------------------------------------------------------------
   doc.addPage()
-  entete(doc, 'Annexe au reçu fiscal — description des biens remis', `${societe.raisonSociale} — Exercice ${exercice}`)
+  entete(doc, 'Annexe au reçu fiscal — description des biens remis', sousTitre)
   y = 30
   doc.setFontSize(9)
   doc.setTextColor(120, 113, 100)
   doc.text(
     t(
       'Annexe prévue par la note 7 du formulaire 2041-MEC-SD. Récapitulatif mensuel établi à partir du registre des ' +
-        'dons horodaté de Mana ; le détail enlèvement par enlèvement figure dans le document « Registre des dons » et ' +
-        'dans les bordereaux d’enlèvement signés, conservés par le magasin.',
+        'dons horodaté de Mana. Produits emballés : valeur au coût de revient issue de la démarque scannée en magasin ' +
+        '(nombre de colis sur les bordereaux signés). Fruits & légumes : poids pesé à l’enlèvement, valorisé au coût ' +
+        'moyen du kilo — ou inclus dans la valeur scannée lorsque le magasin ne les pèse pas séparément.',
     ),
     14,
     y,
     { maxWidth: 182 },
   )
   doc.setTextColor(43, 38, 32)
-  y += 14
+  y += 18
 
   // Regroupement par mois (un enlèvement quotidien ferait 365 lignes)
-  const parMois = new Map<string, { pv: number; kgFL: number; base: number; kg: number }>()
-  for (const s of agg.saisies) {
+  const parMois = new Map<string, { emballes: number; kgFL: number; coutFLm: number; total: number; inclus: boolean }>()
+  for (const s of saisies) {
     const mois = moisDeLaSemaine(s.semaine)
-    const e = parMois.get(mois) ?? { pv: 0, kgFL: 0, base: 0, kg: 0 }
-    e.pv += coutEmballes(s.pvEmballes, s.margePctAppliquee)
+    const e = parMois.get(mois) ?? { emballes: 0, kgFL: 0, coutFLm: 0, total: 0, inclus: false }
+    e.emballes += coutEmballes(s.pvEmballes, s.margePctAppliquee)
     e.kgFL += s.kgFL
-    e.base += baseDeLaSaisie(s)
-    e.kg += kgDetournes(s.pvEmballes, s.kgFL)
+    e.coutFLm += coutFL(s.kgFL, s.coutKgFLApplique)
+    e.total += baseDeLaSaisie(s)
+    if (s.flInclus) e.inclus = true
     parMois.set(mois, e)
   }
 
   const cols = [
-    { x: 14, w: 42, label: 'Période', right: false },
-    { x: 56, w: 52, label: 'Nature des biens', right: false },
-    { x: 108, w: 26, label: 'Quantité (kg)', right: true },
-    { x: 134, w: 30, label: 'Dont F&L (kg)', right: true },
-    { x: 164, w: 32, label: 'Coût de revient (€)', right: true },
+    { x: 14, w: 36, label: 'Période', right: false },
+    { x: 50, w: 44, label: 'Produits emballés (€)', right: true },
+    { x: 94, w: 30, label: 'F&L pesés (kg)', right: true },
+    { x: 124, w: 34, label: 'F&L (€)', right: true },
+    { x: 158, w: 38, label: 'Total coût de revient (€)', right: true },
   ]
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(8)
@@ -950,19 +1037,25 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   y += 5
 
   const mois = [...parMois.keys()].sort()
+  let totEmb = 0
+  let totKg = 0
+  let totFL = 0
   for (const m of mois) {
     const e = parMois.get(m)!
+    totEmb += e.emballes
+    totKg += e.kgFL
+    totFL += e.coutFLm
     const vals = [
       libelleMois(m),
-      'Denrées alimentaires invendues',
-      fmtNum(e.kg, 0),
-      fmtNum(e.kgFL, 1),
-      fmtEUR(e.base, 2),
+      fmtEUR(e.emballes, 2) + (e.inclus ? ' *' : ''),
+      e.kgFL > 0 ? fmtNum(e.kgFL, 1) : '—',
+      e.coutFLm > 0 ? fmtEUR(e.coutFLm, 2) : '—',
+      fmtEUR(e.total, 2),
     ]
     doc.setFontSize(8.5)
-    vals.forEach((v, i) => {
+    vals.forEach((val, i) => {
       const c = cols[i]
-      doc.text(t(v), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right', maxWidth: c.w } : { maxWidth: c.w })
+      doc.text(t(val), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right', maxWidth: c.w } : { maxWidth: c.w })
     })
     y += 6
   }
@@ -972,42 +1065,50 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number) {
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.text(t(`Total exercice ${exercice}`), 14, y)
-  doc.text(t(fmtNum(agg.kgTotal, 0)), 134, y, { align: 'right' })
-  doc.text(t(fmtNum(agg.kgFL, 1)), 164, y, { align: 'right' })
-  doc.text(t(fmtEUR(agg.baseBrute, 2)), 196, y, { align: 'right' })
+  doc.text(t(fmtEUR(totEmb, 2)), 94, y, { align: 'right' })
+  doc.text(t(totKg > 0 ? fmtNum(totKg, 1) : '—'), 124, y, { align: 'right' })
+  doc.text(t(totFL > 0 ? fmtEUR(totFL, 2) : '—'), 158, y, { align: 'right' })
+  doc.text(t(fmtEUR(valeur, 2)), 196, y, { align: 'right' })
   doc.setFont('InstrumentSans', 'normal')
-  y += 10
-
-  if (agg.resultat.excedent > 0) {
-    doc.setFillColor(243, 228, 198)
-    doc.roundedRect(14, y, 182, 16, 2, 2, 'F')
-    doc.setFontSize(8.5)
-    doc.text(
-      t(
-        `Dons remis sur l’exercice : ${fmtEUR(agg.baseBrute, 2)}. Le reçu porte sur ${fmtEUR(valeur, 2)}, montant ` +
-          `retenu dans la limite du plafond de l’article 238 bis (${fmtEUR(agg.resultat.plafond, 2)}). L’excédent de ` +
-          `${fmtEUR(agg.resultat.excedent, 2)} est reportable sur les cinq exercices suivants.`,
-      ),
-      17,
-      y + 5,
-      { maxWidth: 176 },
-    )
-    y += 22
+  y += 7
+  if ([...parMois.values()].some((e) => e.inclus)) {
+    doc.setFontSize(8)
+    doc.setTextColor(120, 113, 100)
+    doc.text(t('* Fruits & légumes inclus dans la valeur scannée pour tout ou partie du mois (pas de pesée séparée).'), 14, y)
+    doc.setTextColor(43, 38, 32)
+    y += 6
   }
+  y += 4
+
+  doc.setFillColor(243, 228, 198)
+  doc.roundedRect(14, y, 182, 15, 2, 2, 'F')
+  doc.setFontSize(8.5)
+  doc.text(
+    t(
+      'Le présent reçu atteste de la valeur totale reçue par l’organisme. La limite de l’article 238 bis ' +
+        '(20 000 € ou 0,5 % du CA HT) et le report sur cinq exercices de l’éventuel excédent relèvent de la déclaration ' +
+        'de l’entreprise donatrice (imprimé 2069-RCI) — voir l’état annuel de valorisation établi par Mana.',
+    ),
+    17,
+    y + 5,
+    { maxWidth: 176 },
+  )
+  y += 22
 
   // Magasins couverts par le reçu
+  const idsMagasins = new Set(saisies.map((s) => s.magasinId))
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.text(t('Établissements donateurs couverts par le présent reçu'), 14, y)
   doc.setFont('InstrumentSans', 'normal')
   y += 6
   doc.setFontSize(8.5)
-  for (const m of agg.magasins) {
-    const collecteurs = m.collecteurs.map((c) => `${c.nom}${c.jours ? ` (${c.jours})` : ''}`).join(', ')
-    doc.text(t(`• ${m.nom}${collecteurs ? ` — collecte : ${collecteurs}` : ''}`), 14, y, { maxWidth: 182 })
+  for (const m of agg.magasins.filter((x) => idsMagasins.has(x.id))) {
+    const c = collecteur ? m.collecteurs.find((x) => x.nom === collecteur) : m.collecteurs[0]
+    doc.text(t(`• ${m.nom}${c?.jours ? ` — passages : ${c.jours}` : ''}`), 14, y, { maxWidth: 182 })
     y += 5.5
   }
 
   piedDePage(doc, 'Reçu prérempli par Mana — à faire dater, signer et cacheter par l’organisme bénéficiaire.')
-  doc.save(`mana-recu-fiscal-238bis-${slug(societe.raisonSociale)}-${exercice}.pdf`)
+  doc.save(`mana-recu-fiscal-238bis-${slug(nom)}${collecteur ? `-${slug(collecteur)}` : ''}-${exercice}.pdf`)
 }

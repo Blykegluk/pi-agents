@@ -3,6 +3,7 @@ import { aggParSociete } from '../lib/selectors'
 import { fmtDate, fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
 import { Gauge } from '../components/Gauge'
+import { denomination } from '../lib/identite'
 import { IconTableau } from '../components/Icons'
 import { CO2_PAR_KG, KG_PAR_REPAS, PV_MOYEN_EMBALLES_PAR_KG } from '../lib/calc'
 
@@ -40,7 +41,7 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
               <Amount
                 titre="Réduction consolidée"
                 lignes={[
-                  ...aggs.map((a) => `${a.societe.raisonSociale} : ${fmtEUR(a.resultat.reductionIS, 2)}`),
+                  ...aggs.map((a) => `${denomination(a.societe)} : ${fmtEUR(a.reductionISTotale, 2)}`),
                   `= ${fmtEUR(totalReduction, 2)}`,
                 ]}
               >
@@ -64,7 +65,7 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
         const p = a.projection
         return (
           <div className="card" key={a.societe.id}>
-            <h3>{a.societe.raisonSociale}</h3>
+            <h3>{denomination(a.societe)}</h3>
             <p className="muted" style={{ marginTop: 2 }}>
               {a.magasins.map((m) => m.nom).join(' · ') || 'Aucun magasin'}
             </p>

@@ -24,7 +24,11 @@ export interface Justificatif {
 export interface VerificationSociete {
   /** Vérification d'existence via l'API Recherche d'Entreprises (api.gouv.fr). */
   apiStatut: 'verifie' | 'introuvable' | 'indisponible' | 'non_verifie'
+  /** Dénomination officielle au registre — celle qui figure sur tous les documents. */
   raisonSocialeAPI?: string
+  /** Forme juridique et adresse du siège, lues au registre (reçu fiscal). */
+  formeJuridique?: string
+  adresseSiege?: { voie: string; codePostal: string; commune: string }
   apiVerifieLe?: string
   /** Vérification du CA par justificatif (liasse 2052 ou attestation d'expert-comptable). */
   caVerifieLe?: string
@@ -63,6 +67,11 @@ export interface Magasin {
   coutKgFL: number
   /** Rythme de saisie des pertes choisi par le magasin (hebdomadaire par défaut). */
   frequenceSaisie?: 'hebdomadaire' | 'quotidienne'
+  /**
+   * Fruits & légumes : 'poids' (pesés, valorisés au coût/kg — défaut) ou
+   * 'inclus' (déjà compris dans le montant de démarque scanné).
+   */
+  modeFL?: 'poids' | 'inclus'
   collecteurs: Collecteur[]
   miseEnPlace?: MiseEnPlace
   creeLe: string
@@ -80,8 +89,12 @@ export interface Saisie {
   type: 'don' | 'correction'
   /** Montant prix de vente de la démarque "don" — produits emballés (€) */
   pvEmballes: number
-  /** Poids de fruits & légumes donnés (kg) */
+  /** Poids de fruits & légumes donnés (kg) — 0 si les F&L sont inclus dans le montant. */
   kgFL: number
+  /** Les F&L sont compris dans `pvEmballes` (pas de pesée séparée). */
+  flInclus?: boolean
+  /** Association qui a enlevé les denrées — indispensable dès qu'un magasin en a plusieurs. */
+  collecteur?: string
   note?: string
   justificatifs: Justificatif[]
   /** Horodatage de l'enregistrement (registre opposable) */

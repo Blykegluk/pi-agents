@@ -21,7 +21,12 @@ export function fmtKg(n: number, decimales = 0): string {
 
 /** Les polices PDF standard ne connaissent pas les espaces fines insécables d'Intl. */
 export function pdfSafe(s: string): string {
-  return s.replace(/[  ]/g, ' ').replace(/‑/g, '-')
+  // Espaces insécables → espace ; tirets et coches hors du sous-ensemble de police → équivalents ASCII
+  return s
+    .replace(/[\u00a0\u202f]/g, ' ')
+    .replace(/\u2011/g, '-')
+    .replace(/[✓✔]/g, 'OK')
+    .replace(/[✗✘]/g, 'X')
 }
 
 export function fmtDate(iso: string): string {

@@ -15,6 +15,7 @@ import {
 import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { fmtNum } from '../lib/format'
+import { denomination } from '../lib/identite'
 
 /**
  * Mise en place de la collecte — l'accompagnement pas à pas : estimation des
@@ -419,7 +420,7 @@ export function Collecte({
           pour un sac), notez le total sur le bordereau. Le collecteur contrôle et signe à chaque passage — prenez le
           bordereau en photo et joignez-le à la saisie de la semaine.
         </p>
-        <button className="btn btn-primary btn-block" onClick={() => pdfBordereau(magasin, societe.raisonSociale)}>
+        <button className="btn btn-primary btn-block" onClick={() => pdfBordereau(magasin, denomination(societe))}>
           ⬇ Imprimer des bordereaux d’enlèvement vierges
         </button>
       </div>
