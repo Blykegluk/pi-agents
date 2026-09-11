@@ -17,7 +17,10 @@ export interface Justificatif {
   nom: string
   type: string
   taille: number
-  dataUrl: string
+  /** Pièce gardée en local (compte hors ligne) — encombre le localStorage. */
+  dataUrl?: string
+  /** Chemin dans le bucket Supabase `mana-bordereaux` (compte connecté). */
+  chemin?: string
 }
 
 /** Vérification du CA et de l'existence de la société — le CA n'est jamais un champ libre. */

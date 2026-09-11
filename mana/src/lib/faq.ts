@@ -95,6 +95,12 @@ export const FAQ: EntreeFAQ[] = [
     motsCles: 'recu fiscal cerfa 2041 mec sd 16216 association signature qui remplit annuel',
   },
   {
+    question: 'Comment scanner un bordereau au lieu de tout retaper ?',
+    reponse:
+      'Dans l’onglet Saisie, « Scanner le bordereau signé » : photographiez le bordereau à la fin du passage. La photo est compressée, archivée dans votre espace privé, puis lue automatiquement — colis remis, poids net des fruits & légumes, association, nom du collecteur, refus, présence des signatures. Mana affiche ce qu’il a lu avec un niveau de confiance et la liste de ses doutes ; rien n’est enregistré tant que vous n’avez pas cliqué sur « Reporter dans la saisie », et vous pouvez corriger chaque champ ensuite. Un chiffre illisible n’est jamais deviné : il reste vide et vous est signalé. Le montant de démarque, lui, ne figure pas sur le bordereau — il vient de votre back-office et reste à saisir.',
+    motsCles: 'scan scanner photo bordereau lecture automatique ocr saisie automatique appareil photo',
+  },
+  {
     question: 'Où est suivi l’excédent au-delà du plafond ? Comment le récupérer l’année suivante ?',
     reponse:
       'L’excédent ne figure sur aucun reçu fiscal : le reçu atteste ce que l’association a reçu en totalité, sans plafond. C’est votre déclaration qui porte le plafonnement et le report, sur l’imprimé 2069-RCI joint à la liasse (dons de l’exercice, excédents antérieurs imputés, base retenue, excédent à reporter). L’état annuel de Mana tient ce suivi d’une année sur l’autre : origine de chaque excédent, montant imputé, solde, dernier exercice d’imputation (origine + 5). L’imputation se fait après les dons de l’année, dans la limite du plafond restant, au plus ancien d’abord — rien à faire signer à l’association.',

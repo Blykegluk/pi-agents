@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { baseSemaine, coutEmballes, coutFL } from '../lib/calc'
 import { fmtEUR, fmtNum, fmtPct } from '../lib/format'
@@ -8,6 +9,7 @@ import { IconSaisie } from '../components/Icons'
 import { uid } from '../lib/storage'
 import { lireFichiers } from '../lib/fichiers'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
+import { ScanBordereau, type PropositionScan } from '../components/ScanBordereau'
 
 // --- Saisie quotidienne : petits utilitaires de dates locales (AAAA-MM-JJ) ---
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -35,12 +37,14 @@ const semaineDuJour = (id: string) => {
 export function SaisieView({
   state,
   exercice,
+  session,
   onSave,
   onDelete,
   onAllerCollecte,
 }: {
   state: AppState
   exercice: number
+  session: Session | null
   onSave: (s: Saisie) => void
   onDelete: (id: string) => void
   onAllerCollecte: () => void
@@ -139,6 +143,23 @@ export function SaisieView({
     ? semainePassee && (pvNum < 0 || kgNum < 0) && pvNum <= 0 && kgNum <= 0 && justificatifs.length > 0
     : true
   const formulaireValide = modeCorrection ? correctionValide : (pvNum > 0 || kgNum > 0) && !collecteurManquant
+
+  /** Reporte une lecture de bordereau dans le formulaire — le magasin valide ensuite. */
+  function appliquerScan({ lecture, justificatif }: PropositionScan) {
+    if (lecture.kgFL > 0 && !flInclus) setKg(String(lecture.kgFL))
+    if (lecture.association) {
+      const connue = magasin?.collecteurs.find((c) => c.nom.toLowerCase() === lecture.association.toLowerCase())
+      if (connue) setCollecteur(connue.nom)
+    }
+    const morceaux = [
+      lecture.nbColis > 0 ? `${lecture.nbColis} colis remis` : '',
+      lecture.nomCollecteur ? `collecteur : ${lecture.nomCollecteur}` : '',
+      lecture.refus ? `refus : ${lecture.refus}` : '',
+      lecture.signe ? 'bordereau signé' : 'signature à vérifier',
+    ].filter(Boolean)
+    setNote((n) => (n ? `${n} · ${morceaux.join(', ')}` : morceaux.join(', ')))
+    setJustificatifs((prev) => [...prev, justificatif])
+  }
 
   async function ajouterFichiers(files: FileList | null) {
     const nouveaux = await lireFichiers(files)
@@ -263,6 +284,10 @@ export function SaisieView({
           Saisissez les montants <strong>en négatif</strong> (ex. −120 € / −8 kg), sur une <strong>semaine passée</strong>,
           avec le justificatif du refus joint. Le cumul, le plafond et la prochaine facture se recalculent automatiquement.
         </div>
+      )}
+
+      {!modeCorrection && (
+        <ScanBordereau magasin={magasin} session={session} jour={quotidien ? jour : semaineEffective} onAppliquer={appliquerScan} />
       )}
 
       <div className="card">

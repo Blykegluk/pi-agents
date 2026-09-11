@@ -410,7 +410,7 @@ export default function App() {
           />
         )}
         {tab === 'saisie' && (
-          <SaisieView state={state} exercice={exercice} onSave={saveSaisie} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
+          <SaisieView state={state} exercice={exercice} session={session} onSave={saveSaisie} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
         )}
         {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
         {tab === 'registre' && (

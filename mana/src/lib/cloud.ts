@@ -167,3 +167,65 @@ export async function connexionGoogle(): Promise<string | null> {
 export async function deconnexion(): Promise<void> {
   await supabase.auth.signOut()
 }
+
+// ---------- Bordereaux scannés : archivage et lecture automatique ----------
+
+const BUCKET_BORDEREAUX = 'mana-bordereaux'
+
+/**
+ * Archive la photo du bordereau dans le bucket privé, sous l'arborescence du
+ * compte (la RLS interdit tout autre dossier). Les photos ne peuvent pas rester
+ * dans le localStorage : avec un enlèvement par jour, cela ferait des centaines
+ * de mégaoctets par an.
+ */
+export async function televerserBordereau(userId: string, blob: Blob, nom: string): Promise<string> {
+  const chemin = `${userId}/${new Date().getFullYear()}/${crypto.randomUUID()}-${nom}`
+  const { error } = await supabase.storage.from(BUCKET_BORDEREAUX).upload(chemin, blob, {
+    contentType: blob.type || 'image/jpeg',
+    upsert: false,
+  })
+  if (error) throw new Error(`Archivage du bordereau impossible : ${error.message}`)
+  return chemin
+}
+
+/** Lien temporaire (1 h) pour rouvrir un bordereau archivé. */
+export async function urlBordereau(chemin: string): Promise<string | null> {
+  const { data, error } = await supabase.storage.from(BUCKET_BORDEREAUX).createSignedUrl(chemin, 3600)
+  return error ? null : data.signedUrl
+}
+
+export interface LectureBordereau {
+  estUnBordereau: boolean
+  date: string
+  association: string
+  nomCollecteur: string
+  nbColis: number
+  kgFL: number
+  refus: string
+  signe: boolean
+  confiance: 'haute' | 'moyenne' | 'basse'
+  doutes: string[]
+}
+
+/**
+ * Lecture du bordereau par la fonction serveur `lire-bordereau`. La clé d'API
+ * vit côté Supabase : rien de sensible ne transite par le navigateur. Le
+ * résultat est une PROPOSITION, que la saisie fait valider au magasin.
+ */
+export async function lireBordereau(
+  base64: string,
+  typeMime: string,
+  contexte: { magasin?: string; associations?: string[]; jour?: string },
+): Promise<LectureBordereau> {
+  const { data, error } = await supabase.functions.invoke<{ lecture?: LectureBordereau; erreur?: string }>(
+    'lire-bordereau',
+    { body: { image: base64, typeMime, contexte } },
+  )
+  if (error) {
+    // Les erreurs métier arrivent avec un statut non-2xx : on récupère le message.
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.lecture) throw new Error(data?.erreur ?? 'Lecture impossible.')
+  return data.lecture
+}
