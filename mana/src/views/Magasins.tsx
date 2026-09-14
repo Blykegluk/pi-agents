@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Collecteur, Justificatif, Magasin, Societe } from '../types'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
+import { libelleFrequence } from '../lib/annuaire'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
 import { IconMagasins } from '../components/Icons'
@@ -8,6 +9,7 @@ import { uid } from '../lib/storage'
 import { lireFichiers } from '../lib/fichiers'
 import { normaliserSiren, sirenValide, verifierSiren } from '../lib/entreprise'
 import { denomination } from '../lib/identite'
+import { COLLECTEUR_VIDE, CollecteurForm } from '../components/CollecteurForm'
 import { pdfModeleAttestation } from '../lib/pdf'
 
 /**
@@ -156,7 +158,9 @@ export function MagasinsView({
                     <strong style={{ fontSize: 14.5 }}>{m.nom}</strong>
                     <div className="muted">
                       {m.enseigne ? `${m.enseigne} · ` : ''}F&amp;L {fmtEUR(m.coutKgFL, 2)}/kg
-                      {m.collecteurs.length > 0 ? ` · ${m.collecteurs.map((c) => c.nom).join(', ')}` : ''}
+                      {m.collecteurs.length > 0
+                        ? ` · ${m.collecteurs.map((c) => `${c.nom}${libelleFrequence(c) ? ` (${libelleFrequence(c).toLowerCase()})` : ''}`).join(', ')}`
+                        : ''}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -295,7 +299,7 @@ function FormulaireSociete({
   }
 
   return (
-    <div>
+    <div className="etroit">
       <h2>{initial ? 'Modifier la société' : 'Nouvelle société'}</h2>
 
       <div className="card">
@@ -445,7 +449,7 @@ function FormulaireMagasin({
   const [frequence, setFrequence] = useState<'hebdomadaire' | 'quotidienne'>(initial?.frequenceSaisie ?? 'hebdomadaire')
   const [modeFL, setModeFL] = useState<'poids' | 'inclus'>(initial?.modeFL ?? 'poids')
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
-    initial?.collecteurs?.length ? initial.collecteurs : [{ nom: '', contact: '', jours: '' }],
+    initial?.collecteurs?.length ? initial.collecteurs : [{ ...COLLECTEUR_VIDE }],
   )
 
   if (!societe) return null
@@ -476,7 +480,7 @@ function FormulaireMagasin({
   }
 
   return (
-    <div>
+    <div className="etroit">
       <h2>{initial ? 'Modifier le magasin' : `Nouveau magasin — ${societe.raisonSociale}`}</h2>
       <div className="card">
         <label className="field">
@@ -527,26 +531,23 @@ function FormulaireMagasin({
       </div>
 
       <div className="card">
-        <h3>Collecteur(s) partenaire(s)</h3>
-        <p className="muted">Banque Alimentaire, Restos du Cœur, Linkee, Le Chaînon Manquant… Informatif.</p>
+        <h3>Votre association collectrice</h3>
+        <p className="muted">
+          Vous travaillez déjà avec une association ? Renseignez-la ici : ses coordonnées et son rythme de passage
+          sont repris automatiquement dans l’onglet Collecte, sur les bordereaux et dans le reçu fiscal — vous n’aurez
+          pas à les ressaisir. Si vous n’en avez pas encore, laissez vide : l’assistant Collecte vous en trouve une.
+        </p>
         {collecteurs.map((c, i) => (
-          <div key={i} style={{ borderTop: i > 0 ? '1px solid var(--trait-doux)' : undefined, paddingTop: i > 0 ? 12 : 0 }}>
-            <label className="field">
-              <span>Nom de l’association</span>
-              <input type="text" value={c.nom} onChange={(e) => setCollecteurs(collecteurs.map((x, j) => (j === i ? { ...x, nom: e.target.value } : x)))} placeholder="Ex. Banque Alimentaire du Rhône" />
-            </label>
-            <label className="field">
-              <span>Contact</span>
-              <input type="text" value={c.contact} onChange={(e) => setCollecteurs(collecteurs.map((x, j) => (j === i ? { ...x, contact: e.target.value } : x)))} placeholder="Nom, téléphone…" />
-            </label>
-            <label className="field">
-              <span>Jours de passage</span>
-              <input type="text" value={c.jours} onChange={(e) => setCollecteurs(collecteurs.map((x, j) => (j === i ? { ...x, jours: e.target.value } : x)))} placeholder="Ex. mardi et vendredi matin" />
-            </label>
+          <div key={i} style={{ borderTop: i > 0 ? '1px solid var(--trait-doux)' : undefined, paddingTop: i > 0 ? 14 : 0 }}>
+            <CollecteurForm
+              valeur={c}
+              onChange={(v) => setCollecteurs(collecteurs.map((x, j) => (j === i ? v : x)))}
+              onSupprimer={collecteurs.length > 1 ? () => setCollecteurs(collecteurs.filter((_, j) => j !== i)) : undefined}
+            />
           </div>
         ))}
-        <button className="btn btn-ghost btn-sm" onClick={() => setCollecteurs([...collecteurs, { nom: '', contact: '', jours: '' }])}>
-          + Ajouter un collecteur
+        <button className="btn btn-ghost btn-sm" style={{ marginTop: 12 }} onClick={() => setCollecteurs([...collecteurs, { ...COLLECTEUR_VIDE }])}>
+          + Ajouter une autre association
         </button>
       </div>
 

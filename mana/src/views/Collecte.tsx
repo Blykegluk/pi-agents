@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { AppState, Magasin } from '../types'
-import { RESEAUX_COLLECTEURS, recommanderFrequence } from '../lib/annuaire'
+import type { AppState, Collecteur, Magasin } from '../types'
+import { FREQUENCES, libelleFrequence, RESEAUX_COLLECTEURS, recommanderFrequence } from '../lib/annuaire'
 import { pdfAfficheTri, pdfBordereau } from '../lib/pdf'
 import {
   IconBalance,
@@ -15,6 +15,7 @@ import {
 import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { fmtNum } from '../lib/format'
+import { COLLECTEUR_VIDE, CollecteurForm } from '../components/CollecteurForm'
 import { denomination } from '../lib/identite'
 
 /**
@@ -25,8 +26,7 @@ import { denomination } from '../lib/identite'
 
 const ETAPES = [
   { id: 'gisement', titre: 'Estimer vos invendus' },
-  { id: 'collecteurs', titre: 'Définir votre besoin et trouver votre association' },
-  { id: 'calendrier', titre: 'Caler le calendrier de passage' },
+  { id: 'collecteurs', titre: 'Votre association et son calendrier' },
   { id: 'tri', titre: 'Former l’équipe au tri' },
   { id: 'pesee', titre: 'Organiser la pesée et les bordereaux' },
   { id: 'premiere', titre: 'Réussir la première collecte' },
@@ -35,13 +35,11 @@ const ETAPES = [
 const PICTOS: Record<string, ReactNode> = {
   gisement: <IconCagette />,
   collecteurs: <IconRelation />,
-  calendrier: <IconCalendrier />,
   tri: <IconTri />,
   pesee: <IconBalance />,
   premiere: <IconDrapeau />,
 }
 
-const FREQUENCES = ['Quotidienne', '2 à 3 fois par semaine', 'Hebdomadaire'] as const
 const PLAGES = ['Matin (7 h – 10 h)', 'Midi (11 h – 14 h)', 'Fin de journée (17 h – 20 h)'] as const
 
 export function Collecte({
@@ -51,6 +49,7 @@ export function Collecte({
   onAllerSaisie,
   onConnexion,
   onOuvrirAide,
+  onOuvrirMessages,
 }: {
   state: AppState
   session: Session | null
@@ -58,15 +57,17 @@ export function Collecte({
   onAllerSaisie: () => void
   onConnexion: () => void
   onOuvrirAide: () => void
+  onOuvrirMessages: () => void
 }) {
   const [magasinId, setMagasinId] = useState(state.magasins[0]?.id ?? '')
   const magasin = state.magasins.find((m) => m.id === magasinId) ?? state.magasins[0]
   const societe = state.societes.find((s) => s.id === magasin?.societeId)
   const [invendusSaisis, setInvendusSaisis] = useState('')
-  const [nouveau, setNouveau] = useState({ nom: '', contact: '', jours: '' })
 
-  // Demande de mise en relation
+  // Demande de mise en relation — préréglée sur ce que le magasin a déjà indiqué
   const [frequence, setFrequence] = useState<string>('')
+  const [editionCollecteur, setEditionCollecteur] = useState<number | null>(null)
+  const [brouillon, setBrouillon] = useState<Collecteur>({ ...COLLECTEUR_VIDE })
   const [plage, setPlage] = useState<string>('')
   const [ville, setVille] = useState('')
   const [precision, setPrecision] = useState('')
@@ -104,9 +105,10 @@ export function Collecte({
   const kgParPassage = (f: string) =>
     f === 'Quotidienne' ? kgJour : f === 'Hebdomadaire' ? kgJour * 7 : kgJour * 2.5
 
+  // L'étape « association » est acquise dès qu'une association est enregistrée
+  // — la demande de mise en relation ne suffit pas, elle n'est qu'une attente.
   const estFaite = (id: string) => {
-    if (id === 'calendrier') return magasin.collecteurs.length > 0 || mp.faites.includes(id)
-    if (id === 'collecteurs') return Boolean(demandeDuMagasin) || mp.faites.includes(id)
+    if (id === 'collecteurs') return magasin.collecteurs.length > 0 || mp.faites.includes(id)
     return mp.faites.includes(id)
   }
   const nbFaites = ETAPES.filter((e) => estFaite(e.id)).length
@@ -124,12 +126,6 @@ export function Collecte({
     if (kg <= 0) return
     const faites = mp.faites.includes('gisement') ? mp.faites : [...mp.faites, 'gisement']
     onSaveMagasin({ ...magasin, miseEnPlace: { faites, gisementKgJour: kg } })
-  }
-
-  function ajouterCollecteur() {
-    if (!magasin || !nouveau.nom.trim()) return
-    onSaveMagasin({ ...magasin, collecteurs: [...magasin.collecteurs, { ...nouveau, nom: nouveau.nom.trim() }] })
-    setNouveau({ nom: '', contact: '', jours: '' })
   }
 
   async function envoyerDemande() {
@@ -230,7 +226,7 @@ export function Collecte({
         <label className="field" style={{ marginBottom: 8 }}>
           <span>Invendus donnables, en moyenne</span>
           <div className="range-row">
-            <div className="suffixe" style={{ flex: 1 }}>
+            <div className="suffixe champ-large">
               <input
                 type="number"
                 inputMode="decimal"
@@ -254,56 +250,178 @@ export function Collecte({
         )}
       </div>
 
-      {/* Étape 2 — besoin + mise en relation */}
+      {/* Étape 2 — l'association : celle déjà connue, ou une mise en relation */}
       <div className={`card pleine ${estFaite('collecteurs') ? 'faite' : ''}`}>
-        <TeteEtape id="collecteurs" num={2} />
+        <TeteEtape
+          id="collecteurs"
+          num={2}
+          action={
+            magasin.collecteurs.length > 0 ? (
+              <span className="verif-badge">
+                ✓ {magasin.collecteurs.length} association{magasin.collecteurs.length > 1 ? 's' : ''}
+              </span>
+            ) : undefined
+          }
+        />
 
-        {demandeDuMagasin ? (
-          <div className="info-banner vert">
-            <strong>Demande de mise en relation {LIBELLES_STATUT[demandeDuMagasin.statut].texte}.</strong>{' '}
-            L’équipe Mana s’occupe de vous trouver la ou les associations adaptées ({String(demandeDuMagasin.contenu.frequence_souhaitee ?? '')},{' '}
-            {String(demandeDuMagasin.contenu.plage_horaire ?? '').toLowerCase()}).{' '}
-            <button className="amt" onClick={onOuvrirAide}>Suivre les échanges</button>
+        {/* A. Les associations enregistrées — la source unique, partout dans Mana */}
+        {magasin.collecteurs.length > 0 && (
+          <>
+            <p className="muted">
+              Ces coordonnées servent partout : bordereaux préremplis, reçus fiscaux, état annuel. Modifiez-les ici
+              dès qu’un rythme ou un contact change.
+            </p>
+            {magasin.collecteurs.map((c, i) =>
+              editionCollecteur === i ? (
+                <div className="card" key={i} style={{ background: 'var(--papier)', marginBottom: 10 }}>
+                  <CollecteurForm valeur={brouillon} onChange={setBrouillon} />
+                  <div className="row-actions" style={{ marginTop: 10 }}>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={!brouillon.nom.trim()}
+                      style={{ opacity: brouillon.nom.trim() ? 1 : 0.5, flex: 1 }}
+                      onClick={() => {
+                        onSaveMagasin({
+                          ...magasin,
+                          collecteurs: magasin.collecteurs.map((x, j) => (j === i ? { ...brouillon, nom: brouillon.nom.trim() } : x)),
+                        })
+                        setEditionCollecteur(null)
+                      }}
+                    >
+                      Enregistrer
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setEditionCollecteur(null)}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="facture-ligne" key={i}>
+                  <div className="infos">
+                    <strong>{c.nom}</strong>
+                    <small>
+                      {[libelleFrequence(c), c.jours, c.contact, c.telephone, c.email].filter(Boolean).join(' · ') ||
+                        'coordonnées à compléter'}
+                    </small>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flex: 'none' }}>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => {
+                        setBrouillon({ ...COLLECTEUR_VIDE, ...c })
+                        setEditionCollecteur(i)
+                      }}
+                    >
+                      Modifier
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => {
+                        if (confirm(`Retirer « ${c.nom} » de ce magasin ?`)) {
+                          onSaveMagasin({ ...magasin, collecteurs: magasin.collecteurs.filter((_, j) => j !== i) })
+                        }
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ),
+            )}
+          </>
+        )}
+
+        {/* B. Ajouter une association déjà trouvée */}
+        {editionCollecteur === -1 ? (
+          <div className="card" style={{ background: 'var(--papier)', marginTop: 12 }}>
+            <h3>Enregistrer une association</h3>
+            <CollecteurForm valeur={brouillon} onChange={setBrouillon} />
+            <div className="row-actions" style={{ marginTop: 10 }}>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={!brouillon.nom.trim()}
+                style={{ opacity: brouillon.nom.trim() ? 1 : 0.5, flex: 1 }}
+                onClick={() => {
+                  onSaveMagasin({ ...magasin, collecteurs: [...magasin.collecteurs, { ...brouillon, nom: brouillon.nom.trim() }] })
+                  setBrouillon({ ...COLLECTEUR_VIDE })
+                  setEditionCollecteur(null)
+                }}
+              >
+                Enregistrer l’association
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditionCollecteur(null)}>
+                Annuler
+              </button>
+            </div>
           </div>
         ) : (
-          <div>
-            <p className="muted">
+          <button
+            className={`btn btn-block btn-sm ${magasin.collecteurs.length > 0 ? 'btn-ghost' : 'btn-primary'}`}
+            style={{ marginTop: magasin.collecteurs.length > 0 ? 12 : 0 }}
+            onClick={() => {
+              setBrouillon({ ...COLLECTEUR_VIDE })
+              setEditionCollecteur(-1)
+            }}
+          >
+            {magasin.collecteurs.length > 0 ? '+ Ajouter une autre association' : 'J’ai déjà une association — l’enregistrer'}
+          </button>
+        )}
+
+        {/* C. Pas d'association : Mana s'en charge */}
+        {demandeDuMagasin ? (
+          <div className="info-banner vert" style={{ marginTop: 14, marginBottom: 0 }}>
+            <strong>Recherche Mana {LIBELLES_STATUT[demandeDuMagasin.statut].texte}.</strong> Nous cherchons la ou les
+            associations adaptées ({String(demandeDuMagasin.contenu.frequence_souhaitee ?? '')},{' '}
+            {String(demandeDuMagasin.contenu.plage_horaire ?? '').toLowerCase()}). Dès que nous vous répondons,
+            enregistrez-la avec le bouton ci-dessus.{' '}
+            <button className="amt" onClick={onOuvrirMessages}>
+              Voir les messages
+            </button>
+          </div>
+        ) : (
+          <details style={{ marginTop: 14 }} open={magasin.collecteurs.length === 0}>
+            <summary style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', color: 'var(--encre-2)' }}>
+              {magasin.collecteurs.length === 0
+                ? 'Pas encore d’association ? Mana vous en trouve une'
+                : 'Besoin d’une association de plus ? Mana s’en charge'}
+            </summary>
+            <p className="muted" style={{ marginTop: 8 }}>
               Dites-nous ce qu’il vous faut : <strong>l’équipe Mana vous met en relation</strong> avec la ou les
-              associations adaptées de votre secteur (deux associations combinées si vous voulez des passages
-              quotidiens) et vous suit jusqu’à la première collecte.
+              associations de votre secteur (deux combinées si vous voulez des passages quotidiens) et vous suit
+              jusqu’à la première collecte.
             </p>
             <div className="colonnes-2">
-            <label className="field">
-              <span>Fréquence de ramassage souhaitée</span>
-              <div className="chips" style={{ marginBottom: 0 }}>
-                {FREQUENCES.map((f) => (
-                  <button key={f} type="button" className={`chip ${frequence === f ? 'active' : ''}`} onClick={() => setFrequence(f)}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-              {frequence && kgJour > 0 && (
-                <span className="aide">Soit environ {fmtNum(kgParPassage(frequence))} kg à chaque passage.</span>
-              )}
-            </label>
-            <label className="field">
-              <span>Plage horaire de ramassage</span>
-              <div className="chips" style={{ marginBottom: 0 }}>
-                {PLAGES.map((p) => (
-                  <button key={p} type="button" className={`chip ${plage === p ? 'active' : ''}`} onClick={() => setPlage(p)}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </label>
-            <label className="field">
-              <span>Ville / code postal du magasin</span>
-              <input type="text" value={ville} onChange={(e) => setVille(e.target.value)} placeholder="Ex. Villeurbanne 69100" />
-            </label>
-            <label className="field">
-              <span>Précisions (facultatif)</span>
-              <textarea rows={2} value={precision} onChange={(e) => setPrecision(e.target.value)} placeholder="Ex. beaucoup de frais, accès quai de livraison, fermé le lundi…" />
-            </label>
+              <label className="field">
+                <span>Fréquence de ramassage souhaitée</span>
+                <div className="chips" style={{ marginBottom: 0 }}>
+                  {FREQUENCES.filter((f) => f !== 'Autre').map((f) => (
+                    <button key={f} type="button" className={`chip ${frequence === f ? 'active' : ''}`} onClick={() => setFrequence(f)}>
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                {frequence && kgJour > 0 && (
+                  <span className="aide">Soit environ {fmtNum(kgParPassage(frequence))} kg à chaque passage.</span>
+                )}
+              </label>
+              <label className="field">
+                <span>Plage horaire de ramassage</span>
+                <div className="chips" style={{ marginBottom: 0 }}>
+                  {PLAGES.map((p) => (
+                    <button key={p} type="button" className={`chip ${plage === p ? 'active' : ''}`} onClick={() => setPlage(p)}>
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="field">
+                <span>Ville / code postal du magasin</span>
+                <input type="text" value={ville} onChange={(e) => setVille(e.target.value)} placeholder="Ex. Paris 75011" />
+              </label>
+              <label className="field">
+                <span>Précisions (facultatif)</span>
+                <textarea rows={2} value={precision} onChange={(e) => setPrecision(e.target.value)} placeholder="Ex. beaucoup de frais, accès quai de livraison, fermé le lundi…" />
+              </label>
             </div>
             {kgJour <= 0 && <p className="muted" style={{ color: 'var(--ambre-texte)' }}>Complétez d’abord l’étape 1 (estimation des invendus).</p>}
             {session ? (
@@ -324,77 +442,38 @@ export function Collecte({
               </div>
             )}
             {messageDemande && <p className="muted" style={{ marginTop: 8, color: 'var(--vert)' }}>{messageDemande}</p>}
-          </div>
+          </details>
         )}
 
         <details style={{ marginTop: 12 }}>
           <summary style={{ fontWeight: 600, fontSize: 14, cursor: 'pointer', color: 'var(--encre-2)' }}>
-            Préférez contacter directement une association ? L’annuaire des réseaux
+            Préférez chercher vous-même ? L’annuaire des réseaux
           </summary>
           <p className="muted" style={{ margin: '8px 0' }}>
             Vous gardez votre relation directe — aucune exclusivité. Confirmez toujours le rythme réel avec l’antenne locale.
           </p>
           <div className="reseaux">
-          {RESEAUX_COLLECTEURS.map((r) => (
-            <div className="reseau" key={r.nom}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-                <strong style={{ fontSize: 15 }}>{r.nom}</strong>
-                <span className="muted" style={{ whiteSpace: 'nowrap' }}>{r.site}</span>
+            {RESEAUX_COLLECTEURS.map((r) => (
+              <div className="reseau" key={r.nom}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+                  <strong style={{ fontSize: 15 }}>{r.nom}</strong>
+                  <span className="muted" style={{ whiteSpace: 'nowrap' }}>{r.site}</span>
+                </div>
+                <p className="muted" style={{ margin: '4px 0 6px' }}>{r.profil}</p>
+                <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <span><strong>Produits :</strong> {r.produits}</span>
+                  <span><strong>Rythme :</strong> {r.rythme}</span>
+                  <span><strong>Contact :</strong> {r.commentContacter}</span>
+                </div>
               </div>
-              <p className="muted" style={{ margin: '4px 0 6px' }}>{r.profil}</p>
-              <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span><strong>Produits :</strong> {r.produits}</span>
-                <span><strong>Rythme :</strong> {r.rythme}</span>
-                <span><strong>Contact :</strong> {r.commentContacter}</span>
-              </div>
-            </div>
-          ))}
+            ))}
           </div>
         </details>
       </div>
 
-      {/* Étape 3 — calendrier */}
-      <div className={`card ${estFaite('calendrier') ? 'faite' : ''}`}>
-        <TeteEtape
-          id="calendrier"
-          num={3}
-          action={
-            magasin.collecteurs.length > 0 ? (
-              <span className="verif-badge">✓ {magasin.collecteurs.length} collecteur{magasin.collecteurs.length > 1 ? 's' : ''}</span>
-            ) : undefined
-          }
-        />
-        <p className="muted">
-          Une fois la mise en relation faite, enregistrez chaque association et ses jours de passage — ils s’affichent
-          sur la fiche du magasin et dans l’état annuel (reçus fiscaux attendus).
-        </p>
-        {magasin.collecteurs.map((c, i) => (
-          <div className="facture-ligne" key={i}>
-            <div className="infos">
-              <strong>{c.nom}</strong>
-              <small>{c.jours || 'jours à préciser'}{c.contact ? ` · ${c.contact}` : ''}</small>
-            </div>
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={() => onSaveMagasin({ ...magasin, collecteurs: magasin.collecteurs.filter((_, j) => j !== i) })}
-            >
-              ✕
-            </button>
-          </div>
-        ))}
-        <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-          <input type="text" placeholder="Association (ex. Banque Alimentaire du Rhône)" value={nouveau.nom} onChange={(e) => setNouveau({ ...nouveau, nom: e.target.value })} />
-          <input type="text" placeholder="Contact (nom, téléphone)" value={nouveau.contact} onChange={(e) => setNouveau({ ...nouveau, contact: e.target.value })} />
-          <input type="text" placeholder="Jours de passage (ex. mardi et vendredi matin)" value={nouveau.jours} onChange={(e) => setNouveau({ ...nouveau, jours: e.target.value })} />
-          <button className="btn btn-ghost btn-sm" onClick={ajouterCollecteur} disabled={!nouveau.nom.trim()} style={{ opacity: nouveau.nom.trim() ? 1 : 0.5 }}>
-            + Ajouter ce collecteur
-          </button>
-        </div>
-      </div>
-
-      {/* Étape 4 — tri */}
+      {/* Étape 3 — tri */}
       <div className={`card ${estFaite('tri') ? 'faite' : ''}`}>
-        <TeteEtape id="tri" num={4} />
+        <TeteEtape id="tri" num={3} />
         <p className="muted">
           Le geste ne change pas : pendant la tournée DLC, le produit donnable part dans le bac « don » au lieu de la
           poubelle, scanné avec un motif de démarque « don » dédié si votre back-office le permet.
@@ -410,9 +489,9 @@ export function Collecte({
         </button>
       </div>
 
-      {/* Étape 5 — pesée */}
+      {/* Étape 4 — pesée */}
       <div className={`card ${estFaite('pesee') ? 'faite' : ''}`}>
-        <TeteEtape id="pesee" num={5} />
+        <TeteEtape id="pesee" num={4} />
         <p className="muted">
           Les produits emballés sont valorisés par leur montant de démarque — rien à peser, on compte juste les colis
           remis (bacs, cartons ou sacs). Seuls les fruits &amp; légumes partent au poids : pesez chaque cagette ou sac
@@ -425,9 +504,9 @@ export function Collecte({
         </button>
       </div>
 
-      {/* Étape 6 — première collecte */}
+      {/* Étape 5 — première collecte */}
       <div className={`card ${estFaite('premiere') ? 'faite' : ''}`}>
-        <TeteEtape id="premiere" num={6} />
+        <TeteEtape id="premiere" num={5} />
         <p className="muted">La veille du premier passage :</p>
         <div className="detail-lignes">
           <div className="ligne"><span>Le bac « don » est en réserve, au froid pour le frais, affiche au mur</span></div>

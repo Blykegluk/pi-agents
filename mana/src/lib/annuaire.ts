@@ -13,6 +13,15 @@ export interface ReseauCollecteur {
   commentContacter: string
 }
 
+/** Rythmes proposés partout où l'on décrit une collecte (magasin, assistant). */
+export const FREQUENCES = ['Quotidienne', '2 à 3 fois par semaine', 'Hebdomadaire', 'Autre'] as const
+
+/** Libellé lisible d'une fréquence, en tenant compte du champ libre « Autre ». */
+export function libelleFrequence(c: { frequence?: string; frequenceAutre?: string }): string {
+  if (!c.frequence) return ''
+  return c.frequence === 'Autre' ? c.frequenceAutre?.trim() || 'Autre rythme' : c.frequence
+}
+
 export const RESEAUX_COLLECTEURS: ReseauCollecteur[] = [
   {
     nom: 'Banque Alimentaire',

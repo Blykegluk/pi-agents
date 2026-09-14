@@ -111,6 +111,17 @@ export function LogoMana({ taille = 26, couleur = '#234F3E' }: { taille?: number
   )
 }
 
+/** Onglet Messages — fil de discussion avec l'équipe Mana. */
+export function IconMessages() {
+  return (
+    <svg {...base}>
+      <path d="M4 4.5 h16 a1.5 1.5 0 0 1 1.5 1.5 v9 a1.5 1.5 0 0 1 -1.5 1.5 H9.5 L5 20.5 V17 H4 a1.5 1.5 0 0 1 -1.5 -1.5 v-9 A1.5 1.5 0 0 1 4 4.5 Z" />
+      <line x1="7" y1="9.5" x2="17" y2="9.5" />
+      <line x1="7" y1="13" x2="13.5" y2="13" />
+    </svg>
+  )
+}
+
 /* ---------- Pictos des étapes de mise en place de la collecte ---------- */
 
 /** Étape 1 — estimer : une cagette pleine, à jauger. */

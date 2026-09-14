@@ -626,7 +626,18 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
   doc.text(t('2. Fruits & légumes (pesée obligatoire)'), 14, y)
-  y += 6
+  y += 5
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(120, 113, 100)
+  doc.text(
+    t('Sac : pesez et notez directement en net (tare nulle). Cagette ou bac : notez le brut, la tare du contenant (~1 kg pour une cagette bois), et le net.'),
+    14,
+    y,
+    { maxWidth: 182 },
+  )
+  doc.setTextColor(43, 38, 32)
+  y += 9
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(9)
   doc.setFillColor(233, 223, 201)

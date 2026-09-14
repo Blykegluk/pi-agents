@@ -48,6 +48,9 @@ export interface Demande {
   statut: 'nouvelle' | 'en_cours' | 'traitee'
   created_at: string
   updated_at: string
+  /** Dernière ouverture du fil par le client / par Mana — sert aux pastilles. */
+  lu_client_le: string | null
+  lu_mana_le: string | null
 }
 
 export interface Message {
@@ -99,6 +102,49 @@ export async function envoyerMessage(demandeId: string, proprietaireId: string, 
     .from('mana_messages')
     .insert({ demande_id: demandeId, user_id: proprietaireId, auteur, texte: texte.trim() })
   if (error) throw new Error(`Envoi impossible : ${error.message}`)
+  // Écrire, c'est avoir lu.
+  await marquerLu(demandeId, auteur)
+}
+
+/** Marque un fil comme lu de son côté (RPC : le client ne peut toucher que son marqueur). */
+export async function marquerLu(demandeId: string, cote: 'client' | 'mana'): Promise<void> {
+  await supabase.rpc('mana_marquer_lu', { p_demande: demandeId, p_cote: cote })
+}
+
+export interface NonLus {
+  total: number
+  /** Nombre de messages non lus par identifiant de demande. */
+  parDemande: Record<string, number>
+}
+
+/**
+ * Messages reçus depuis la dernière ouverture du fil, vus du côté demandé.
+ * Deux requêtes seulement : les fils visibles (la RLS filtre déjà) et leurs
+ * messages ; le comptage se fait ici pour éviter une vue SQL de plus.
+ */
+export async function compterNonLus(cote: 'client' | 'mana'): Promise<NonLus> {
+  const [fils, msgs] = await Promise.all([
+    supabase.from('mana_demandes').select('id, lu_client_le, lu_mana_le'),
+    supabase.from('mana_messages').select('demande_id, auteur, created_at'),
+  ])
+  if (fils.error || msgs.error) return { total: 0, parDemande: {} }
+  const luLe = new Map<string, number>()
+  for (const f of fils.data ?? []) {
+    const d = cote === 'client' ? f.lu_client_le : f.lu_mana_le
+    luLe.set(f.id, d ? Date.parse(d) : 0)
+  }
+  const parDemande: Record<string, number> = {}
+  let total = 0
+  for (const m of msgs.data ?? []) {
+    if (m.auteur === cote) continue // ses propres messages ne sont jamais « non lus »
+    const seuil = luLe.get(m.demande_id)
+    if (seuil === undefined) continue
+    if (Date.parse(m.created_at) > seuil) {
+      parDemande[m.demande_id] = (parDemande[m.demande_id] ?? 0) + 1
+      total++
+    }
+  }
+  return { total, parDemande }
 }
 
 // ---------- Console administrateur ----------

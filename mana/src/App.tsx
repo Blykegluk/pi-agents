@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
 import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, uid } from './lib/storage'
-import { chargerEtatDistant, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase } from './lib/cloud'
+import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { completerIdentites } from './lib/identite'
 import { FormulaProvider } from './components/Formula'
 import { Aide } from './components/Aide'
-import { IconAdmin, IconAide, IconCollecte, IconMagasins, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
+import { IconAdmin, IconAide, IconCollecte, IconMagasins, IconMessages, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
 import { Simulateur } from './views/Simulateur'
 import { MagasinsView } from './views/Magasins'
 import { Collecte } from './views/Collecte'
@@ -17,8 +17,9 @@ import { SaisieView } from './views/Saisie'
 import { Dashboard } from './views/Dashboard'
 import { Registre } from './views/Registre'
 import { Admin } from './views/Admin'
+import { Messages } from './views/Messages'
 
-type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre' | 'admin'
+type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre' | 'messages' | 'admin'
 
 /** L'état local est-il le jeu de démonstration (jamais synchronisé vers un compte) ? */
 function estDemo(etat: AppState): boolean {
@@ -32,6 +33,7 @@ const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
   { id: 'saisie', label: 'Saisie', icone: IconSaisie },
   { id: 'dashboard', label: 'Tableau', icone: IconTableau },
   { id: 'registre', label: 'Registre', icone: IconRegistre },
+  { id: 'messages', label: 'Messages', icone: IconMessages },
 ]
 
 export default function App() {
@@ -48,6 +50,7 @@ export default function App() {
   const [syncHeure, setSyncHeure] = useState('')
   const [aideOuverte, setAideOuverte] = useState(false)
   const [admin, setAdmin] = useState(false)
+  const [nonLus, setNonLus] = useState<NonLus>({ total: 0, parDemande: {} })
   const sauterProchainPush = useRef(false)
   const timerPush = useRef<number | undefined>(undefined)
 
@@ -62,11 +65,34 @@ export default function App() {
     else setAdmin(false)
   }, [session?.user.id])
 
-  // Changement d'onglet → retour en haut de page, et largeur de colonne adaptée :
-  // l'assistant de collecte s'étale sur deux colonnes en grand écran.
+  /**
+   * Pastilles de notification : messages reçus depuis la dernière ouverture du
+   * fil. Côté Mana on compte ceux des clients, côté client ceux de Mana. Relevé
+   * au chargement, au changement d'onglet, au retour sur l'onglet du navigateur,
+   * et toutes les 60 s — il n'y a pas de temps réel sur ces tables.
+   */
+  const rafraichirNonLus = useCallback(() => {
+    if (!session) {
+      setNonLus({ total: 0, parDemande: {} })
+      return
+    }
+    compterNonLus(admin ? 'mana' : 'client').then(setNonLus).catch(() => {})
+  }, [session?.user.id, admin])
+
+  useEffect(() => {
+    rafraichirNonLus()
+    const surFocus = () => document.visibilityState === 'visible' && rafraichirNonLus()
+    const timer = window.setInterval(rafraichirNonLus, 60_000)
+    document.addEventListener('visibilitychange', surFocus)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', surFocus)
+    }
+  }, [rafraichirNonLus, tab])
+
+  // Changement d'onglet → retour en haut de page
   useEffect(() => {
     window.scrollTo(0, 0)
-    document.getElementById('root')?.setAttribute('data-large', tab === 'collecte' ? 'oui' : 'non')
   }, [tab])
 
   // Sociétés vérifiées avant que Mana ne conserve forme juridique et adresse :
@@ -407,6 +433,7 @@ export default function App() {
             onAllerSaisie={() => setTab('saisie')}
             onConnexion={() => setReglages(true)}
             onOuvrirAide={() => setAideOuverte(true)}
+            onOuvrirMessages={() => setTab('messages')}
           />
         )}
         {tab === 'saisie' && (
@@ -416,17 +443,38 @@ export default function App() {
         {tab === 'registre' && (
           <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} />
         )}
-        {tab === 'admin' && session && admin && <Admin session={session} />}
+        {tab === 'messages' && (
+          <Messages
+            session={session}
+            nonLus={nonLus}
+            onLu={rafraichirNonLus}
+            onConnexion={() => setReglages(true)}
+            onOuvrirAide={() => setAideOuverte(true)}
+          />
+        )}
+        {tab === 'admin' && session && admin && <Admin session={session} nonLus={nonLus} onLu={rafraichirNonLus} />}
       </main>
 
       <nav className="tabbar">
         <div className="tabbar-inner">
-          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : TABS).map((t) => (
-            <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-              <t.icone />
-              {t.label}
-            </button>
-          ))}
+          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : TABS).map((t) => {
+            // La pastille vit sur l'onglet où se lisent les messages : Admin pour
+            // l'équipe Mana, Messages pour le magasin.
+            const porteLaPastille = admin ? t.id === 'admin' : t.id === 'messages'
+            return (
+              <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+                <span className="tab-ico">
+                  <t.icone />
+                  {porteLaPastille && nonLus.total > 0 && (
+                    <span className="pastille" aria-label={`${nonLus.total} message(s) non lu(s)`}>
+                      {nonLus.total > 9 ? '9+' : nonLus.total}
+                    </span>
+                  )}
+                </span>
+                {t.label}
+              </button>
+            )
+          })}
         </div>
       </nav>
 
@@ -437,6 +485,10 @@ export default function App() {
         onConnexion={() => {
           setAideOuverte(false)
           setReglages(true)
+        }}
+        onOuvrirMessages={() => {
+          setAideOuverte(false)
+          setTab('messages')
         }}
       />
 

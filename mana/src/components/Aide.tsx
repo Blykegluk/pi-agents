@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { FAQ } from '../lib/faq'
-import { creerDemande, envoyerMessage, mesDemandes, messagesDe, type Demande, type Message } from '../lib/cloud'
-import { fmtDateHeure } from '../lib/format'
-import { Composer } from './Composer'
+import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
 
 export const LIBELLES_STATUT: Record<Demande['statut'], { texte: string; classe: string }> = {
   nouvelle: { texte: 'envoyée', classe: 'badge' },
@@ -20,16 +18,16 @@ export function Aide({
   ouvert,
   onFermer,
   onConnexion,
+  onOuvrirMessages,
 }: {
   session: Session | null
   ouvert: boolean
   onFermer: () => void
   onConnexion: () => void
+  onOuvrirMessages: () => void
 }) {
   const [recherche, setRecherche] = useState('')
   const [demandes, setDemandes] = useState<Demande[]>([])
-  const [ouverte, setOuverte] = useState<string | null>(null)
-  const [fil, setFil] = useState<Message[]>([])
   const [texteRequete, setTexteRequete] = useState('')
   const [message, setMessage] = useState('')
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
@@ -38,15 +36,8 @@ export function Aide({
     if (ouvert && session) {
       mesDemandes().then(setDemandes).catch(() => {})
     }
-    if (!ouvert) {
-      setOuverte(null)
-      setMessage('')
-    }
+    if (!ouvert) setMessage('')
   }, [ouvert, session])
-
-  useEffect(() => {
-    if (ouverte) messagesDe(ouverte).then(setFil).catch(() => setFil([]))
-  }, [ouverte])
 
   if (!ouvert) return null
 
@@ -62,18 +53,12 @@ export function Aide({
       const sujet = texteRequete.trim().slice(0, 90) + (texteRequete.trim().length > 90 ? '…' : '')
       await creerDemande(session.user.id, session.user.email ?? '', 'support', sujet, {}, texteRequete)
       setTexteRequete('')
-      setMessage('Demande envoyée — l’équipe Mana vous répond ici, dans « Mes échanges ».')
+      setMessage('Demande envoyée — la réponse arrivera dans l’onglet Messages.')
       setDemandes(await mesDemandes())
     } catch (e) {
       setMessage((e as Error).message)
     }
     setEnvoiEnCours(false)
-  }
-
-  async function repondre(d: Demande, texte: string) {
-    if (!session || !texte.trim()) return
-    await envoyerMessage(d.id, d.user_id, 'client', texte)
-    setFil(await messagesDe(d.id))
   }
 
   return (
@@ -122,45 +107,14 @@ export function Aide({
         </div>
 
         {session && demandes.length > 0 && (
-          <div style={{ marginTop: 16 }}>
-            <h3>Mes échanges avec Mana</h3>
-            {demandes.map((d) => (
-              <div key={d.id} style={{ borderBottom: '1px solid var(--trait-doux)', padding: '10px 0' }}>
-                <button
-                  className="amt"
-                  style={{ display: 'flex', width: '100%', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', textAlign: 'left', borderBottom: 'none' }}
-                  onClick={() => setOuverte(ouverte === d.id ? null : d.id)}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>
-                    {d.type === 'collecte' ? '🤝 ' : ''}{d.sujet}
-                  </span>
-                  <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
-                </button>
-                {ouverte === d.id && (
-                  <div style={{ marginTop: 8 }}>
-                    {fil.map((m) => (
-                      <div
-                        key={m.id}
-                        style={{
-                          background: m.auteur === 'mana' ? 'var(--sable)' : '#e3ebe3',
-                          borderRadius: 10,
-                          padding: '9px 12px',
-                          marginBottom: 6,
-                          fontSize: 14,
-                        }}
-                      >
-                        <div style={{ fontSize: 11.5, color: 'var(--encre-3)', marginBottom: 2 }}>
-                          {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
-                        </div>
-                        {m.texte}
-                      </div>
-                    ))}
-                    {fil.length === 0 && <p className="muted">Demande transmise — réponse de Mana à venir ici.</p>}
-                    <Composer placeholder="Votre réponse à l’équipe Mana…" onEnvoyer={(texte) => repondre(d, texte)} />
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="info-banner vert" style={{ marginTop: 14 }}>
+            <strong>
+              {demandes.length} échange{demandes.length > 1 ? 's' : ''} en cours avec Mana.
+            </strong>{' '}
+            Les réponses arrivent dans l’onglet Messages.{' '}
+            <button className="amt" onClick={onOuvrirMessages}>
+              Ouvrir mes messages
+            </button>
           </div>
         )}
 

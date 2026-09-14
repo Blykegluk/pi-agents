@@ -1,6 +1,13 @@
 export interface Collecteur {
   nom: string
+  /** Référent chez l'association (nom de la personne). */
   contact: string
+  telephone?: string
+  email?: string
+  /** Rythme convenu — choisi parmi FREQUENCES, 'Autre' ouvrant un champ libre. */
+  frequence?: string
+  frequenceAutre?: string
+  /** Jours et heures de passage, en clair. */
   jours: string
 }
 

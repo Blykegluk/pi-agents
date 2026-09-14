@@ -249,6 +249,22 @@ input[type='range'] {
   text-align: right;
 }
 
+.range-row .suffixe.champ-large {
+  flex: 1;
+  min-width: 0;
+}
+
+.range-row .suffixe.champ-large input[type='number'] {
+  width: 100%;
+  padding-right: 72px;
+  text-align: left;
+}
+
+.range-row .suffixe.champ-large > em {
+  right: 12px;
+  font-size: 13.5px;
+}
+
 .range-row .suffixe > em {
   right: 9px;
   font-size: 12.5px;
@@ -438,10 +454,17 @@ button.amt {
   width: 100%;
   max-width: var(--colonne, 640px);
   padding: 5px 8px calc(10px + env(safe-area-inset-bottom));
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabbar-inner::-webkit-scrollbar {
+  display: none;
 }
 
 .tabbar button {
-  flex: 1;
+  flex: 1 0 auto;
+  min-width: 56px;
   background: none;
   border: none;
   min-height: 48px;
@@ -947,8 +970,13 @@ hr.sep {
 
 /* Sur grand écran, l'assistant s'étale sur deux colonnes dans une colonne élargie. */
 @media (min-width: 900px) {
-  #root[data-large='oui'] {
-    --colonne: 1120px;
+  #root {
+    --colonne: 1040px;
+  }
+
+  /* Les formulaires restent lisibles : un champ de 1 000 px de large n'aide personne. */
+  .etroit {
+    max-width: 760px;
   }
 
   .etapes {
@@ -970,4 +998,90 @@ hr.sep {
   .reseaux {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* ---------- Notifications & messagerie ---------- */
+.tab-ico {
+  position: relative;
+  display: inline-flex;
+}
+
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--rouge, #b5442d);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-family: var(--sans);
+}
+
+.tab-ico .pastille {
+  position: absolute;
+  top: -7px;
+  right: -11px;
+  box-shadow: 0 0 0 2px var(--carte);
+}
+
+.card.fil {
+  padding: 12px 16px;
+}
+
+.fil-tete {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.fil-sujet {
+  font-weight: 600;
+  font-size: 14.5px;
+  min-width: 0;
+}
+
+.fil-etat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.bulle {
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  max-width: 88%;
+  white-space: pre-wrap;
+}
+
+.bulle.mana {
+  background: var(--sable);
+  margin-right: auto;
+}
+
+.bulle.moi {
+  background: #e3ebe3;
+  margin-left: auto;
+}
+
+.bulle-tete {
+  font-size: 11.5px;
+  color: var(--encre-3);
+  margin-bottom: 2px;
 }

@@ -190,7 +190,7 @@ export function SaisieView({
   }
 
   return (
-    <div>
+    <div className="etroit">
       <h2>Saisie hebdomadaire</h2>
 
       {magasins.length > 1 && (

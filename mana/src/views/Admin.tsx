@@ -3,12 +3,14 @@ import type { Session } from '@supabase/supabase-js'
 import {
   envoyerMessage,
   listerClients,
+  marquerLu,
   majStatutDemande,
   mesDemandes,
   messagesDe,
   type ClientAdmin,
   type Demande,
   type Message,
+  type NonLus,
 } from '../lib/cloud'
 import { Composer } from '../components/Composer'
 import { aggParSociete } from '../lib/selectors'
@@ -20,7 +22,7 @@ import { exerciceCourant } from '../lib/demo'
  * Console administrateur Mana : demandes entrantes (mise en relation, support)
  * avec fil de discussion, et suivi d'activité de chaque client.
  */
-export function Admin({ session }: { session: Session }) {
+export function Admin({ session, nonLus, onLu }: { session: Session; nonLus: NonLus; onLu: () => void }) {
   const [onglet, setOnglet] = useState<'demandes' | 'clients'>('demandes')
   const [demandes, setDemandes] = useState<Demande[]>([])
   const [clients, setClients] = useState<ClientAdmin[]>([])
@@ -45,8 +47,12 @@ export function Admin({ session }: { session: Session }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Ouvrir un fil éteint sa pastille côté Mana.
   useEffect(() => {
-    if (ouverte) messagesDe(ouverte).then(setFil).catch(() => setFil([]))
+    if (!ouverte) return
+    messagesDe(ouverte).then(setFil).catch(() => setFil([]))
+    marquerLu(ouverte, 'mana').then(onLu).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ouverte])
 
   const nouvelles = useMemo(() => demandes.filter((d) => d.statut === 'nouvelle').length, [demandes])
@@ -57,6 +63,7 @@ export function Admin({ session }: { session: Session }) {
     if (d.statut === 'nouvelle') await majStatutDemande(d.id, 'en_cours')
     setFil(await messagesDe(d.id))
     setDemandes(await mesDemandes())
+    onLu()
   }
 
   async function changerStatut(d: Demande, statut: Demande['statut']) {
@@ -75,7 +82,7 @@ export function Admin({ session }: { session: Session }) {
 
       <div className="chips">
         <button className={`chip ${onglet === 'demandes' ? 'active' : ''}`} onClick={() => setOnglet('demandes')}>
-          Demandes{nouvelles > 0 ? ` (${nouvelles} nouvelle${nouvelles > 1 ? 's' : ''})` : ''}
+          Demandes{nonLus.total > 0 ? ` (${nonLus.total} non lu${nonLus.total > 1 ? 's' : ''})` : nouvelles > 0 ? ` (${nouvelles} nouvelle${nouvelles > 1 ? 's' : ''})` : ''}
         </button>
         <button className={`chip ${onglet === 'clients' ? 'active' : ''}`} onClick={() => setOnglet('clients')}>
           Clients ({clients.length})
@@ -94,7 +101,12 @@ export function Admin({ session }: { session: Session }) {
                   </strong>
                   <div className="muted">{d.email ?? d.user_id} · {fmtDateHeure(d.created_at)}</div>
                 </div>
-                <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+                  {(nonLus.parDemande[d.id] ?? 0) > 0 && (
+                    <span className="pastille">{nonLus.parDemande[d.id]}</span>
+                  )}
+                  <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
+                </span>
               </div>
 
               {Object.keys(d.contenu).length > 0 && (
@@ -109,7 +121,10 @@ export function Admin({ session }: { session: Session }) {
               )}
 
               <div className="row-actions" style={{ marginTop: 10 }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setOuverte(ouverte === d.id ? null : d.id)}>
+                <button
+                  className={`btn btn-sm ${(nonLus.parDemande[d.id] ?? 0) > 0 ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setOuverte(ouverte === d.id ? null : d.id)}
+                >
                   {ouverte === d.id ? 'Fermer le fil' : 'Ouvrir le fil'}
                 </button>
                 {d.statut !== 'en_cours' && (
