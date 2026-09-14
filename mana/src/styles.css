@@ -979,15 +979,6 @@ hr.sep {
     max-width: 760px;
   }
 
-  .etapes {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
-
-  .etapes > .pleine {
-    grid-column: 1 / -1;
-  }
-
   .colonnes-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
