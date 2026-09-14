@@ -478,7 +478,7 @@ export function Collecte({
           poubelle, scanné avec un motif de démarque « don » dédié si votre back-office le permet.
         </p>
         <div className="detail-lignes">
-          <div className="ligne"><span>DLC demain / après-demain</span><span className="badge vert">donnable — sortir avant la date</span></div>
+          <div className="ligne"><span>DLC du jour, de demain ou d’après-demain</span><span className="badge vert">donnable — jusqu’à la date incluse</span></div>
           <div className="ligne"><span>DDM dépassée (« de préférence avant »)</span><span className="badge vert">donnable</span></div>
           <div className="ligne"><span>F&amp;L moches mais sains, pain de la veille</span><span className="badge vert">donnables</span></div>
           <div className="ligne"><span>DLC dépassée, produit entamé, froid rompu, alcool</span><span className="badge alerte">jamais</span></div>

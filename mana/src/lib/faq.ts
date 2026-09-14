@@ -13,13 +13,13 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Quels produits ai-je le droit de donner ?',
     reponse:
-      'Tout produit encore consommable : DLC de demain ou après-demain (à sortir avant la date, jamais après), DDM dépassée (« à consommer de préférence avant »), fruits et légumes moches mais sains, pain de la veille, emballages abîmés mais intacts. Jamais : DLC dépassée, produit entamé ou déconditionné, chaîne du froid rompue, alcool. L’affiche à imprimer est dans l’onglet Collecte, étape 4.',
+      'Tout produit encore consommable : DLC du jour, de demain ou d’après-demain (la date est incluse — un produit à DLC du jour se donne le matin, l’association le distribue dans la journée), DDM dépassée (« à consommer de préférence avant »), fruits et légumes moches mais sains, pain de la veille, emballages abîmés mais intacts. Jamais : DLC dépassée, produit entamé ou déconditionné, chaîne du froid rompue, alcool. L’affiche à imprimer est dans l’onglet Collecte, étape 4.',
     motsCles: 'dlc ddm date tri donner produits interdits alcool frais',
   },
   {
     question: 'Quelle est la différence entre DLC et DDM ?',
     reponse:
-      'DLC = « à consommer jusqu’au » : après la date, le produit est impropre — on ne le donne jamais. DDM = « à consommer de préférence avant » : après la date, le produit reste sûr (qualité éventuellement moindre) — il est donnable.',
+      'DLC = « à consommer jusqu’au » : le jour de la date, le produit est encore bon et donnable ; dès le lendemain, il est impropre — on ne le donne jamais. DDM = « à consommer de préférence avant » : après la date, le produit reste sûr (qualité éventuellement moindre) — il est donnable.',
     motsCles: 'dlc ddm date limite peremption difference',
   },
   {

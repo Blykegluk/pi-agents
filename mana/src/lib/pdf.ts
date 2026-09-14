@@ -529,14 +529,14 @@ export async function pdfAfficheTri(nomMagasin: string) {
   }
 
   bloc('ON DONNE', [
-    'Produits à DLC demain ou après-demain (« à consommer jusqu’au ») — à sortir la veille, jamais après la date.',
+    'Produits à DLC du jour, de demain ou d’après-demain (« à consommer jusqu’au ») — donnables jusqu’à la date incluse. DLC du jour : l’association distribue le jour même.',
     'DDM dépassée (« à consommer de préférence avant ») : biscuits, conserves, épicerie — donnables sans limite stricte.',
     'Fruits & légumes moches, tachés, mûrs — mais sains.',
     'Pain de la veille, emballages abîmés mais intacts (boîte cabossée, carton déchiré).',
   ], true)
 
   bloc('ON NE DONNE JAMAIS', [
-    'DLC dépassée — même d’un jour. C’est la règle d’or.',
+    'DLC dépassée — dès le lendemain de la date. C’est la règle d’or.',
     'Produits entamés, déconditionnés ou sans étiquette.',
     'Chaîne du froid rompue (produit resté hors frigo).',
     'Alcool.',
