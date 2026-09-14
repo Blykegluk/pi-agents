@@ -1179,3 +1179,8 @@ hr.sep {
 .bordereau-ligne .infos small {
   color: var(--encre-3);
 }
+
+.ligne-detail td {
+  background: var(--papier);
+  padding: 12px 10px;
+}

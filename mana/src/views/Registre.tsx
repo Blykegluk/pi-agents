@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { aggParSociete, baseDeLaSaisie, calculerCloture } from '../lib/selectors'
 import { coutEmballes, coutFL } from '../lib/calc'
@@ -32,6 +32,15 @@ export function Registre({
   const [societeId, setSocieteId] = useState(aggs[0]?.societe.id ?? '')
   const agg = aggs.find((a) => a.societe.id === societeId) ?? aggs[0]
   const [messageFactures, setMessageFactures] = useState('')
+  const [ligneOuverte, setLigneOuverte] = useState<string | null>(null)
+
+  /** Supprime une ligne du registre et les fichiers archivés qui vont avec. */
+  async function supprimerLigne(s: Saisie) {
+    const quoi = s.type === 'correction' ? 'cette correction' : s.jour ? `le bordereau du ${fmtDate(s.jour)}` : `la ligne de la ${weekLabel(s.semaine)}`
+    if (!confirm(`Supprimer ${quoi}${s.justificatifs.length ? ` et ses ${s.justificatifs.length} pièce(s) jointe(s)` : ''} ? Le calcul de la semaine est refait.`)) return
+    for (const j of s.justificatifs) if (j.chemin) await supprimerFichierBordereau(j.chemin).catch(() => {})
+    onDeleteSaisie(s.id)
+  }
 
   // Clôture d'exercice
   const [caReel, setCaReel] = useState('')
@@ -144,28 +153,71 @@ export function Registre({
                   <th className="num">Base semaine</th>
                   <th>Horodatage</th>
                   <th className="num">Justif.</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {lignes.map((s) => (
-                  <tr key={s.id} className={agg.saisiesEnAlerte.has(s.id) ? 'ligne-alerte' : undefined}>
-                    <td>
-                      {weekLabel(s.semaine)}
-                      {s.jour ? ` · ${s.jour.slice(8, 10)}/${s.jour.slice(5, 7)}` : ''}
-                    </td>
-                    <td>{s.type === 'correction' ? <span className="badge alerte">correction</span> : 'don'}</td>
-                    <td>{magasinDe(s.magasinId)?.nom}</td>
-                    <td className="num">{fmtEUR(s.pvEmballes, 2)}</td>
-                    <td className="num">{fmtPct(s.margePctAppliquee)}</td>
-                    <td className="num">{fmtNum(s.kgFL, 1)} kg</td>
-                    <td className="num">{fmtEUR(s.coutKgFLApplique, 2)}</td>
-                    <td className="num">
-                      <strong>{fmtEUR(baseDeLaSaisie(s), 2)}</strong>
-                    </td>
-                    <td>{fmtDateHeure(s.horodatage)}</td>
-                    <td className="num">{s.justificatifs.length > 0 ? `📎 ${s.justificatifs.length}` : '—'}</td>
-                  </tr>
-                ))}
+                {lignes.map((s) => {
+                  const nature = s.type === 'correction' ? 'correction' : s.origine === 'bordereau' ? 'bordereau' : s.origine === 'releve' ? 'relevé' : 'don'
+                  const depliee = ligneOuverte === s.id
+                  return (
+                    <Fragment key={s.id}>
+                      <tr className={agg.saisiesEnAlerte.has(s.id) ? 'ligne-alerte' : undefined}>
+                        <td>
+                          {weekLabel(s.semaine)}
+                          {s.jour ? ` · ${s.jour.slice(8, 10)}/${s.jour.slice(5, 7)}` : ''}
+                        </td>
+                        <td>{s.type === 'correction' ? <span className="badge alerte">correction</span> : nature}</td>
+                        <td>{magasinDe(s.magasinId)?.nom}</td>
+                        <td className="num">{fmtEUR(s.pvEmballes, 2)}</td>
+                        <td className="num">{fmtPct(s.margePctAppliquee)}</td>
+                        <td className="num">{fmtNum(s.kgFL, 1)} kg</td>
+                        <td className="num">{fmtEUR(s.coutKgFLApplique, 2)}</td>
+                        <td className="num">
+                          <strong>{fmtEUR(baseDeLaSaisie(s), 2)}</strong>
+                        </td>
+                        <td>{fmtDateHeure(s.horodatage)}</td>
+                        <td className="num">{s.justificatifs.length > 0 ? `📎 ${s.justificatifs.length}` : '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setLigneOuverte(depliee ? null : s.id)}>
+                            {depliee ? 'Fermer' : 'Voir'}
+                          </button>{' '}
+                          <button className="btn btn-danger btn-sm" onClick={() => void supprimerLigne(s)}>
+                            Supprimer
+                          </button>
+                        </td>
+                      </tr>
+                      {depliee && (
+                        <tr className="ligne-detail">
+                          <td colSpan={11}>
+                            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                              <div style={{ minWidth: 220, flex: 1 }}>
+                                <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>
+                                  <strong>{nature.charAt(0).toUpperCase() + nature.slice(1)}</strong>
+                                  {s.jour ? ` du ${fmtDate(s.jour)}` : ` — ${weekLabel(s.semaine)}`}
+                                  {s.collecteur ? ` · ${s.collecteur}` : ''}
+                                  {s.colis ? ` · ${s.colis} colis` : ''}
+                                  {s.signe !== undefined ? ` · ${s.signe ? 'signé' : 'signature non confirmée'}` : ''}
+                                  {s.flInclus ? ' · F&L inclus dans le montant' : ''}
+                                  {s.releveMois ? ` · issu du relevé de ${libelleMois(s.releveMois)}` : ''}
+                                </div>
+                                {s.note && <div className="muted" style={{ fontSize: 13 }}>{s.note}</div>}
+                                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Enregistré le {fmtDateHeure(s.horodatage)}</div>
+                              </div>
+                              <div style={{ flex: 2, minWidth: 220 }}>
+                                {s.justificatifs.length > 0 ? (
+                                  <Pieces justificatifs={s.justificatifs} onChange={(liste) => onSaveSaisie({ ...s, justificatifs: liste })} />
+                                ) : (
+                                  <span className="muted" style={{ fontSize: 13 }}>Aucune pièce jointe.</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
