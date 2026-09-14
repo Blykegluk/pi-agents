@@ -108,6 +108,18 @@ export interface Saisie {
   flInclus?: boolean
   /** Association qui a enlevé les denrées — indispensable dès qu'un magasin en a plusieurs. */
   collecteur?: string
+  /**
+   * Nature de la ligne : 'bordereau' = un passage (jour, colis, kg, photo signée — la
+   * preuve) ; 'releve' = un montant de démarque lu dans l'export du back-office,
+   * rattaché à la semaine. Absent sur les anciennes saisies combinées.
+   */
+  origine?: 'bordereau' | 'releve'
+  /** Colis de produits emballés remis (bacs, cartons ou sacs) — sur un bordereau. */
+  colis?: number
+  /** Le bordereau porte les deux signatures. */
+  signe?: boolean
+  /** Relevé mensuel réparti sur ses semaines : le mois d'origine ('AAAA-MM'). */
+  releveMois?: string
   note?: string
   justificatifs: Justificatif[]
   /** Horodatage de l'enregistrement (registre opposable) */

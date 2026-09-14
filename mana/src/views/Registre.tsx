@@ -56,7 +56,7 @@ export function Registre({
     if (!agg) return
     const sep = ';'
     const head = [
-      'Semaine ISO', 'Jour', 'Type', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
+      'Semaine ISO', 'Jour', 'Type', 'Origine', 'Colis', 'Association', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
       'Poids F&L (kg)', 'Coût F&L (EUR/kg)', 'Coût F&L (EUR)', 'Base semaine (EUR)', 'Horodatage', 'Justificatifs', 'Alerte 2,5 % CA', 'Note',
     ].join(sep)
     const rows = [...agg.saisies]
@@ -65,7 +65,9 @@ export function Registre({
         const m = magasinDe(s.magasinId)
         const num = (n: number) => n.toFixed(2).replace('.', ',')
         return [
-          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don', m?.nom ?? '', denomination(societe),
+          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don',
+          s.origine === 'bordereau' ? 'Bordereau' : s.origine === 'releve' ? 'Relevé' : 'Saisie', String(s.colis ?? ''), s.collecteur ?? '',
+          m?.nom ?? '', denomination(societe),
           num(s.pvEmballes), String(s.margePctAppliquee).replace('.', ','),
           num(coutEmballes(s.pvEmballes, s.margePctAppliquee)), String(s.kgFL).replace('.', ','),
           num(s.coutKgFLApplique), num(coutFL(s.kgFL, s.coutKgFLApplique)), num(baseDeLaSaisie(s)),

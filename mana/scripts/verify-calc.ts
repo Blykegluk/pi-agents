@@ -12,6 +12,7 @@ import {
 } from '../src/lib/calc.ts'
 import { derouleFacturation, tauxCommissionPct } from '../src/lib/facturation.ts'
 import { suiviReports } from '../src/lib/reports.ts'
+import { repartirReleve, semainesDuMois } from '../src/lib/releves.ts'
 
 let echecs = 0
 
@@ -112,6 +113,36 @@ attendre('total facturé sur l’exercice = 18 % × 30 000', totalFacture, 5_400
   attendre('2025 : excédent 2020 toujours en stock (jamais de place)', suiviReports(e3 as never, societe as never, 2025).soldesFin.length, 1)
   attendre('2026 : excédent 2020 périmé — 10 000 de place, rien d’imputé', suiviReports(e3 as never, societe as never, 2026).imputeCetExercice, 0)
   attendre('2026 : stock vide', suiviReports(e3 as never, societe as never, 2026).soldesFin.length, 0)
+}
+
+
+// ---------------------------------------------------------------------------
+// Relevés de démarque : semaines d'un mois et répartition au prorata des passages
+// ---------------------------------------------------------------------------
+{
+  const sept = semainesDuMois('2026-09')
+  attendre('septembre 2026 : nombre de semaines (jeudi dans le mois)', sept.length, 4)
+  attendre('septembre 2026 : commence en S36 (jeudi 3/09)', Number(sept[0].slice(-2)), 36)
+  attendre('septembre 2026 : finit en S39 (jeudi 24/09 ; S40 a son jeudi le 1er octobre)', Number(sept[sept.length - 1].slice(-2)), 39)
+
+  // 1 000 € sur deux semaines, 3 bordereaux en S36 et 1 en S37 → 750 / 250
+  const parts = repartirReleve(1000, ['2026-W36', '2026-W37'], [
+    { semaine: '2026-W36', collecteur: 'A' }, { semaine: '2026-W36', collecteur: 'A' }, { semaine: '2026-W36', collecteur: 'A' },
+    { semaine: '2026-W37', collecteur: 'A' },
+  ], ['A'])
+  attendre('prorata : part de S36', parts.find((p) => p.semaine === '2026-W36')!.montant, 750)
+  attendre('prorata : part de S37', parts.find((p) => p.semaine === '2026-W37')!.montant, 250)
+  // Deux associations la même semaine : 2 passages A, 1 passage B → 2/3, 1/3
+  const p2 = repartirReleve(100, ['2026-W36'], [
+    { semaine: '2026-W36', collecteur: 'A' }, { semaine: '2026-W36', collecteur: 'A' }, { semaine: '2026-W36', collecteur: 'B' },
+  ], ['A', 'B'])
+  attendre('deux associations : part A', p2.find((p) => p.collecteur === 'A')!.montant, 66.67)
+  attendre('deux associations : part B (reçoit l’arrondi)', p2.find((p) => p.collecteur === 'B')!.montant, 33.33)
+  attendre('la somme des parts est exacte', p2.reduce((t, p) => t + p.montant, 0), 100)
+  // Sans bordereau : réparti à parts égales
+  const p3 = repartirReleve(300, ['2026-W36', '2026-W37', '2026-W38'], [], ['A'])
+  attendre('sans bordereau : parts égales', p3[1].montant, 100)
+  attendre('sans bordereau : association unique reprise', p3[0].collecteur === 'A' ? 1 : 0, 1)
 }
 
 console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)

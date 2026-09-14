@@ -263,6 +263,27 @@ export default function App() {
     }))
   }
 
+  /**
+   * Relevé de démarque : remplace d'un bloc les lignes « relevé » du magasin
+   * portant sur la même période (semaine ou mois), puis insère les nouvelles.
+   */
+  function saveReleve(magasinId: string, periode: { semaine?: string; mois?: string }, nouvelles: Saisie[]) {
+    setState((s) => ({
+      ...s,
+      saisies: [
+        ...s.saisies.filter(
+          (x) =>
+            !(
+              x.magasinId === magasinId &&
+              x.origine === 'releve' &&
+              (periode.mois ? x.releveMois === periode.mois : x.semaine === periode.semaine && !x.releveMois)
+            ),
+        ),
+        ...nouvelles,
+      ],
+    }))
+  }
+
   function deleteSaisie(id: string) {
     setState((s) => ({ ...s, saisies: s.saisies.filter((x) => x.id !== id) }))
   }
@@ -437,7 +458,7 @@ export default function App() {
           />
         )}
         {tab === 'saisie' && (
-          <SaisieView state={state} exercice={exercice} session={session} onSave={saveSaisie} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
+          <SaisieView state={state} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
         )}
         {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
         {tab === 'registre' && (
