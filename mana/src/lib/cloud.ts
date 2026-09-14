@@ -234,6 +234,21 @@ export async function televerserBordereau(userId: string, blob: Blob, nom: strin
   return chemin
 }
 
+/** Liens temporaires (1 h) pour toute une liste de bordereaux — une seule requête. */
+export async function urlsBordereaux(chemins: string[]): Promise<Record<string, string>> {
+  if (chemins.length === 0) return {}
+  const { data, error } = await supabase.storage.from(BUCKET_BORDEREAUX).createSignedUrls(chemins, 3600)
+  if (error || !data) return {}
+  const out: Record<string, string> = {}
+  for (const d of data) if (d.path && d.signedUrl) out[d.path] = d.signedUrl
+  return out
+}
+
+/** Retire le fichier du bucket quand la pièce est supprimée — pas d'orphelin. */
+export async function supprimerFichierBordereau(chemin: string): Promise<void> {
+  await supabase.storage.from(BUCKET_BORDEREAUX).remove([chemin])
+}
+
 /** Lien temporaire (1 h) pour rouvrir un bordereau archivé. */
 export async function urlBordereau(chemin: string): Promise<string | null> {
   const { data, error } = await supabase.storage.from(BUCKET_BORDEREAUX).createSignedUrl(chemin, 3600)

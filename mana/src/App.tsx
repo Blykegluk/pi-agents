@@ -462,7 +462,7 @@ export default function App() {
         )}
         {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
         {tab === 'registre' && (
-          <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} />
+          <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
         )}
         {tab === 'messages' && (
           <Messages

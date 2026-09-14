@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AppState, Justificatif } from '../types'
+import type { AppState, Justificatif, Saisie } from '../types'
 import { aggParSociete, baseDeLaSaisie, calculerCloture } from '../lib/selectors'
 import { coutEmballes, coutFL } from '../lib/calc'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct } from '../lib/format'
@@ -8,6 +8,8 @@ import { libelleMois } from '../lib/facturation'
 import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRecuFiscal, pdfRegistre } from '../lib/pdf'
 import { lireFichiers } from '../lib/fichiers'
 import { IconRegistre } from '../components/Icons'
+import { Pieces } from '../components/Pieces'
+import { supprimerFichierBordereau } from '../lib/cloud'
 import { denomination } from '../lib/identite'
 
 /** Registre & documents (spec §4.5) + factures mensuelles et clôture d'exercice (complément §1 et §3). */
@@ -16,11 +18,15 @@ export function Registre({
   exercice,
   onGenererFactures,
   onCloturer,
+  onSaveSaisie,
+  onDeleteSaisie,
 }: {
   state: AppState
   exercice: number
   onGenererFactures: (societeId: string) => number
   onCloturer: (societeId: string, caReel: number, margeReellePct: number, justificatif: Justificatif | null) => void
+  onSaveSaisie: (s: Saisie) => void
+  onDeleteSaisie: (id: string) => void
 }) {
   const aggs = aggParSociete(state, exercice)
   const [societeId, setSocieteId] = useState(aggs[0]?.societe.id ?? '')
@@ -231,6 +237,80 @@ export function Registre({
           Générer les factures des mois échus
         </button>
         {messageFactures && <p className="muted" style={{ marginTop: 8, textAlign: 'center' }}>{messageFactures}</p>}
+      </div>
+
+      <div className="card">
+        <h3>Bordereaux archivés</h3>
+        <p className="muted">
+          Les pièces justificatives, mois par mois — tous les magasins de la société. Ouvrez une vignette pour vérifier
+          le bordereau en grand ; déplacez-le s’il a été enregistré sur le mauvais magasin ; supprimez-le s’il est en
+          double (le fichier archivé est effacé avec).
+        </p>
+        {(() => {
+          const bordereaux = state.saisies
+            .filter((x) => agg.magasins.some((m) => m.id === x.magasinId) && x.type === 'don' && x.jour && parseInt(x.jour.slice(0, 4), 10) === exercice)
+            .sort((a, b) => (b.jour ?? '').localeCompare(a.jour ?? ''))
+          if (bordereaux.length === 0) return <p className="muted">Aucun bordereau enregistré sur l’exercice.</p>
+          const parMois = new Map<string, typeof bordereaux>()
+          for (const b of bordereaux) {
+            const k = b.jour!.slice(0, 7)
+            parMois.set(k, [...(parMois.get(k) ?? []), b])
+          }
+          const autresMagasins = (b: Saisie) => state.magasins.filter((m) => m.id !== b.magasinId)
+          const deplacer = (b: Saisie, versId: string) => {
+            const cible = state.magasins.find((m) => m.id === versId)
+            const soc = state.societes.find((x) => x.id === cible?.societeId)
+            if (!cible || !soc) return
+            if (!confirm(`Déplacer le bordereau du ${b.jour} vers « ${cible.nom} » ?`)) return
+            onSaveSaisie({
+              ...b,
+              magasinId: cible.id,
+              // L'association et les coefficients suivent le magasin d'arrivée
+              collecteur: cible.collecteurs.some((c) => c.nom === b.collecteur) ? b.collecteur : cible.collecteurs.length === 1 ? cible.collecteurs[0].nom : undefined,
+              margePctAppliquee: soc.margePct,
+              coutKgFLApplique: cible.coutKgFL,
+            })
+          }
+          const supprimer = async (b: Saisie) => {
+            if (!confirm(`Supprimer le bordereau du ${b.jour} (${magasinDe(b.magasinId)?.nom ?? ''}) et ses ${b.justificatifs.length} pièce(s) ?`)) return
+            for (const j of b.justificatifs) if (j.chemin) await supprimerFichierBordereau(j.chemin).catch(() => {})
+            onDeleteSaisie(b.id)
+          }
+          return [...parMois.entries()].map(([mois, liste]) => (
+            <div key={mois} style={{ marginBottom: 14 }}>
+              <h4 style={{ margin: '10px 0 6px', fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 15.5 }}>
+                {libelleMois(mois)} — {liste.length} bordereau{liste.length > 1 ? 'x' : ''}
+              </h4>
+              {liste.map((b) => (
+                <div className="bordereau-ligne" key={b.id}>
+                  <div className="bordereau-vignettes">
+                    {b.justificatifs.length > 0 ? <Pieces justificatifs={b.justificatifs} compact /> : <span className="muted" style={{ fontSize: 12 }}>pas de photo</span>}
+                  </div>
+                  <div className="infos" style={{ flex: 1, minWidth: 0 }}>
+                    <strong>
+                      {fmtDate(b.jour!)} · {magasinDe(b.magasinId)?.nom ?? '—'}
+                    </strong>
+                    <small>
+                      {[b.collecteur, b.colis ? `${b.colis} colis` : '', b.kgFL ? `${fmtNum(b.kgFL, 1)} kg F&L` : '', b.signe ? 'signé' : 'signature non confirmée', b.note]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </small>
+                    <div className="row-actions" style={{ marginTop: 6, gap: 6, flexWrap: 'wrap' }}>
+                      {autresMagasins(b).map((m) => (
+                        <button key={m.id} className="btn btn-ghost btn-sm" onClick={() => deplacer(b, m.id)}>
+                          → {m.nom}
+                        </button>
+                      ))}
+                      <button className="btn btn-danger btn-sm" onClick={() => void supprimer(b)}>
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))
+        })()}
       </div>
 
       <div className="card">

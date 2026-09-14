@@ -1076,3 +1076,106 @@ hr.sep {
   color: var(--encre-3);
   margin-bottom: 2px;
 }
+
+/* ---------- Pièces jointes : vignettes des bordereaux ---------- */
+.pieces {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.pieces.compact {
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.piece {
+  margin: 0;
+}
+
+.piece-cadre {
+  display: block;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--trait);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--sable);
+}
+
+.piece-cadre img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.piece-doc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-weight: 700;
+  color: var(--encre-3);
+}
+
+.piece figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--encre-3);
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.piece figcaption span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.piece-suppr {
+  flex: none;
+  background: none;
+  border: 1px solid var(--trait);
+  border-radius: 6px;
+  color: var(--rouge, #b5442d);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 5px;
+}
+
+.pieces.compact figcaption {
+  display: none;
+}
+
+.bordereau-ligne {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-top: 1px solid var(--trait-doux);
+}
+
+.bordereau-vignettes {
+  flex: none;
+  width: 96px;
+}
+
+.bordereau-vignettes .pieces {
+  margin-top: 0;
+  grid-template-columns: 1fr;
+}
+
+.bordereau-ligne .infos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bordereau-ligne .infos small {
+  color: var(--encre-3);
+}

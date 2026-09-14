@@ -9,6 +9,7 @@ import { repartirReleve, semainesDuMois } from '../lib/releves'
 import { Amount } from '../components/Formula'
 import { IconSaisie } from '../components/Icons'
 import { ScanBordereau, type PropositionScan } from '../components/ScanBordereau'
+import { Pieces } from '../components/Pieces'
 import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
 import { televerserBordereau } from '../lib/cloud'
@@ -439,18 +440,14 @@ export function SaisieView({
           <span>Photo du bordereau (si non scannée ci-dessus)</span>
           <input type="file" accept="image/*,application/pdf" multiple onChange={(e) => void ajouterPhotos(e.target.files)} />
           <span className="aide">{session ? 'Archivée dans votre compte Mana (pièce justificative).' : 'Hors connexion : gardée sur cet appareil seulement — connectez-vous pour l’archiver.'}</span>
-          {justificatifs.length > 0 && (
-            <span className="justif-list">
-              {justificatifs.map((j) => (
-                <span className="pj" key={j.id}>
-                  📎 {j.nom}
-                  <button aria-label={`Retirer ${j.nom}`} onClick={(e) => { e.preventDefault(); setJustificatifs(justificatifs.filter((x) => x.id !== j.id)) }}>
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </span>
-          )}
+          <Pieces
+            justificatifs={justificatifs}
+            onChange={(liste) => {
+              setJustificatifs(liste)
+              // Une pièce retirée d'un bordereau déjà enregistré disparaît tout de suite du registre
+              if (bordereauExistant) onSave({ ...bordereauExistant, justificatifs: liste })
+            }}
+          />
         </label>
 
         <label className="field">
