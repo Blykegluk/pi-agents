@@ -1,7 +1,7 @@
 import type { Collecteur } from '../types'
-import { FREQUENCES } from '../lib/annuaire'
+import { FREQUENCES, PLAGES } from '../lib/annuaire'
 
-export const COLLECTEUR_VIDE: Collecteur = { nom: '', contact: '', telephone: '', email: '', frequence: '', frequenceAutre: '', jours: '' }
+export const COLLECTEUR_VIDE: Collecteur = { nom: '', contact: '', telephone: '', email: '', frequence: '', frequenceAutre: '', plage: '', plageAutre: '', jours: '' }
 
 /**
  * Fiche d'une association collectrice — un seul formulaire, utilisé à la
@@ -63,9 +63,29 @@ export function CollecteurForm({
         )}
       </label>
 
+      <label className="field">
+        <span>Créneau de passage</span>
+        <div className="chips" style={{ marginBottom: 0 }}>
+          {PLAGES.map((p) => (
+            <button key={p} type="button" className={`chip ${valeur.plage === p ? 'active' : ''}`} onClick={() => maj('plage', valeur.plage === p ? '' : p)}>
+              {p === 'Autre' ? 'Autre (préciser)' : p}
+            </button>
+          ))}
+        </div>
+        {valeur.plage === 'Autre' && (
+          <input
+            type="text"
+            style={{ marginTop: 8 }}
+            value={valeur.plageAutre ?? ''}
+            onChange={(e) => maj('plageAutre', e.target.value)}
+            placeholder="Ex. entre 14 h et 15 h, ou à la fermeture"
+          />
+        )}
+      </label>
+
       <label className="field" style={{ marginBottom: onSupprimer ? 8 : 0 }}>
-        <span>Jours et heures de passage (facultatif)</span>
-        <input type="text" value={valeur.jours} onChange={(e) => maj('jours', e.target.value)} placeholder="Ex. du lundi au samedi, 11 h – 13 h" />
+        <span>Jours de passage (facultatif)</span>
+        <input type="text" value={valeur.jours} onChange={(e) => maj('jours', e.target.value)} placeholder="Ex. du lundi au samedi, sauf jours fériés" />
       </label>
 
       {onSupprimer && (

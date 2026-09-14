@@ -16,6 +16,20 @@ export interface ReseauCollecteur {
 /** Rythmes proposés partout où l'on décrit une collecte (magasin, assistant). */
 export const FREQUENCES = ['Quotidienne', '2 à 3 fois par semaine', 'Hebdomadaire', 'Autre'] as const
 
+/** Créneaux horaires proposés partout où l'on décrit une collecte. */
+export const PLAGES = ['Matin (7 h – 10 h)', 'Midi (11 h – 14 h)', 'Fin de journée (17 h – 20 h)', 'Autre'] as const
+
+/** Libellé lisible d'un créneau, en tenant compte du champ libre « Autre ». */
+export function libellePlage(c: { plage?: string; plageAutre?: string }): string {
+  if (!c.plage) return ''
+  return c.plage === 'Autre' ? c.plageAutre?.trim() || 'Autre créneau' : c.plage
+}
+
+/** Rythme + créneau + jours, en une ligne — pour les listes, bordereaux et reçus. */
+export function resumePassages(c: { frequence?: string; frequenceAutre?: string; plage?: string; plageAutre?: string; jours: string }): string {
+  return [libelleFrequence(c), libellePlage(c), c.jours].filter(Boolean).join(' · ')
+}
+
 /** Libellé lisible d'une fréquence, en tenant compte du champ libre « Autre ». */
 export function libelleFrequence(c: { frequence?: string; frequenceAutre?: string }): string {
   if (!c.frequence) return ''

@@ -7,7 +7,10 @@ export interface Collecteur {
   /** Rythme convenu — choisi parmi FREQUENCES, 'Autre' ouvrant un champ libre. */
   frequence?: string
   frequenceAutre?: string
-  /** Jours et heures de passage, en clair. */
+  /** Créneau de passage — choisi parmi PLAGES, 'Autre' ouvrant un champ libre. */
+  plage?: string
+  plageAutre?: string
+  /** Jours de passage, en clair. */
   jours: string
 }
 

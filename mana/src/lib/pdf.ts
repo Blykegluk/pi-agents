@@ -6,6 +6,7 @@ import { baseDeLaSaisie, type AggSociete } from './selectors'
 import { coutEmballes, coutFL, kgDetournes } from './calc'
 import { libelleMois, moisDeLaSemaine } from './facturation'
 import { denomination } from './identite'
+import { resumePassages } from './annuaire'
 
 const MENTION_LEGALE =
   'Mana n’est pas un conseil fiscal ; ce document est destiné à validation par votre expert-comptable.'
@@ -1116,7 +1117,7 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number, collecteu
   doc.setFontSize(8.5)
   for (const m of agg.magasins.filter((x) => idsMagasins.has(x.id))) {
     const c = collecteur ? m.collecteurs.find((x) => x.nom === collecteur) : m.collecteurs[0]
-    doc.text(t(`• ${m.nom}${c?.jours ? ` — passages : ${c.jours}` : ''}`), 14, y, { maxWidth: 182 })
+    doc.text(t(`• ${m.nom}${c && resumePassages(c) ? ` — passages : ${resumePassages(c)}` : ''}`), 14, y, { maxWidth: 182 })
     y += 5.5
   }
 

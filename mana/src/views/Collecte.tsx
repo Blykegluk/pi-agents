@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Collecteur, Magasin } from '../types'
-import { FREQUENCES, libelleFrequence, RESEAUX_COLLECTEURS, recommanderFrequence } from '../lib/annuaire'
+import { FREQUENCES, PLAGES, RESEAUX_COLLECTEURS, recommanderFrequence, resumePassages } from '../lib/annuaire'
 import { pdfAfficheTri, pdfBordereau } from '../lib/pdf'
 import {
   IconBalance,
@@ -40,7 +40,6 @@ const PICTOS: Record<string, ReactNode> = {
   premiere: <IconDrapeau />,
 }
 
-const PLAGES = ['Matin (7 h – 10 h)', 'Midi (11 h – 14 h)', 'Fin de journée (17 h – 20 h)'] as const
 
 export function Collecte({
   state,
@@ -300,7 +299,7 @@ export function Collecte({
                   <div className="infos">
                     <strong>{c.nom}</strong>
                     <small>
-                      {[libelleFrequence(c), c.jours, c.contact, c.telephone, c.email].filter(Boolean).join(' · ') ||
+                      {[resumePassages(c), c.contact, c.telephone, c.email].filter(Boolean).join(' · ') ||
                         'coordonnées à compléter'}
                     </small>
                   </div>
@@ -407,7 +406,7 @@ export function Collecte({
               <label className="field">
                 <span>Plage horaire de ramassage</span>
                 <div className="chips" style={{ marginBottom: 0 }}>
-                  {PLAGES.map((p) => (
+                  {PLAGES.filter((p) => p !== 'Autre').map((p) => (
                     <button key={p} type="button" className={`chip ${plage === p ? 'active' : ''}`} onClick={() => setPlage(p)}>
                       {p}
                     </button>
