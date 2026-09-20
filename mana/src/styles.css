@@ -1292,3 +1292,24 @@ i.cal-point {
   color: var(--ambre-texte);
   font-weight: 600;
 }
+
+/* ---- Smart upload : zone de dépôt des bordereaux ---- */
+.zone-depot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 26px 18px;
+  border: 2px dashed var(--vert);
+  border-radius: 14px;
+  background: var(--sable);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.zone-depot strong { font-size: 15px; }
+.zone-depot .muted { font-size: 13px; }
+.zone-depot-icone { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+.zone-depot:hover { background: var(--trait-doux); }
+.zone-depot.survol { background: #e3efe6; border-color: var(--vert-fonce); transform: scale(1.01); }
+.zone-depot.inactive { cursor: default; border-color: var(--trait); opacity: 0.85; }

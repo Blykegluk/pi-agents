@@ -474,6 +474,8 @@ export function SaisieView({
       </div>
 
       {/* ============ 1. Bordereau du jour ============ */}
+      <ImportBordereaux magasin={magasin} session={session} onEnregistrer={enregistrerImport} />
+
       <div className="card">
         <h3>1. Bordereau du jour</h3>
         <p className="muted">
@@ -564,8 +566,6 @@ export function SaisieView({
           </p>
         )}
       </div>
-
-      <ImportBordereaux magasin={magasin} session={session} onEnregistrer={enregistrerImport} />
 
       {/* ============ 2. Relevé de démarque ============ */}
       <div className="card">

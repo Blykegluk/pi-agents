@@ -39,13 +39,17 @@ export function ImportBordereaux({
   const [lignes, setLignes] = useState<BordereauImporte[]>([])
   const [enCours, setEnCours] = useState(0)
   const [message, setMessage] = useState('')
+  const [survol, setSurvol] = useState(false)
 
-  if (!session) return null
-
-  async function traiter(files: FileList | null) {
+  async function traiter(files: FileList | File[] | null) {
     if (!files || files.length === 0 || !session) return
     setMessage('')
-    const fichiers = Array.from(files)
+    const tous = Array.from(files)
+    const fichiers = tous.filter((f) => f.type.startsWith('image/'))
+    if (fichiers.length < tous.length) {
+      setMessage(`${tous.length - fichiers.length} fichier${tous.length - fichiers.length > 1 ? 's' : ''} ignoré${tous.length - fichiers.length > 1 ? 's' : ''} : seules les photos (JPG, PNG, HEIC converti) sont lues.`)
+    }
+    if (fichiers.length === 0) return
     setEnCours(fichiers.length)
     const nouvelles: BordereauImporte[] = []
     // Lectures en parallèle par paquets de 3 : assez rapide, sans saturer la fonction
@@ -86,18 +90,41 @@ export function ImportBordereaux({
   const pretes = lignes.filter((l) => l.garder && l.jour && (!(magasin.collecteurs.length >= 2) || l.collecteur))
   const bloquees = lignes.filter((l) => l.garder && (!l.jour || (magasin.collecteurs.length >= 2 && !l.collecteur)))
 
+  const actif = !!session && enCours === 0
+
   return (
     <div className="card">
-      <h3>Importer plusieurs bordereaux</h3>
+      <h3>Smart upload — vos bordereaux</h3>
       <p className="muted" style={{ margin: '0 0 10px' }}>
-        Sélectionnez toutes les photos d’un coup (une semaine, un mois) : chaque bordereau est archivé puis lu, vous
-        corrigez ce qui doit l’être, un seul clic enregistre tout.
+        Glissez ici un ou plusieurs bordereaux photographiés (une journée, une semaine, un mois) : chaque photo est
+        archivée puis lue, vous corrigez ce qui doit l’être, un seul clic enregistre tout.
       </p>
-      <label className="btn btn-primary btn-block" style={{ cursor: 'pointer', marginBottom: 8 }}>
-        {enCours > 0 ? `Lecture en cours… (${enCours} restant${enCours > 1 ? 's' : ''})` : '📷 Choisir les photos des bordereaux'}
-        <input type="file" accept="image/*" multiple disabled={enCours > 0} onChange={(e) => { void traiter(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+      <label
+        className={`zone-depot ${survol ? 'survol' : ''} ${actif ? '' : 'inactive'}`}
+        onDragOver={(e) => { e.preventDefault(); if (actif) setSurvol(true) }}
+        onDragLeave={() => setSurvol(false)}
+        onDrop={(e) => { e.preventDefault(); setSurvol(false); if (actif) void traiter(e.dataTransfer.files) }}
+      >
+        <input type="file" accept="image/*" multiple disabled={!actif} onChange={(e) => { void traiter(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+        <span className="zone-depot-icone" aria-hidden="true">📷</span>
+        {!session ? (
+          <>
+            <strong>Connectez-vous pour déposer vos bordereaux</strong>
+            <span className="muted">Les photos sont archivées sur votre compte : c’est la preuve de chaque passage.</span>
+          </>
+        ) : enCours > 0 ? (
+          <>
+            <strong>Lecture en cours… {enCours} restant{enCours > 1 ? 's' : ''}</strong>
+            <span className="muted">Chaque bordereau est archivé puis lu par Mana.</span>
+          </>
+        ) : (
+          <>
+            <strong>Glissez vos bordereaux ici, ou cliquez pour les choisir</strong>
+            <span className="muted">Un ou plusieurs à la fois · JPG, PNG · depuis le téléphone, prenez la photo directement.</span>
+          </>
+        )}
       </label>
-      {message && <p className="muted" style={{ color: 'var(--vert)' }}>{message}</p>}
+      {message && <p className="muted" style={{ color: 'var(--vert)', marginTop: 8 }}>{message}</p>}
 
       {lignes.length > 0 && (
         <div className="table-scroll" style={{ marginTop: 8 }}>

@@ -39,11 +39,11 @@ const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
 export default function App() {
   // Premier lancement : jeu de données de démonstration prérempli
   const [state, setState] = useState<AppState>(() => loadState() ?? buildDemoState())
-  // Un compte qui a déjà ses magasins arrive sur la Collecte ; le simulateur
-  // n'est la porte d'entrée que pour un visiteur.
+  // Un compte qui a déjà ses magasins arrive sur la Saisie (le geste quotidien) ;
+  // le simulateur n'est la porte d'entrée que pour un visiteur.
   const [tab, setTab] = useState<Tab>(() => {
     const local = loadState()
-    return local && !estDemo(local) && local.magasins.length > 0 ? 'collecte' : 'simulateur'
+    return local && !estDemo(local) && local.magasins.length > 0 ? 'saisie' : 'simulateur'
   })
   const [reglages, setReglages] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -119,8 +119,8 @@ export default function App() {
     sauterProchainPush.current = true
     setMajLocale(Date.parse(majLe))
     setState(etat)
-    // À la connexion, un compte équipé quitte le simulateur pour la Collecte
-    if (etat.magasins.length > 0) setTab((t) => (t === 'simulateur' ? 'collecte' : t))
+    // À la connexion, un compte équipé quitte le simulateur pour la Saisie
+    if (etat.magasins.length > 0) setTab((t) => (t === 'simulateur' ? 'saisie' : t))
     setSyncStatut('ok')
     setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
   }
