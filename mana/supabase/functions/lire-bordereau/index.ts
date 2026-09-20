@@ -123,6 +123,9 @@ Deno.serve(async (req: Request) => {
       ? `Associations connues de ce magasin : ${(ctx.associations as string[]).join(' ; ')}. Si le nom lu correspond à l’une d’elles, renvoie-la à l’identique.`
       : '',
     ctx.jour ? `Date proposée par le magasin : ${ctx.jour} — à confirmer par ce que tu lis, pas à recopier aveuglément.` : '',
+    ctx.aujourdhui
+      ? `Date du jour : ${ctx.aujourdhui}. Un bordereau est photographié dans les jours ou semaines qui suivent le passage : une date future, ou vieille de plusieurs mois, est presque toujours un mois mal lu (ex. 09 lu 04). Relis alors le mois avec soin, préfère l’interprétation proche d’aujourd’hui si l’écriture le permet, et ajoute un doute explicite.`
+      : '',
   ]
     .filter(Boolean)
     .join('\n')

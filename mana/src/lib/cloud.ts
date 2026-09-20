@@ -334,7 +334,7 @@ export interface LectureBordereau {
 export async function lireBordereau(
   base64: string,
   typeMime: string,
-  contexte: { magasin?: string; associations?: string[]; jour?: string },
+  contexte: { magasin?: string; associations?: string[]; jour?: string; aujourdhui?: string },
 ): Promise<LectureBordereau> {
   const { data, error } = await supabase.functions.invoke<{ lecture?: LectureBordereau; erreur?: string }>(
     'lire-bordereau',

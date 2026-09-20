@@ -4,6 +4,7 @@ import { aggParSociete, baseDeLaSaisie, calculerCloture } from '../lib/selectors
 import { coutEmballes, coutFL } from '../lib/calc'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { compareWeekIds, weekLabel } from '../lib/iso'
+import { semaineDuJourISO } from '../lib/releves'
 import { libelleMois } from '../lib/facturation'
 import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRecuFiscal, pdfRegistre } from '../lib/pdf'
 import { lireFichiers } from '../lib/fichiers'
@@ -203,6 +204,26 @@ export function Registre({
                                 </div>
                                 {s.note && <div className="muted" style={{ fontSize: 13 }}>{s.note}</div>}
                                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Enregistré le {fmtDateHeure(s.horodatage)}</div>
+                                {s.origine === 'bordereau' && s.jour && (
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 13 }}>
+                                    <span>Changer la date :</span>
+                                    <input
+                                      type="date"
+                                      value={s.jour}
+                                      max={new Date().toISOString().slice(0, 10)}
+                                      style={{ width: 'auto', padding: 6 }}
+                                      onChange={(e) => {
+                                        const nouveau = e.target.value
+                                        if (!nouveau || nouveau === s.jour) return
+                                        if (state.saisies.some((x) => x.id !== s.id && x.magasinId === s.magasinId && x.origine === 'bordereau' && x.jour === nouveau)) {
+                                          alert(`Il y a déjà un bordereau le ${fmtDate(nouveau)} pour ce magasin.`)
+                                          return
+                                        }
+                                        onSaveSaisie({ ...s, jour: nouveau, semaine: semaineDuJourISO(nouveau) })
+                                      }}
+                                    />
+                                  </label>
+                                )}
                               </div>
                               <div style={{ flex: 2, minWidth: 220 }}>
                                 {s.justificatifs.length > 0 ? (

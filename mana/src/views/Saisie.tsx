@@ -475,7 +475,7 @@ export function SaisieView({
       </div>
 
       {/* ============ 1. Bordereau du jour ============ */}
-      <ImportBordereaux magasin={magasin} session={session} onEnregistrer={enregistrerImport} />
+      <ImportBordereaux magasin={magasin} session={session} joursDejaPris={bordereauxMagasin.map((b) => b.jour!).filter(Boolean)} onEnregistrer={enregistrerImport} />
 
       <div className="card">
         <h3>1. Bordereau du jour</h3>
@@ -495,6 +495,31 @@ export function SaisieView({
           </div>
           <button className="btn btn-ghost" onClick={() => { const j = addJours(jour, 1); setJour(j); setMoisCal(j.slice(0, 7)) }} aria-label="Jour suivant">›</button>
         </div>
+
+        {bordereauExistant && (
+          <div className="info-banner" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 0 }}>
+            <span style={{ flex: 1, minWidth: 200 }}>
+              <strong>Mauvaise date ?</strong> Déplacez ce bordereau (photo comprise) au bon jour :
+            </span>
+            <input
+              type="date"
+              value={jour}
+              max={new Date().toISOString().slice(0, 10)}
+              style={{ width: 'auto', padding: 8 }}
+              onChange={(e) => {
+                const nouveau = e.target.value
+                if (!nouveau || nouveau === jour) return
+                if (bordereauxMagasin.some((b) => b.jour === nouveau)) {
+                  alert(`Il y a déjà un bordereau le ${fmtDate(nouveau)} : supprimez-le d’abord, ou choisissez un autre jour.`)
+                  return
+                }
+                onSave({ ...bordereauExistant, jour: nouveau, semaine: semaineDuJour(nouveau) })
+                setJour(nouveau)
+                setMoisCal(nouveau.slice(0, 7))
+              }}
+            />
+          </div>
+        )}
 
         <ScanBordereau magasin={magasin} session={session} jour={jour} onAppliquer={appliquerScan} />
 

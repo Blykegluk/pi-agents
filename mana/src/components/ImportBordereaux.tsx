@@ -30,12 +30,16 @@ export interface BordereauImporte {
 export function ImportBordereaux({
   magasin,
   session,
+  joursDejaPris = [],
   onEnregistrer,
 }: {
   magasin: Magasin
   session: Session | null
+  /** Jours qui ont déjà un bordereau enregistré (signalés, pas bloqués). */
+  joursDejaPris?: string[]
   onEnregistrer: (lignes: BordereauImporte[]) => void
 }) {
+  const dejaPris = new Set(joursDejaPris)
   const [lignes, setLignes] = useState<BordereauImporte[]>([])
   const [enCours, setEnCours] = useState(0)
   const [message, setMessage] = useState('')
@@ -62,7 +66,7 @@ export function ImportBordereaux({
             const { blob, base64, typeMime } = await compresserPhoto(f)
             const chemin = await televerserBordereau(compteId(session), blob, 'bordereau.jpg')
             const justificatif: Justificatif = { id: uid(), nom: f.name, type: typeMime, taille: blob.size, chemin }
-            const lecture = await lireBordereau(base64, typeMime, { magasin: magasin.nom, associations: magasin.collecteurs.map((c) => c.nom) })
+            const lecture = await lireBordereau(base64, typeMime, { magasin: magasin.nom, associations: magasin.collecteurs.map((c) => c.nom), aujourdhui: new Date().toISOString().slice(0, 10) })
             const connue = magasin.collecteurs.find((c) => c.nom.toLowerCase() === lecture.association.toLowerCase())
             return {
               ...base,
@@ -87,6 +91,13 @@ export function ImportBordereaux({
   }
 
   const maj = (id: string, patch: Partial<BordereauImporte>) => setLignes((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x)))
+  /** Une date future, ou vieille de plus de trois mois, est presque toujours une erreur de lecture (mois confondu). */
+  const dateImprobable = (jour: string) => {
+    if (!jour) return false
+    const ecart = (Date.now() - Date.parse(jour)) / 86_400_000
+    return ecart < -1 || ecart > 92
+  }
+  const dejaEnregistre = (jour: string) => !!jour && dejaPris.has(jour)
   const pretes = lignes.filter((l) => l.garder && l.jour && (!(magasin.collecteurs.length >= 2) || l.collecteur))
   const bloquees = lignes.filter((l) => l.garder && (!l.jour || (magasin.collecteurs.length >= 2 && !l.collecteur)))
 
@@ -144,7 +155,11 @@ export function ImportBordereaux({
               {lignes.map((l) => (
                 <tr key={l.id} style={{ opacity: l.garder ? 1 : 0.5 }}>
                   <td><input type="checkbox" checked={l.garder} onChange={(e) => maj(l.id, { garder: e.target.checked })} /></td>
-                  <td><input type="date" value={l.jour} onChange={(e) => maj(l.id, { jour: e.target.value })} style={{ minWidth: 140, padding: 6 }} /></td>
+                  <td>
+                    <input type="date" value={l.jour} onChange={(e) => maj(l.id, { jour: e.target.value })} style={{ minWidth: 140, padding: 6, borderColor: dateImprobable(l.jour) || dejaEnregistre(l.jour) ? 'var(--ambre)' : undefined, background: dateImprobable(l.jour) || dejaEnregistre(l.jour) ? 'var(--ambre-pale)' : undefined }} />
+                    {dateImprobable(l.jour) && <div style={{ fontSize: 11.5, color: 'var(--ambre-texte)' }}>Date éloignée d’aujourd’hui : vérifiez le mois</div>}
+                    {dejaEnregistre(l.jour) && <div style={{ fontSize: 11.5, color: 'var(--ambre-texte)' }}>Un bordereau existe déjà ce jour</div>}
+                  </td>
                   {magasin.collecteurs.length >= 2 && (
                     <td>
                       <select value={l.collecteur} onChange={(e) => maj(l.id, { collecteur: e.target.value })} style={{ padding: 6 }}>
