@@ -5,7 +5,7 @@
  * d'abord : le localStorage reste la source immédiate, le cloud est le point
  * de synchronisation (le plus récent gagne).
  */
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type Session } from '@supabase/supabase-js'
 import type { AppState } from '../types'
 import { interpreterEtat } from './storage'
 
@@ -20,8 +20,65 @@ export interface EtatDistant {
   majLe: string
 }
 
-export async function chargerEtatDistant(): Promise<EtatDistant | null> {
-  const { data, error } = await supabase.from('mana_etats').select('data, updated_at').maybeSingle()
+// ---------- Accès partagés (magasin ou assistante) ----------
+
+export interface Acces {
+  id: string
+  proprietaire: string
+  email: string
+  /** Magasin autorisé ; null = tous les magasins du propriétaire (assistante). */
+  magasin_id: string | null
+  libelle: string | null
+  cree_le: string
+}
+
+/**
+ * Compte dont on manipule les données : le sien, ou celui du propriétaire
+ * quand on est connecté avec un accès partagé. Fixé par l'application dès la
+ * connexion, avant toute lecture ; tous les appels cloud passent par ici.
+ */
+let compteDelegue: string | null = null
+export function definirCompteDelegue(proprietaire: string | null) {
+  compteDelegue = proprietaire
+}
+export function compteId(session: Session): string {
+  return compteDelegue ?? session.user.id
+}
+
+/** L'accès partagé reçu par le compte connecté, s'il y en a un. */
+export async function monAcces(): Promise<Acces | null> {
+  const { data, error } = await supabase.from('mana_acces').select('*').order('cree_le', { ascending: true }).limit(1).maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as Acces | null) ?? null
+}
+
+/** Accès que ce compte a donnés (propriétaire). */
+export async function listerAcces(proprietaire: string): Promise<Acces[]> {
+  const { data, error } = await supabase.from('mana_acces').select('*').eq('proprietaire', proprietaire).order('cree_le', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Acces[]
+}
+
+export async function ajouterAcces(proprietaire: string, email: string, magasinId: string | null, libelle: string): Promise<Acces> {
+  const { data, error } = await supabase
+    .from('mana_acces')
+    .insert({ proprietaire, email: email.trim().toLowerCase(), magasin_id: magasinId, libelle: libelle.trim() || null })
+    .select()
+    .single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Cette adresse a déjà un accès — supprimez-le d’abord pour le modifier.')
+    throw new Error(error.message)
+  }
+  return data as Acces
+}
+
+export async function supprimerAcces(id: string): Promise<void> {
+  const { error } = await supabase.from('mana_acces').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function chargerEtatDistant(compte: string): Promise<EtatDistant | null> {
+  const { data, error } = await supabase.from('mana_etats').select('data, updated_at').eq('user_id', compte).maybeSingle()
   if (error) throw new Error(`Lecture cloud impossible : ${error.message}`)
   if (!data) return null
   const etat = interpreterEtat(data.data)
@@ -29,9 +86,10 @@ export async function chargerEtatDistant(): Promise<EtatDistant | null> {
   return { etat, majLe: data.updated_at }
 }
 
+/** `email` n'est renseigné que par le propriétaire : un invité ne touche pas à l'identité du compte. */
 export async function pousserEtatDistant(userId: string, etat: AppState, email?: string): Promise<string> {
   const updated_at = new Date().toISOString()
-  const { error } = await supabase.from('mana_etats').upsert({ user_id: userId, data: etat, updated_at, email: email ?? null })
+  const { error } = await supabase.from('mana_etats').upsert({ user_id: userId, data: etat, updated_at, ...(email ? { email } : {}) })
   if (error) throw new Error(`Synchronisation impossible : ${error.message}`)
   return updated_at
 }

@@ -1,9 +1,46 @@
-import type { Saisie } from '../types'
+import type { Collecteur, Saisie } from '../types'
 import { semainesDuMois, joursEntre } from '../lib/releves'
 import { mondayOfWeek } from '../lib/iso'
 
 const JOURS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+const NOMS_JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** Jour de semaine ISO (0 = lundi … 6 = dimanche) d'une date AAAA-MM-JJ. */
+const jourSemaine = (jour: string) => (new Date(jour + 'T00:00:00Z').getUTCDay() + 6) % 7
+
+/**
+ * Jours de la semaine où un passage est prévu, d'après les fiches des
+ * associations (« du lundi au samedi », « 7j/7 », « mardi et vendredi »…).
+ * Retourne null quand on ne sait pas : on compte alors tous les jours.
+ */
+export function joursDePassage(collecteurs: Collecteur[]): Set<number> | null {
+  const out = new Set<number>()
+  let connu = false
+  for (const c of collecteurs) {
+    const texte = (c.jours ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    if (/7\s*j|tous les jours|chaque jour|quotidien/.test(texte)) {
+      for (let i = 0; i < 7; i++) out.add(i)
+      connu = true
+      continue
+    }
+    const trouves = NOMS_JOURS.map((n, i) => (texte.includes(n) ? i : -1)).filter((i) => i >= 0)
+    const plage = texte.match(/(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\s*(?:au|a|-|–|→|jusqu'au)\s*(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/)
+    if (plage) {
+      const a = NOMS_JOURS.indexOf(plage[1])
+      const b = NOMS_JOURS.indexOf(plage[2])
+      for (let i = a; i !== (b + 1) % 7; i = (i + 1) % 7) out.add(i)
+      connu = true
+    } else if (trouves.length > 0) {
+      for (const i of trouves) out.add(i)
+      connu = true
+    } else if (c.frequence === 'Quotidienne') {
+      for (let i = 0; i < 6; i++) out.add(i) // du lundi au samedi, faute de précision
+      connu = true
+    }
+  }
+  return connu ? out : null
+}
 
 /** Jours couverts par les relevés (période libre, mois, ou semaine ISO). */
 export function joursCouvertsParReleves(releves: Saisie[]): Set<string> {
@@ -38,6 +75,7 @@ export function Calendrier({
   jourActif,
   onChoisirJour,
   onChangerMois,
+  collecteurs = [],
 }: {
   mois: string
   bordereaux: Saisie[]
@@ -45,6 +83,7 @@ export function Calendrier({
   jourActif: string
   onChoisirJour: (jour: string) => void
   onChangerMois: (delta: number) => void
+  collecteurs?: Collecteur[]
 }) {
   const [annee, m] = mois.split('-').map(Number)
   const premier = new Date(Date.UTC(annee, m - 1, 1))
@@ -59,8 +98,12 @@ export function Calendrier({
   const cases: (string | null)[] = [...Array(decalage).fill(null), ...Array.from({ length: nbJours }, (_, i) => `${mois}-${pad2(i + 1)}`)]
   while (cases.length % 7) cases.push(null)
 
-  const sansValeur = [...parJour.keys()].filter((j) => !couverts.has(j)).length
-  const sansPreuve = [...couverts].filter((j) => j.startsWith(mois) && !parJour.has(j) && j <= aujourdhui).length
+  // Jours attendus : ceux où une association passe (si on le sait), déjà écoulés, dans le mois affiché.
+  const passages = joursDePassage(collecteurs)
+  const attendu = (j: string) => j.startsWith(mois) && j <= aujourdhui && (!passages || passages.has(jourSemaine(j)))
+  const sansValeur = [...parJour.keys()].filter((j) => j.startsWith(mois) && !couverts.has(j)).length
+  const sansPreuve = [...couverts].filter((j) => attendu(j) && !parJour.has(j)).length
+  const joursPasses = passages ? [...passages].sort().map((i) => NOMS_JOURS[i]) : null
 
   return (
     <div className="calendrier">
@@ -87,11 +130,30 @@ export function Calendrier({
         })}
       </div>
       <div className="cal-legende">
-        <span><i className="cal-point" /> bordereau</span>
-        <span><i className="cal-fond" /> relevé de démarque</span>
-        {sansValeur > 0 && <span className="cal-alerte">{sansValeur} jour{sansValeur > 1 ? 's' : ''} avec bordereau sans relevé</span>}
-        {sansPreuve > 0 && <span className="cal-alerte">{sansPreuve} jour{sansPreuve > 1 ? 's' : ''} sous relevé sans bordereau</span>}
+        <span><i className="cal-point" /> bordereau signé enregistré ce jour (la preuve du passage)</span>
+        <span><i className="cal-fond" /> jour couvert par un relevé de démarque (la valeur déclarée)</span>
       </div>
+      {(sansValeur > 0 || sansPreuve > 0) && (
+        <div className="cal-alertes">
+          {sansPreuve > 0 && (
+            <p>
+              <strong>{sansPreuve} jour{sansPreuve > 1 ? 's' : ''} déclaré{sansPreuve > 1 ? 's' : ''} dans un relevé sans bordereau signé.</strong>{' '}
+              La valeur est déclarée mais aucune preuve de passage n’est archivée pour ce{sansPreuve > 1 ? 's' : ''} jour{sansPreuve > 1 ? 's' : ''} :
+              déposez les bordereaux manquants dans le smart upload.
+              {joursPasses && <> Seuls les jours de passage prévus sont comptés ({joursPasses.join(', ')}).</>}
+            </p>
+          )}
+          {sansValeur > 0 && (
+            <p>
+              <strong>{sansValeur} jour{sansValeur > 1 ? 's' : ''} avec bordereau signé sans relevé de démarque.</strong>{' '}
+              Le passage est prouvé mais sa valeur n’est pas encore déclarée : enregistrez le relevé de la période.
+            </p>
+          )}
+        </div>
+      )}
+      {sansValeur === 0 && sansPreuve === 0 && (parJour.size > 0 || couverts.size > 0) && (
+        <p className="muted cal-ok">Preuves et valeurs se recoupent sur ce mois : rien à signaler.</p>
+      )}
     </div>
   )
 }

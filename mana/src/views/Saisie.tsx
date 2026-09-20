@@ -13,7 +13,7 @@ import { Calendrier, joursCouvertsParReleves } from '../components/Calendrier'
 import { Pieces } from '../components/Pieces'
 import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
-import { lireReleve, televerserBordereau, type LectureReleve } from '../lib/cloud'
+import { lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
 // --- Dates locales (AAAA-MM-JJ) ---
@@ -253,10 +253,10 @@ export function SaisieView({
     for (const f of Array.from(files)) {
       if (f.type.startsWith('image/')) {
         const { blob, typeMime } = await compresserPhoto(f)
-        const chemin = await televerserBordereau(session.user.id, blob, 'bordereau.jpg')
+        const chemin = await televerserBordereau(compteId(session), blob, 'bordereau.jpg')
         nouveaux.push({ id: uid(), nom: `Bordereau ${jour}`, type: typeMime, taille: blob.size, chemin })
       } else {
-        const chemin = await televerserBordereau(session.user.id, f, f.name)
+        const chemin = await televerserBordereau(compteId(session), f, f.name)
         nouveaux.push({ id: uid(), nom: f.name, type: f.type, taille: f.size, chemin })
       }
     }
@@ -464,6 +464,7 @@ export function SaisieView({
           mois={moisCal}
           bordereaux={bordereauxMagasin}
           releves={relevesMagasin}
+          collecteurs={magasin.collecteurs}
           jourActif={jour}
           onChoisirJour={(j) => {
             setJour(j)

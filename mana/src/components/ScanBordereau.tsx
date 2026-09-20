@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { Justificatif, Magasin } from '../types'
 import { compresserPhoto } from '../lib/fichiers'
-import { lireBordereau, televerserBordereau, type LectureBordereau } from '../lib/cloud'
+import { lireBordereau, televerserBordereau, type LectureBordereau, compteId } from '../lib/cloud'
 import { fmtDate, fmtNum } from '../lib/format'
 import { uid } from '../lib/storage'
 
@@ -48,7 +48,7 @@ export function ScanBordereau({
     try {
       const { blob, base64, typeMime } = await compresserPhoto(fichier)
       // La photo est archivée même si la lecture échoue : c'est la pièce justificative.
-      const chemin = await televerserBordereau(session.user.id, blob, 'bordereau.jpg')
+      const chemin = await televerserBordereau(compteId(session), blob, 'bordereau.jpg')
       const justificatif: Justificatif = {
         id: uid(),
         nom: `Bordereau ${jour}`,

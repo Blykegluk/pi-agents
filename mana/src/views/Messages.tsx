@@ -8,8 +8,7 @@ import {
   messagesDe,
   type Demande,
   type Message,
-  type NonLus,
-} from '../lib/cloud'
+  type NonLus, compteId } from '../lib/cloud'
 import { fmtDateHeure } from '../lib/format'
 import { Composer } from '../components/Composer'
 import { LIBELLES_STATUT } from '../components/Aide'
@@ -68,7 +67,7 @@ export function Messages({
   async function ouvrirDemande(texte: string) {
     if (!session) return
     const sujet = texte.slice(0, 90) + (texte.length > 90 ? '…' : '')
-    await creerDemande(session.user.id, session.user.email ?? '', 'support', sujet, {}, texte)
+    await creerDemande(compteId(session), session.user.email ?? '', 'support', sujet, {}, texte)
     const liste = await mesDemandes()
     setDemandes(liste)
     setOuverte(liste[0]?.id ?? null)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { FAQ } from '../lib/faq'
-import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
+import { creerDemande, mesDemandes, type Demande, compteId } from '../lib/cloud'
 
 export const LIBELLES_STATUT: Record<Demande['statut'], { texte: string; classe: string }> = {
   nouvelle: { texte: 'envoyée', classe: 'badge' },
@@ -51,7 +51,7 @@ export function Aide({
     setEnvoiEnCours(true)
     try {
       const sujet = texteRequete.trim().slice(0, 90) + (texteRequete.trim().length > 90 ? '…' : '')
-      await creerDemande(session.user.id, session.user.email ?? '', 'support', sujet, {}, texteRequete)
+      await creerDemande(compteId(session), session.user.email ?? '', 'support', sujet, {}, texteRequete)
       setTexteRequete('')
       setMessage('Demande envoyée — la réponse arrivera dans l’onglet Messages.')
       setDemandes(await mesDemandes())

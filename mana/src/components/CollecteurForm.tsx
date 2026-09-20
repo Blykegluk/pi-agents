@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { Collecteur, Justificatif } from '../types'
 import { FREQUENCES, PLAGES } from '../lib/annuaire'
-import { televerserDocumentAssociation } from '../lib/cloud'
+import { televerserDocumentAssociation, compteId } from '../lib/cloud'
 import { uid } from '../lib/storage'
 import { Pieces } from './Pieces'
 
@@ -49,7 +49,7 @@ export function CollecteurForm({
     const nouveaux: Justificatif[] = []
     for (const f of Array.from(files)) {
       try {
-        const chemin = await televerserDocumentAssociation(session.user.id, f, f.name)
+        const chemin = await televerserDocumentAssociation(compteId(session), f, f.name)
         nouveaux.push({ id: uid(), nom: `${typeDoc} — ${f.name}`, type: f.type, taille: f.size, chemin })
       } catch {
         /* le fichier suivant tente sa chance */

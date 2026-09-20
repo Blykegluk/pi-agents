@@ -12,7 +12,7 @@ import {
   IconRelation,
   IconTri,
 } from '../components/Icons'
-import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
+import { creerDemande, mesDemandes, type Demande, compteId } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { fmtNum } from '../lib/format'
 import { COLLECTEUR_VIDE, CollecteurForm, LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
@@ -133,7 +133,7 @@ export function Collecte({
     setMessageDemande('')
     try {
       await creerDemande(
-        session.user.id,
+        compteId(session),
         session.user.email ?? '',
         'collecte',
         `Mise en relation — ${magasin.nom} (${ville.trim()})`,

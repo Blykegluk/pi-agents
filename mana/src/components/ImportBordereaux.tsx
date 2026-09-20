@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { Justificatif, Magasin } from '../types'
 import { compresserPhoto } from '../lib/fichiers'
-import { lireBordereau, televerserBordereau, type LectureBordereau } from '../lib/cloud'
+import { lireBordereau, televerserBordereau, type LectureBordereau, compteId } from '../lib/cloud'
 import { fmtNum } from '../lib/format'
 import { uid } from '../lib/storage'
 
@@ -60,7 +60,7 @@ export function ImportBordereaux({
           const base = { id: uid(), fichier: f.name, jour: '', collecteur: magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '', colis: 0, kgFL: 0, signe: false, garder: true }
           try {
             const { blob, base64, typeMime } = await compresserPhoto(f)
-            const chemin = await televerserBordereau(session.user.id, blob, 'bordereau.jpg')
+            const chemin = await televerserBordereau(compteId(session), blob, 'bordereau.jpg')
             const justificatif: Justificatif = { id: uid(), nom: f.name, type: typeMime, taille: blob.size, chemin }
             const lecture = await lireBordereau(base64, typeMime, { magasin: magasin.nom, associations: magasin.collecteurs.map((c) => c.nom) })
             const connue = magasin.collecteurs.find((c) => c.nom.toLowerCase() === lecture.association.toLowerCase())

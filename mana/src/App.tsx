@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
 import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, uid } from './lib/storage'
-import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus } from './lib/cloud'
+import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { completerIdentites } from './lib/identite'
@@ -17,6 +17,7 @@ import { SaisieView } from './views/Saisie'
 import { Dashboard } from './views/Dashboard'
 import { Registre } from './views/Registre'
 import { Admin } from './views/Admin'
+import { AccesPartages } from './components/AccesPartages'
 import { Messages } from './views/Messages'
 
 type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre' | 'messages' | 'admin'
@@ -25,6 +26,9 @@ type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 're
 function estDemo(etat: AppState): boolean {
   return etat.societes.some((s) => s.id.startsWith('demo-'))
 }
+
+/** Onglets ouverts à un accès partagé (responsable de magasin, assistante). */
+const TABS_INVITE: Tab[] = ['collecte', 'saisie', 'dashboard', 'registre', 'messages']
 
 const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
   { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
@@ -55,6 +59,8 @@ export default function App() {
   const [syncHeure, setSyncHeure] = useState('')
   const [aideOuverte, setAideOuverte] = useState(false)
   const [admin, setAdmin] = useState(false)
+  /** Accès partagé du compte connecté : undefined tant qu'on ne sait pas, null si c'est un compte propriétaire. */
+  const [acces, setAcces] = useState<Acces | null | undefined>(undefined)
   const [nonLus, setNonLus] = useState<NonLus>({ total: 0, parDemande: {} })
   const sauterProchainPush = useRef(false)
   const timerPush = useRef<number | undefined>(undefined)
@@ -69,6 +75,51 @@ export default function App() {
     if (session) estAdmin().then(setAdmin)
     else setAdmin(false)
   }, [session?.user.id])
+
+  // Accès partagé ? On le sait avant toute lecture : les appels cloud visent alors le compte du propriétaire.
+  useEffect(() => {
+    if (!session) {
+      definirCompteDelegue(null)
+      setAcces(null)
+      return
+    }
+    let annule = false
+    setAcces(undefined)
+    monAcces()
+      .then((a) => {
+        if (annule) return
+        definirCompteDelegue(a?.proprietaire ?? null)
+        setAcces(a)
+      })
+      .catch(() => {
+        if (annule) return
+        definirCompteDelegue(null)
+        setAcces(null)
+      })
+    return () => {
+      annule = true
+    }
+  }, [session?.user.id])
+
+  // Un invité ne voit que ses onglets ; s'il est ailleurs, on le ramène à la Saisie.
+  useEffect(() => {
+    if (acces && !TABS_INVITE.includes(tab)) setTab('saisie')
+  }, [acces, tab])
+
+  /** Ce que l'écran montre : tout, ou le seul magasin ouvert à l'invité (et sa société). */
+  const stateVisible = useMemo<AppState>(() => {
+    if (!acces?.magasin_id) return state
+    const magasin = state.magasins.find((m) => m.id === acces.magasin_id)
+    if (!magasin) return { ...state, societes: [], magasins: [], saisies: [], factures: [], clotures: [] }
+    return {
+      ...state,
+      societes: state.societes.filter((so) => so.id === magasin.societeId),
+      magasins: [magasin],
+      saisies: state.saisies.filter((sa) => sa.magasinId === magasin.id),
+      factures: state.factures.filter((f) => f.societeId === magasin.societeId),
+      clotures: state.clotures.filter((c) => c.societeId === magasin.societeId),
+    }
+  }, [state, acces])
 
   /**
    * Pastilles de notification : messages reçus depuis la dernière ouverture du
@@ -143,13 +194,21 @@ export default function App() {
       setSyncStatut('inactif')
       return
     }
+    if (acces === undefined) return // on attend de savoir quel compte lire
     let annule = false
     ;(async () => {
       try {
         setSyncStatut('encours')
-        const distant = await chargerEtatDistant()
+        const distant = await chargerEtatDistant(compteId(session))
         if (annule) return
         const local = loadState() ?? buildDemoState()
+        // Un invité travaille toujours sur les données du propriétaire, jamais sur
+        // ce que cet appareil aurait pu contenir avant.
+        if (acces) {
+          if (distant) appliquerDistant(distant.etat, distant.majLe)
+          else setSyncStatut('erreur')
+          return
+        }
         // Le jeu de démonstration ne rejoint jamais un compte : à la connexion,
         // on prend le cloud s'il existe, sinon on démarre sur un état vierge.
         const localDemo = estDemo(local)
@@ -171,15 +230,15 @@ export default function App() {
       annule = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id])
+  }, [session?.user.id, acces === undefined])
 
   /** Au retour sur l'onglet (ex. saisie faite sur un autre appareil) : rafraîchit si le cloud est plus récent. */
   useEffect(() => {
-    if (!session) return
+    if (!session || acces === undefined) return
     const surFocus = async () => {
       if (document.visibilityState !== 'visible') return
       try {
-        const distant = await chargerEtatDistant()
+        const distant = await chargerEtatDistant(compteId(session))
         if (distant && Date.parse(distant.majLe) > getMajLocale() + 2000) {
           appliquerDistant(distant.etat, distant.majLe)
         }
@@ -190,7 +249,7 @@ export default function App() {
     document.addEventListener('visibilitychange', surFocus)
     return () => document.removeEventListener('visibilitychange', surFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id])
+  }, [session?.user.id, acces === undefined])
 
   useEffect(() => {
     if (!saveState(state)) {
@@ -201,9 +260,9 @@ export default function App() {
       return
     }
     setMajLocale(Date.now())
-    if (session && !estDemo(state)) {
+    if (session && acces !== undefined && !estDemo(state)) {
       window.clearTimeout(timerPush.current)
-      timerPush.current = window.setTimeout(() => pousser(state, session.user.id, session.user.email ?? undefined), 1500)
+      timerPush.current = window.setTimeout(() => pousser(state, compteId(session), acces ? undefined : session.user.email ?? undefined), 1500)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
@@ -448,9 +507,10 @@ export default function App() {
             onPremierMagasin={() => setTab('collecte')}
           />
         )}
+        {tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
         {tab === 'collecte' && (
           <Collecte
-            state={state}
+            state={stateVisible}
             session={session}
             onSaveMagasin={saveMagasin}
             onAllerSaisie={() => setTab('saisie')}
@@ -460,11 +520,11 @@ export default function App() {
           />
         )}
         {tab === 'saisie' && (
-          <SaisieView state={state} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
+          <SaisieView state={stateVisible} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
         )}
-        {tab === 'dashboard' && <Dashboard state={state} exercice={exercice} />}
+        {tab === 'dashboard' && <Dashboard state={stateVisible} exercice={exercice} />}
         {tab === 'registre' && (
-          <Registre state={state} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
+          <Registre state={stateVisible} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
         )}
         {tab === 'messages' && (
           <Messages
@@ -480,7 +540,7 @@ export default function App() {
 
       <nav className="tabbar">
         <div className="tabbar-inner">
-          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : TABS).map((t) => {
+          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : acces ? TABS.filter((t) => TABS_INVITE.includes(t.id)) : TABS).map((t) => {
             // La pastille vit sur l'onglet où se lisent les messages : Admin pour
             // l'équipe Mana, Messages pour le magasin.
             const porteLaPastille = admin ? t.id === 'admin' : t.id === 'messages'
@@ -521,14 +581,22 @@ export default function App() {
             <div className="sheet-handle" />
             <h3>Compte &amp; synchronisation</h3>
             <CompteSection session={session} syncStatut={syncStatut} syncHeure={syncHeure} />
+            {acces && (
+              <p className="muted" style={{ marginTop: 8 }}>
+                <strong>Accès partagé</strong>{acces.libelle ? ` · ${acces.libelle}` : ''} — vous travaillez sur les données de{' '}
+                {acces.magasin_id ? `« ${state.magasins.find((m) => m.id === acces.magasin_id)?.nom ?? 'magasin'} »` : 'tous les magasins'} du compte qui vous a invité.
+              </p>
+            )}
             <hr className="sep" />
             <h3>Données</h3>
             <p className="muted">
-              {session
+              {acces
+                ? 'Chaque saisie est enregistrée sur le compte du propriétaire et visible par lui immédiatement.'
+                : session
                 ? 'Vos données sont synchronisées entre tous vos appareils connectés à ce compte. L’export JSON reste votre sauvegarde de secours.'
                 : 'Sans compte, les données restent sur cet appareil. Créez un compte ci-dessus pour retrouver les mêmes données sur le site et l’application.'}
             </p>
-            <div className="row-actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, marginTop: 12 }}>
+            {!acces && <div className="row-actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, marginTop: 12 }}>
               <button className="btn btn-primary" onClick={() => exportJSON(state)}>
                 ⬇ Exporter les données (JSON)
               </button>
@@ -562,7 +630,12 @@ export default function App() {
               <button className="btn btn-ghost" onClick={() => setReglages(false)}>
                 Fermer
               </button>
-            </div>
+            </div>}
+            {acces && (
+              <div className="row-actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, marginTop: 12 }}>
+                <button className="btn btn-ghost" onClick={() => setReglages(false)}>Fermer</button>
+              </div>
+            )}
           </div>
         </div>
       )}
