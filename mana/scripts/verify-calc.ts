@@ -12,7 +12,7 @@ import {
 } from '../src/lib/calc.ts'
 import { derouleFacturation, tauxCommissionPct } from '../src/lib/facturation.ts'
 import { suiviReports } from '../src/lib/reports.ts'
-import { repartirReleve, semainesDuMois } from '../src/lib/releves.ts'
+import { joursEntre, normaliserEnPVHT, repartirReleve, repartirRelevePeriode, semainesDuMois } from '../src/lib/releves.ts'
 
 let echecs = 0
 
@@ -143,6 +143,31 @@ attendre('total facturé sur l’exercice = 18 % × 30 000', totalFacture, 5_400
   const p3 = repartirReleve(300, ['2026-W36', '2026-W37', '2026-W38'], [], ['A'])
   attendre('sans bordereau : parts égales', p3[1].montant, 100)
   attendre('sans bordereau : association unique reprise', p3[0].collecteur === 'A' ? 1 : 0, 1)
+}
+
+
+// ---------------------------------------------------------------------------
+// Relevés à dates libres et normalisation HT / TTC / prix d'achat
+// ---------------------------------------------------------------------------
+{
+  attendre('joursEntre : du 10 au 16 septembre = 7 jours', joursEntre('2026-09-10', '2026-09-16').length, 7)
+  // 700 € du jeudi 10 au mercredi 16 sans bordereau : S37 a 4 jours (10-13), S38 en a 3 (14-16)
+  const p = repartirRelevePeriode(700, '2026-09-10', '2026-09-16', [], ['A'])
+  attendre('période à cheval : part S37 (4 jours sur 7)', p.find((x) => x.semaine === '2026-W37')!.montant, 400)
+  attendre('période à cheval : part S38 (3 jours sur 7)', p.find((x) => x.semaine === '2026-W38')!.montant, 300)
+  // Avec bordereaux : seuls les passages comptent (2 en S37, 1 en S38)
+  const p2 = repartirRelevePeriode(900, '2026-09-10', '2026-09-16', [
+    { jour: '2026-09-10', collecteur: 'A' }, { jour: '2026-09-12', collecteur: 'A' }, { jour: '2026-09-15', collecteur: 'A' },
+    { jour: '2026-09-20', collecteur: 'A' }, // hors période : ignoré
+  ], ['A'])
+  attendre('prorata des bordereaux : S37', p2.find((x) => x.semaine === '2026-W37')!.montant, 600)
+  attendre('prorata des bordereaux : S38', p2.find((x) => x.semaine === '2026-W38')!.montant, 300)
+  // Normalisation (marge 30 %, TVA 5,5 %)
+  attendre('PV HT : inchangé', normaliserEnPVHT(1000, 'pv_ht', 30), 1000)
+  attendre('PV TTC 1 055 → PV HT 1 000', normaliserEnPVHT(1055, 'pv_ttc', 30), 1000)
+  attendre('prix d’achat HT 700 → PV HT 1 000 (÷ 0,7)', normaliserEnPVHT(700, 'pa_ht', 30), 1000)
+  attendre('prix d’achat TTC 738,50 → PV HT 1 000', normaliserEnPVHT(738.5, 'pa_ttc', 30), 1000)
+  attendre('cohérence : coût = PV HT × (1 − marge) redonne le prix d’achat saisi', normaliserEnPVHT(700, 'pa_ht', 30) * 0.7, 700)
 }
 
 console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)

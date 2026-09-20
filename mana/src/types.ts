@@ -12,6 +12,19 @@ export interface Collecteur {
   plageAutre?: string
   /** Jours de passage, en clair. */
   jours: string
+  /** Identifiants de l'association (RNA W…, SIREN) — repris sur le reçu fiscal. */
+  rna?: string
+  siren?: string
+  /**
+   * Éligibilité au mécénat (art. 238 bis), condition de validité du reçu :
+   * 'inconnue' tant qu'aucune pièce n'est réunie ; 'a_verifier' quand les
+   * statuts sont là mais pas de position de l'administration ; 'rescrit'
+   * quand un rescrit positif est joint ; 'reseau_national' pour les grands
+   * réseaux dont l'éligibilité est notoire (Banque Alimentaire, Restos…).
+   */
+  eligibilite?: 'inconnue' | 'a_verifier' | 'rescrit' | 'reseau_national'
+  /** Statuts, récépissé de déclaration, rescrit, convention de don… */
+  documents?: Justificatif[]
 }
 
 /** Version des paramètres de valorisation — trace la constance de la méthode (note de méthode). */
@@ -120,6 +133,17 @@ export interface Saisie {
   signe?: boolean
   /** Relevé mensuel réparti sur ses semaines : le mois d'origine ('AAAA-MM'). */
   releveMois?: string
+  /** Relevé sur une période libre : bornes (AAAA-MM-JJ, incluses). */
+  releveDu?: string
+  releveAu?: string
+  /**
+   * Ce que le magasin a réellement saisi pour un relevé, avant normalisation en
+   * prix de vente HT (`pvEmballes`) : le montant tel quel, son unité et le taux
+   * de TVA appliqué. Conservé pour l'audit.
+   */
+  montantSaisi?: number
+  saisiEn?: 'pv_ht' | 'pv_ttc' | 'pa_ht' | 'pa_ttc'
+  tauxTVA?: number
   note?: string
   justificatifs: Justificatif[]
   /** Horodatage de l'enregistrement (registre opposable) */

@@ -290,3 +290,39 @@ export async function lireBordereau(
   if (!data?.lecture) throw new Error(data?.erreur ?? 'Lecture impossible.')
   return data.lecture
 }
+
+// ---------- Relevés de démarque : lecture automatique ----------
+
+export interface LectureReleve {
+  estUnReleve: boolean
+  du: string
+  au: string
+  montant: number
+  unite: 'ht' | 'ttc' | 'inconnu'
+  nature: 'prix_vente' | 'prix_achat' | 'inconnu'
+  tauxTVA: number
+  lignes: { date: string; montant: number }[]
+  confiance: 'haute' | 'moyenne' | 'basse'
+  doutes: string[]
+}
+
+/** Lecture d'un export de démarque (image ou PDF) par la fonction `lire-releve`. Proposition à valider. */
+export async function lireReleve(base64: string, typeMime: string, contexte: { magasin?: string; periodeAttendue?: string }): Promise<LectureReleve> {
+  const { data, error } = await supabase.functions.invoke<{ lecture?: LectureReleve; erreur?: string }>('lire-releve', {
+    body: { fichier: base64, typeMime, contexte },
+  })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.lecture) throw new Error(data?.erreur ?? 'Lecture impossible.')
+  return data.lecture
+}
+
+/** Archive une pièce d'association (statuts, rescrit…) dans le bucket du compte. */
+export async function televerserDocumentAssociation(userId: string, fichier: File | Blob, nom: string): Promise<string> {
+  const chemin = `${userId}/associations/${crypto.randomUUID()}-${nom}`
+  const { error } = await supabase.storage.from(BUCKET_BORDEREAUX).upload(chemin, fichier, { contentType: (fichier as File).type || 'application/octet-stream', upsert: false })
+  if (error) throw new Error(`Archivage impossible : ${error.message}`)
+  return chemin
+}

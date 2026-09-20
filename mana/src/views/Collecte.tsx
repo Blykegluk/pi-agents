@@ -15,7 +15,7 @@ import {
 import { creerDemande, mesDemandes, type Demande } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { fmtNum } from '../lib/format'
-import { COLLECTEUR_VIDE, CollecteurForm } from '../components/CollecteurForm'
+import { COLLECTEUR_VIDE, CollecteurForm, LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
 import { denomination } from '../lib/identite'
 
 /**
@@ -273,7 +273,7 @@ export function Collecte({
             {magasin.collecteurs.map((c, i) =>
               editionCollecteur === i ? (
                 <div className="card" key={i} style={{ background: 'var(--papier)', marginBottom: 10 }}>
-                  <CollecteurForm valeur={brouillon} onChange={setBrouillon} />
+                  <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} />
                   <div className="row-actions" style={{ marginTop: 10 }}>
                     <button
                       className="btn btn-primary btn-sm"
@@ -302,6 +302,9 @@ export function Collecte({
                       {[resumePassages(c), c.contact, c.telephone, c.email].filter(Boolean).join(' · ') ||
                         'coordonnées à compléter'}
                     </small>
+                    <span className={LIBELLES_ELIGIBILITE[c.eligibilite ?? 'inconnue'].classe} style={{ marginTop: 4, alignSelf: 'flex-start' }}>
+                      {LIBELLES_ELIGIBILITE[c.eligibilite ?? 'inconnue'].texte}
+                    </span>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flex: 'none' }}>
                     <button
@@ -334,7 +337,7 @@ export function Collecte({
         {editionCollecteur === -1 ? (
           <div className="card" style={{ background: 'var(--papier)', marginTop: 12 }}>
             <h3>Enregistrer une association</h3>
-            <CollecteurForm valeur={brouillon} onChange={setBrouillon} />
+            <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} />
             <div className="row-actions" style={{ marginTop: 10 }}>
               <button
                 className="btn btn-primary btn-sm"

@@ -69,3 +69,66 @@ export function repartirReleve(montant: number, semaines: string[], bordereaux: 
   })
   return parts
 }
+
+/** Jours (AAAA-MM-JJ) d'une période bornée incluse. */
+export function joursEntre(du: string, au: string): string[] {
+  const jours: string[] = []
+  const d = new Date(du + 'T00:00:00Z')
+  const fin = new Date(au + 'T00:00:00Z')
+  while (d <= fin) {
+    jours.push(d.toISOString().slice(0, 10))
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  return jours
+}
+
+/** Semaine ISO d'un jour AAAA-MM-JJ. */
+export function semaineDuJourISO(jour: string): string {
+  const w = isoWeekOf(new Date(jour + 'T00:00:00Z'))
+  return weekId(w.year, w.week)
+}
+
+/**
+ * Répartit un relevé saisi sur une période libre (du … au, incluses) : au
+ * prorata des bordereaux de la période par semaine et association ; sans
+ * bordereau, au prorata du nombre de jours de la période tombant dans chaque
+ * semaine. Le relevé prime toujours : les bordereaux ne servent qu'à le ventiler.
+ */
+export function repartirRelevePeriode(
+  montant: number,
+  du: string,
+  au: string,
+  bordereaux: { jour: string; collecteur: string }[],
+  collecteurs: string[],
+): PartReleve[] {
+  const jours = joursEntre(du, au)
+  if (jours.length === 0 || montant === 0) return []
+  const dansPeriode = bordereaux.filter((b) => b.jour >= du && b.jour <= au)
+  if (dansPeriode.length > 0) {
+    const semaines = [...new Set(jours.map(semaineDuJourISO))]
+    return repartirReleve(montant, semaines, dansPeriode.map((b) => ({ semaine: semaineDuJourISO(b.jour), collecteur: b.collecteur })), collecteurs)
+  }
+  // Pas de bordereau : chaque jour de la période pèse 1
+  const c = collecteurs.length === 1 ? collecteurs[0] : ''
+  return repartirReleve(montant, [...new Set(jours.map(semaineDuJourISO))], jours.map((j) => ({ semaine: semaineDuJourISO(j), collecteur: c })), collecteurs)
+}
+
+/** TVA sur les denrées alimentaires : 5,5 % sauf exceptions (confiserie, alcool exclu du don). */
+export const TVA_ALIMENTAIRE = 5.5
+
+/**
+ * Ramène un montant saisi au PRIX DE VENTE HORS TAXES, seule grandeur que le
+ * moteur de calcul manipule (coût de revient = PV HT × (1 − marge brute)).
+ * - TTC → HT : ÷ (1 + TVA)
+ * - prix d'achat (coût) → PV : ÷ (1 − marge), pour que PV × (1 − marge) redonne le coût saisi
+ */
+export function normaliserEnPVHT(montant: number, saisiEn: 'pv_ht' | 'pv_ttc' | 'pa_ht' | 'pa_ttc', margePct: number, tauxTVA = TVA_ALIMENTAIRE): number {
+  let ht = montant
+  if (saisiEn === 'pv_ttc' || saisiEn === 'pa_ttc') ht = montant / (1 + tauxTVA / 100)
+  if (saisiEn === 'pa_ht' || saisiEn === 'pa_ttc') {
+    const coef = 1 - margePct / 100
+    if (coef <= 0) return 0
+    ht = ht / coef
+  }
+  return Math.round(ht * 100) / 100
+}

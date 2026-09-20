@@ -39,7 +39,12 @@ const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
 export default function App() {
   // Premier lancement : jeu de données de démonstration prérempli
   const [state, setState] = useState<AppState>(() => loadState() ?? buildDemoState())
-  const [tab, setTab] = useState<Tab>('simulateur')
+  // Un compte qui a déjà ses magasins arrive sur la Collecte ; le simulateur
+  // n'est la porte d'entrée que pour un visiteur.
+  const [tab, setTab] = useState<Tab>(() => {
+    const local = loadState()
+    return local && !estDemo(local) && local.magasins.length > 0 ? 'collecte' : 'simulateur'
+  })
   const [reglages, setReglages] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const exercice = exerciceCourant()
@@ -114,6 +119,8 @@ export default function App() {
     sauterProchainPush.current = true
     setMajLocale(Date.parse(majLe))
     setState(etat)
+    // À la connexion, un compte équipé quitte le simulateur pour la Collecte
+    if (etat.magasins.length > 0) setTab((t) => (t === 'simulateur' ? 'collecte' : t))
     setSyncStatut('ok')
     setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
   }
@@ -267,20 +274,15 @@ export default function App() {
    * Relevé de démarque : remplace d'un bloc les lignes « relevé » du magasin
    * portant sur la même période (semaine ou mois), puis insère les nouvelles.
    */
-  function saveReleve(magasinId: string, periode: { semaine?: string; mois?: string }, nouvelles: Saisie[]) {
+  function saveReleve(magasinId: string, periode: { semaine?: string; mois?: string; du?: string; au?: string }, nouvelles: Saisie[]) {
+    const memePeriode = (x: Saisie) => {
+      if (periode.du && periode.au) return x.releveDu === periode.du && x.releveAu === periode.au
+      if (periode.mois) return x.releveMois === periode.mois
+      return x.semaine === periode.semaine && !x.releveMois && !x.releveDu
+    }
     setState((s) => ({
       ...s,
-      saisies: [
-        ...s.saisies.filter(
-          (x) =>
-            !(
-              x.magasinId === magasinId &&
-              x.origine === 'releve' &&
-              (periode.mois ? x.releveMois === periode.mois : x.semaine === periode.semaine && !x.releveMois)
-            ),
-        ),
-        ...nouvelles,
-      ],
+      saisies: [...s.saisies.filter((x) => !(x.magasinId === magasinId && x.origine === 'releve' && memePeriode(x))), ...nouvelles],
     }))
   }
 

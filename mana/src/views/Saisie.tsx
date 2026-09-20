@@ -2,17 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { coutEmballes, coutFL } from '../lib/calc'
-import { fmtEUR, fmtNum, fmtPct } from '../lib/format'
-import { addWeeks, compareWeekIds, currentWeekId, isoWeekOf, weekId, weekLabel } from '../lib/iso'
-import { libelleMois, moisDeLaSemaine } from '../lib/facturation'
-import { repartirReleve, semainesDuMois } from '../lib/releves'
+import { fmtDate, fmtEUR, fmtNum, fmtPct } from '../lib/format'
+import { compareWeekIds, currentWeekId, isoWeekOf, mondayOfWeek, weekId, weekLabel } from '../lib/iso'
+import { joursEntre, normaliserEnPVHT, repartirRelevePeriode, TVA_ALIMENTAIRE } from '../lib/releves'
 import { Amount } from '../components/Formula'
 import { IconSaisie } from '../components/Icons'
 import { ScanBordereau, type PropositionScan } from '../components/ScanBordereau'
+import { ImportBordereaux, type BordereauImporte } from '../components/ImportBordereaux'
+import { Calendrier, joursCouvertsParReleves } from '../components/Calendrier'
 import { Pieces } from '../components/Pieces'
 import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
-import { televerserBordereau } from '../lib/cloud'
+import { lireReleve, televerserBordereau, type LectureReleve } from '../lib/cloud'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
 // --- Dates locales (AAAA-MM-JJ) ---
@@ -35,26 +36,44 @@ const semaineDuJour = (id: string) => {
   const { year, week } = isoWeekOf(dateDuJour(id))
   return weekId(year, week)
 }
-const moisCourant = () => jourAujourdhui().slice(0, 7)
 const addMois = (mois: string, n: number) => {
   const [y, m] = mois.split('-').map(Number)
   const d = new Date(y, m - 1 + n, 1)
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`
 }
+const bornesSemaine = (semaine: string) => {
+  const lundi = mondayOfWeek(semaine)
+  const dim = new Date(lundi)
+  dim.setUTCDate(lundi.getUTCDate() + 6)
+  return { du: lundi.toISOString().slice(0, 10), au: dim.toISOString().slice(0, 10) }
+}
+const bornesMois = (mois: string) => {
+  const [y, m] = mois.split('-').map(Number)
+  return { du: `${mois}-01`, au: `${mois}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}` }
+}
+const fichierEnBase64 = (f: File) =>
+  new Promise<string>((ok, ko) => {
+    const r = new FileReader()
+    r.onload = () => ok((r.result as string).split(',')[1])
+    r.onerror = () => ko(new Error('Fichier illisible.'))
+    r.readAsDataURL(f)
+  })
+
+type SaisiEn = NonNullable<Saisie['saisiEn']>
+const LIBELLES_SAISI: Record<SaisiEn, string> = { pv_ht: 'prix de vente HT', pv_ttc: 'prix de vente TTC', pa_ht: 'prix d’achat HT', pa_ttc: 'prix d’achat TTC' }
 
 /**
  * Saisie — deux objets distincts, additionnés par semaine :
  *
- *  1. Le BORDEREAU DU JOUR : un par passage de l'association (colis, poids des
- *     F&L, photo signée). C'est la preuve en cas de contrôle — archivée dans le
- *     compte, jamais valorisée en euros par elle-même.
- *  2. Le RELEVÉ DE DÉMARQUE : le montant en euros lu dans l'export du
- *     back-office, une fois par semaine ou par mois. Réparti sur les semaines
- *     (et les associations) au prorata des bordereaux.
+ *  1. Le BORDEREAU DU JOUR : un par passage (colis, poids des F&L, photo
+ *     signée). C'est la preuve — jamais valorisée en euros par elle-même.
+ *  2. Le RELEVÉ DE DÉMARQUE : le montant lu dans l'export du back-office, sur
+ *     la période qu'on veut (semaine, mois, ou dates libres). Il prime toujours ;
+ *     les bordereaux ne servent qu'à le ventiler entre semaines et associations.
  *
- * Le calcul fiscal reste hebdomadaire : coût des emballés (relevé) + coût des
- * F&L (bordereaux). Un magasin qui ne tient pas de bordereau quotidien saisit
- * son poids de F&L directement dans le relevé de la semaine.
+ * Le montant du relevé est ramené en prix de vente HT avant calcul : le magasin
+ * dit s'il a saisi du HT ou du TTC, du prix de vente ou du prix d'achat — et
+ * Mana le lui demande tant qu'il ne l'a pas dit.
  */
 export function SaisieView({
   state,
@@ -69,7 +88,7 @@ export function SaisieView({
   exercice: number
   session: Session | null
   onSave: (s: Saisie) => void
-  onSaveReleve: (magasinId: string, periode: { semaine?: string; mois?: string }, nouvelles: Saisie[]) => void
+  onSaveReleve: (magasinId: string, periode: { semaine?: string; mois?: string; du?: string; au?: string }, nouvelles: Saisie[]) => void
   onDelete: (id: string) => void
   onAllerCollecte: () => void
 }) {
@@ -84,6 +103,7 @@ export function SaisieView({
 
   // ---- Bordereau du jour ----
   const [jour, setJour] = useState(jourAujourdhui())
+  const [moisCal, setMoisCal] = useState(jourAujourdhui().slice(0, 7))
   const [colis, setColis] = useState('')
   const [kg, setKg] = useState('')
   const [collecteur, setCollecteur] = useState('')
@@ -93,12 +113,19 @@ export function SaisieView({
   const [confirmationJour, setConfirmationJour] = useState(false)
 
   // ---- Relevé de démarque ----
-  const [periode, setPeriode] = useState<'semaine' | 'mois'>('semaine')
-  const [semaine, setSemaine] = useState(addWeeks(currentWeekId(), -1))
-  const [mois, setMois] = useState(addMois(moisCourant(), -1))
+  const [mode, setMode] = useState<'semaine' | 'mois' | 'libre'>('semaine')
+  const [semaineSel, setSemaineSel] = useState(currentWeekId())
+  const [moisSel, setMoisSel] = useState(jourAujourdhui().slice(0, 7))
+  const [duLibre, setDuLibre] = useState(addJours(jourAujourdhui(), -6))
+  const [auLibre, setAuLibre] = useState(jourAujourdhui())
   const [montant, setMontant] = useState('')
-  const [kgSemaine, setKgSemaine] = useState('')
+  const [saisiEn, setSaisiEn] = useState<SaisiEn | ''>('')
+  const [tauxTVA, setTauxTVA] = useState(String(TVA_ALIMENTAIRE))
+  const [kgPeriode, setKgPeriode] = useState('')
   const [flInclus, setFlInclus] = useState(false)
+  const [lectureReleve, setLectureReleve] = useState<LectureReleve | null>(null)
+  const [lectureEnCours, setLectureEnCours] = useState(false)
+  const [messageReleve, setMessageReleve] = useState('')
   const [confirmationReleve, setConfirmationReleve] = useState(false)
 
   // ---- Correction (dons refusés) ----
@@ -108,41 +135,34 @@ export function SaisieView({
   const [corrNote, setCorrNote] = useState('')
   const [corrPj, setCorrPj] = useState<Justificatif[]>([])
 
-  const semaineDuBordereau = semaineDuJour(jour)
-  const semaineRecap = periode === 'mois' ? semaineDuBordereau : semaine
+  const { du, au } = mode === 'semaine' ? bornesSemaine(semaineSel) : mode === 'mois' ? bornesMois(moisSel) : { du: duLibre, au: auLibre }
+  const periodeValide = Boolean(du && au && du <= au)
+  const semaineRecap = semaineDuJour(jour)
 
-  const bordereauExistant = useMemo(
-    () => state.saisies.find((s) => s.magasinId === magasin?.id && s.jour === jour && s.type === 'don' && s.origine !== 'releve'),
-    [state.saisies, magasin, jour],
-  )
+  const saisiesMagasin = useMemo(() => state.saisies.filter((s) => s.magasinId === magasin?.id), [state.saisies, magasin])
+  const bordereauxMagasin = useMemo(() => saisiesMagasin.filter((s) => s.type === 'don' && s.jour), [saisiesMagasin])
+  const relevesMagasin = useMemo(() => saisiesMagasin.filter((s) => s.type === 'don' && !s.jour), [saisiesMagasin])
+  const bordereauExistant = useMemo(() => bordereauxMagasin.find((s) => s.jour === jour), [bordereauxMagasin, jour])
   const bordereauxDeLaSemaine = useMemo(
-    () =>
-      state.saisies
-        .filter((s) => s.magasinId === magasin?.id && s.semaine === semaineRecap && s.type === 'don' && s.jour)
-        .sort((a, b) => (a.jour ?? '').localeCompare(b.jour ?? '')),
-    [state.saisies, magasin, semaineRecap],
+    () => bordereauxMagasin.filter((s) => s.semaine === semaineRecap).sort((a, b) => (a.jour ?? '').localeCompare(b.jour ?? '')),
+    [bordereauxMagasin, semaineRecap],
   )
-  const relevesDeLaSemaine = useMemo(
-    () => state.saisies.filter((s) => s.magasinId === magasin?.id && s.semaine === semaineRecap && s.type === 'don' && !s.jour),
-    [state.saisies, magasin, semaineRecap],
-  )
+  const relevesDeLaSemaine = useMemo(() => relevesMagasin.filter((s) => s.semaine === semaineRecap), [relevesMagasin, semaineRecap])
   const corrections = useMemo(
-    () =>
-      state.saisies
-        .filter((s) => s.magasinId === magasin?.id && s.semaine === semaineRecap && s.type === 'correction')
-        .sort((a, b) => a.horodatage.localeCompare(b.horodatage)),
-    [state.saisies, magasin, semaineRecap],
+    () => saisiesMagasin.filter((s) => s.semaine === semaineRecap && s.type === 'correction').sort((a, b) => a.horodatage.localeCompare(b.horodatage)),
+    [saisiesMagasin, semaineRecap],
   )
-  const releveExistant = useMemo(() => {
-    if (!magasin) return undefined
-    return periode === 'mois'
-      ? state.saisies.filter((s) => s.magasinId === magasin.id && s.origine === 'releve' && s.releveMois === mois)
-      : state.saisies.filter((s) => s.magasinId === magasin.id && s.origine === 'releve' && s.semaine === semaine && !s.releveMois)
-  }, [state.saisies, magasin, periode, semaine, mois])
-  const bordereauxDeLaSemaineReleve = useMemo(
-    () => state.saisies.filter((s) => s.magasinId === magasin?.id && s.semaine === semaine && s.type === 'don' && s.jour),
-    [state.saisies, magasin, semaine],
+  const releveExistant = useMemo(
+    () => relevesMagasin.filter((s) => s.origine === 'releve' && s.releveDu === du && s.releveAu === au),
+    [relevesMagasin, du, au],
   )
+  const bordereauxDeLaPeriode = useMemo(() => bordereauxMagasin.filter((s) => s.jour! >= du && s.jour! <= au), [bordereauxMagasin, du, au])
+  /** Relevés sur une autre période qui recouvrent en partie celle-ci (à signaler, pas à écraser). */
+  const relevesChevauchants = useMemo(
+    () => relevesMagasin.filter((s) => s.origine === 'releve' && !(s.releveDu === du && s.releveAu === au) && [...joursCouvertsParReleves([s])].some((j) => j >= du && j <= au)),
+    [relevesMagasin, du, au],
+  )
+  const dernierReleve = useMemo(() => [...relevesMagasin].filter((s) => s.saisiEn).sort((a, b) => b.horodatage.localeCompare(a.horodatage))[0], [relevesMagasin])
 
   // Recharge le bordereau quand on change de jour / de magasin
   useEffect(() => {
@@ -155,14 +175,25 @@ export function SaisieView({
     setConfirmationJour(false)
   }, [bordereauExistant, magasinId, jour, magasin])
 
-  // Recharge le relevé quand on change de période
+  // Recharge le relevé quand la période change : ce qui a été saisi tel quel, pas la valeur normalisée
   useEffect(() => {
-    const total = (releveExistant ?? []).reduce((t, s) => t + s.pvEmballes, 0)
-    setMontant(total > 0 ? String(Math.round(total * 100) / 100) : '')
-    const kgs = (releveExistant ?? []).reduce((t, s) => t + s.kgFL, 0)
-    setKgSemaine(kgs > 0 ? String(kgs) : '')
-    setFlInclus(releveExistant?.some((s) => s.flInclus) ?? magasin?.modeFL === 'inclus')
+    const premiere = releveExistant[0]
+    if (premiere?.montantSaisi !== undefined) {
+      setMontant(String(premiere.montantSaisi))
+      setSaisiEn(premiere.saisiEn ?? '')
+      setTauxTVA(String(premiere.tauxTVA ?? TVA_ALIMENTAIRE))
+    } else {
+      const total = releveExistant.reduce((t, s) => t + s.pvEmballes, 0)
+      setMontant(total > 0 ? String(Math.round(total * 100) / 100) : '')
+      setSaisiEn(total > 0 ? 'pv_ht' : (dernierReleve?.saisiEn ?? ''))
+      setTauxTVA(String(dernierReleve?.tauxTVA ?? TVA_ALIMENTAIRE))
+    }
+    const kgs = releveExistant.reduce((t, s) => t + s.kgFL, 0)
+    setKgPeriode(kgs > 0 ? String(kgs) : '')
+    setFlInclus(releveExistant.some((s) => s.flInclus) || (releveExistant.length === 0 && magasin?.modeFL === 'inclus'))
+    setLectureReleve(null)
     setConfirmationReleve(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [releveExistant, magasin])
 
   if (!magasin || !societe) {
@@ -182,8 +213,14 @@ export function SaisieView({
   const bordereauValide = (colisNum > 0 || kgNum > 0 || justificatifs.length > 0) && !(plusieursCollecteurs && !collecteur)
 
   const montantNum = Number(montant) || 0
-  const kgSemaineNum = Number(kgSemaine) || 0
-  const releveValide = montantNum > 0 || kgSemaineNum > 0
+  const tvaNum = Number(tauxTVA) || 0
+  const kgPeriodeNum = Number(kgPeriode) || 0
+  const pvHT = saisiEn ? normaliserEnPVHT(montantNum, saisiEn, societe.margePct, tvaNum) : 0
+  const releveValide = periodeValide && ((montantNum > 0 && saisiEn !== '') || kgPeriodeNum > 0)
+  const doutesReleve: string[] = []
+  if (montantNum > 0 && !saisiEn) doutesReleve.push('Précisez si le montant est HT ou TTC, et s’il s’agit du prix de vente ou du prix d’achat.')
+  if (lectureReleve?.unite === 'inconnu' && montantNum > 0) doutesReleve.push('Le document ne dit pas si le montant est HT ou TTC.')
+  if (lectureReleve?.nature === 'inconnu' && montantNum > 0) doutesReleve.push('Le document ne dit pas s’il s’agit du prix de vente ou du prix d’achat.')
 
   const semainePasseeCorr = compareWeekIds(semaineRecap, currentWeekId()) < 0
   const corrPvNum = Number(corrPv) || 0
@@ -197,6 +234,12 @@ export function SaisieView({
   const cEmbSemaine = coutEmballes(pvSemaine, societe.margePct)
   const cFLSemaine = coutFL(kgTotalSemaine, magasin.coutKgFL)
   const baseSemaineTotale = [...bordereauxDeLaSemaine, ...relevesDeLaSemaine, ...corrections].reduce((t, s) => t + baseDeLaSaisie(s), 0)
+
+  const socle = () => ({
+    magasinId: magasin.id,
+    margePctAppliquee: societe.margePct,
+    coutKgFLApplique: magasin.coutKgFL,
+  })
 
   /** Une photo de bordereau est une pièce justificative : en base (bucket) dès qu'on est connecté. */
   async function ajouterPhotos(files: FileList | null) {
@@ -237,8 +280,8 @@ export function SaisieView({
     if (!bordereauValide || !magasin || !societe) return
     onSave({
       id: bordereauExistant?.id ?? uid(),
-      magasinId: magasin.id,
-      semaine: semaineDuBordereau,
+      ...socle(),
+      semaine: semaineDuJour(jour),
       jour,
       type: 'don',
       origine: 'bordereau',
@@ -251,65 +294,111 @@ export function SaisieView({
       note: noteJour.trim() || undefined,
       justificatifs,
       horodatage: new Date().toISOString(),
-      margePctAppliquee: societe.margePct,
-      coutKgFLApplique: magasin.coutKgFL,
     })
     setConfirmationJour(true)
     setTimeout(() => setConfirmationJour(false), 2500)
   }
 
-  function enregistrerReleve() {
-    if (!releveValide || !magasin || !societe) return
+  function enregistrerImport(lignes: BordereauImporte[]) {
     const horodatage = new Date().toISOString()
-    const commun = {
-      magasinId: magasin.id,
-      type: 'don' as const,
-      origine: 'releve' as const,
-      justificatifs: [] as Justificatif[],
-      horodatage,
-      margePctAppliquee: societe.margePct,
-      coutKgFLApplique: magasin.coutKgFL,
-      flInclus: flInclus || undefined,
+    for (const l of lignes) {
+      onSave({
+        id: uid(),
+        ...socle(),
+        semaine: semaineDuJour(l.jour),
+        jour: l.jour,
+        type: 'don',
+        origine: 'bordereau',
+        pvEmballes: 0,
+        kgFL: flInclus ? 0 : l.kgFL,
+        flInclus: flInclus || undefined,
+        colis: l.colis || undefined,
+        signe: l.signe,
+        collecteur: l.collecteur || undefined,
+        note: l.lecture?.refus ? `refus : ${l.lecture.refus}` : undefined,
+        justificatifs: [l.justificatif],
+        horodatage,
+      })
     }
+    setMoisCal(lignes[lignes.length - 1]?.jour.slice(0, 7) ?? moisCal)
+  }
+
+  async function lireDocumentReleve(files: FileList | null) {
+    const f = files?.[0]
+    if (!f || !session) return
+    setLectureEnCours(true)
+    setMessageReleve('')
+    try {
+      let base64: string
+      let typeMime: string
+      if (f.type === 'application/pdf') {
+        base64 = await fichierEnBase64(f)
+        typeMime = 'application/pdf'
+      } else {
+        const c = await compresserPhoto(f, 2000, 0.8)
+        base64 = c.base64
+        typeMime = c.typeMime
+      }
+      const lecture = await lireReleve(base64, typeMime, { magasin: magasin.nom, periodeAttendue: periodeValide ? `${du} → ${au}` : undefined })
+      setLectureReleve(lecture)
+      if (!lecture.estUnReleve) {
+        setMessageReleve('Ce document ne ressemble pas à un relevé de démarque — rien n’a été repris.')
+        return
+      }
+      if (lecture.du && lecture.au) {
+        setMode('libre')
+        setDuLibre(lecture.du)
+        setAuLibre(lecture.au)
+      }
+      if (lecture.montant > 0) setMontant(String(lecture.montant))
+      if (lecture.tauxTVA > 0) setTauxTVA(String(lecture.tauxTVA))
+      // On ne décide HT/TTC et PV/PA que si le document l'écrit : sinon la question reste posée au magasin
+      if (lecture.unite !== 'inconnu' && lecture.nature !== 'inconnu') {
+        setSaisiEn(`${lecture.nature === 'prix_vente' ? 'pv' : 'pa'}_${lecture.unite}` as SaisiEn)
+      } else {
+        setSaisiEn('')
+      }
+      setMessageReleve('Lecture reportée — vérifiez la période, le montant et sa nature, puis enregistrez.')
+    } catch (e) {
+      setMessageReleve((e as Error).message)
+    } finally {
+      setLectureEnCours(false)
+    }
+  }
+
+  function enregistrerReleve() {
+    if (!releveValide || !magasin || !societe || !saisiEn && montantNum > 0) return
+    const horodatage = new Date().toISOString()
     const noms = magasin.collecteurs.map((c) => c.nom)
-    if (periode === 'mois') {
-      const semaines = semainesDuMois(mois)
-      const bordereaux = state.saisies
-        .filter((s) => s.magasinId === magasin.id && s.type === 'don' && s.jour && semaines.includes(s.semaine))
-        .map((s) => ({ semaine: s.semaine, collecteur: s.collecteur ?? '' }))
-      const parts = repartirReleve(montantNum, semaines, bordereaux, noms)
-      onSaveReleve(
-        magasin.id,
-        { mois },
-        parts.map((p) => ({
-          ...commun,
-          id: uid(),
-          semaine: p.semaine,
-          pvEmballes: p.montant,
-          kgFL: 0,
-          collecteur: p.collecteur || undefined,
-          releveMois: mois,
-          note: `Relevé ${libelleMois(mois)} — ${fmtEUR(montantNum, 2)} répartis sur ${semaines.length} semaine${semaines.length > 1 ? 's' : ''} au prorata des bordereaux`,
-        })),
-      )
-    } else {
-      const bordereaux = bordereauxDeLaSemaineReleve.map((s) => ({ semaine: s.semaine, collecteur: s.collecteur ?? '' }))
-      const parts = montantNum > 0 ? repartirReleve(montantNum, [semaine], bordereaux, noms) : [{ semaine, collecteur: noms.length === 1 ? noms[0] : '', montant: 0 }]
-      onSaveReleve(
-        magasin.id,
-        { semaine },
-        parts.map((p, i) => ({
-          ...commun,
-          id: uid(),
-          semaine,
-          pvEmballes: p.montant,
-          // Le poids hebdo saisi ici ne concerne que les magasins sans bordereau quotidien
-          kgFL: i === 0 && bordereauxDeLaSemaineReleve.length === 0 ? kgSemaineNum : 0,
-          collecteur: p.collecteur || undefined,
-          note: `Relevé de démarque ${weekLabel(semaine)}`,
-        })),
-      )
-    }
+    const parts = montantNum > 0
+      ? repartirRelevePeriode(pvHT, du, au, bordereauxDeLaPeriode.map((b) => ({ jour: b.jour!, collecteur: b.collecteur ?? '' })), noms)
+      : [{ semaine: semaineDuJour(du), collecteur: noms.length === 1 ? noms[0] : '', montant: 0 }]
+    const nbJours = joursEntre(du, au).length
+    const libelle = du === au ? `du ${fmtDate(du)}` : `du ${fmtDate(du)} au ${fmtDate(au)}`
+    const nouvelles: Saisie[] = parts.map((p, i) => ({
+      id: uid(),
+      ...socle(),
+      semaine: p.semaine,
+      type: 'don',
+      origine: 'releve',
+      pvEmballes: p.montant,
+      // Le poids saisi au relevé ne concerne que les périodes sans bordereau
+      kgFL: i === 0 && bordereauxDeLaPeriode.length === 0 ? kgPeriodeNum : 0,
+      flInclus: flInclus || undefined,
+      collecteur: p.collecteur || undefined,
+      releveDu: du,
+      releveAu: au,
+      montantSaisi: montantNum || undefined,
+      saisiEn: saisiEn || undefined,
+      tauxTVA: saisiEn === 'pv_ttc' || saisiEn === 'pa_ttc' ? tvaNum : undefined,
+      justificatifs: [],
+      horodatage,
+      note:
+        `Relevé ${libelle} (${nbJours} j) — ${fmtEUR(montantNum, 2)} ${saisiEn ? LIBELLES_SAISI[saisiEn] : ''}` +
+        (saisiEn && saisiEn !== 'pv_ht' ? ` → ${fmtEUR(pvHT, 2)} PV HT` : '') +
+        (parts.length > 1 ? `, réparti sur ${parts.length} ligne${parts.length > 1 ? 's' : ''} au prorata des bordereaux` : ''),
+    }))
+    onSaveReleve(magasin.id, { du, au }, nouvelles)
     setConfirmationReleve(true)
     setTimeout(() => setConfirmationReleve(false), 2500)
   }
@@ -318,7 +407,7 @@ export function SaisieView({
     if (!correctionValide || !magasin || !societe) return
     onSave({
       id: uid(),
-      magasinId: magasin.id,
+      ...socle(),
       semaine: semaineRecap,
       type: 'correction',
       pvEmballes: corrPvNum,
@@ -326,8 +415,6 @@ export function SaisieView({
       note: corrNote.trim() || 'Dons refusés par l’association',
       justificatifs: corrPj,
       horodatage: new Date().toISOString(),
-      margePctAppliquee: societe.margePct,
-      coutKgFLApplique: magasin.coutKgFL,
     })
     setCorrPv('')
     setCorrKg('')
@@ -371,6 +458,21 @@ export function SaisieView({
         </div>
       )}
 
+      {/* ============ Calendrier ============ */}
+      <div className="card">
+        <Calendrier
+          mois={moisCal}
+          bordereaux={bordereauxMagasin}
+          releves={relevesMagasin}
+          jourActif={jour}
+          onChoisirJour={(j) => {
+            setJour(j)
+            setMoisCal(j.slice(0, 7))
+          }}
+          onChangerMois={(d) => setMoisCal(addMois(moisCal, d))}
+        />
+      </div>
+
       {/* ============ 1. Bordereau du jour ============ */}
       <div className="card">
         <h3>1. Bordereau du jour</h3>
@@ -381,18 +483,14 @@ export function SaisieView({
         </p>
 
         <div className="semaine-nav">
-          <button className="btn btn-ghost" onClick={() => setJour(addJours(jour, -1))} aria-label="Jour précédent">
-            ‹
-          </button>
+          <button className="btn btn-ghost" onClick={() => { const j = addJours(jour, -1); setJour(j); setMoisCal(j.slice(0, 7)) }} aria-label="Jour précédent">‹</button>
           <div className="titre">
             {labelJour(jour)}
             <small>
-              {weekLabel(semaineDuBordereau)} · {bordereauExistant ? 'bordereau enregistré — modifiable' : 'aucun bordereau ce jour'}
+              {weekLabel(semaineRecap)} · {bordereauExistant ? 'bordereau enregistré — modifiable' : 'aucun bordereau ce jour'}
             </small>
           </div>
-          <button className="btn btn-ghost" onClick={() => setJour(addJours(jour, 1))} aria-label="Jour suivant">
-            ›
-          </button>
+          <button className="btn btn-ghost" onClick={() => { const j = addJours(jour, 1); setJour(j); setMoisCal(j.slice(0, 7)) }} aria-label="Jour suivant">›</button>
         </div>
 
         <ScanBordereau magasin={magasin} session={session} jour={jour} onAppliquer={appliquerScan} />
@@ -425,11 +523,7 @@ export function SaisieView({
             </label>
           )}
         </div>
-        {flInclus && (
-          <p className="muted" style={{ marginTop: -4 }}>
-            Fruits &amp; légumes inclus dans le montant scanné pour ce magasin — pas de pesée à saisir.
-          </p>
-        )}
+        {flInclus && <p className="muted" style={{ marginTop: -4 }}>Fruits &amp; légumes inclus dans le montant du relevé pour ce magasin — pas de pesée à saisir.</p>}
 
         <label className="field" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input type="checkbox" checked={signe} onChange={(e) => setSigne(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--vert)' }} />
@@ -444,7 +538,6 @@ export function SaisieView({
             justificatifs={justificatifs}
             onChange={(liste) => {
               setJustificatifs(liste)
-              // Une pièce retirée d'un bordereau déjà enregistré disparaît tout de suite du registre
               if (bordereauExistant) onSave({ ...bordereauExistant, justificatifs: liste })
             }}
           />
@@ -472,83 +565,135 @@ export function SaisieView({
         )}
       </div>
 
+      <ImportBordereaux magasin={magasin} session={session} onEnregistrer={enregistrerImport} />
+
       {/* ============ 2. Relevé de démarque ============ */}
       <div className="card">
         <h3>2. Relevé de démarque « don »</h3>
         <p className="muted">
-          Le montant en prix de vente lu dans l’export de votre back-office (motif « don »), quand vous voulez :
-          chaque semaine ou chaque mois. Un relevé mensuel est réparti sur les semaines du mois au prorata des
-          bordereaux enregistrés{plusieursCollecteurs ? ', et entre vos associations de la même façon' : ''}.
+          Le montant lu dans l’export de votre back-office (motif « don »), sur la période que vous voulez : une
+          semaine, un mois, ou deux dates libres. <strong>Le relevé fait foi</strong> ; les bordereaux servent
+          seulement à le répartir entre les semaines{plusieursCollecteurs ? ' et entre vos associations' : ''}.
         </p>
 
+        {session && (
+          <label className="btn btn-ghost btn-block" style={{ cursor: 'pointer', marginBottom: 10 }}>
+            {lectureEnCours ? 'Lecture en cours…' : '📄 Importer l’export (photo, capture ou PDF) — Mana remplit la période et le montant'}
+            <input type="file" accept="image/*,application/pdf" disabled={lectureEnCours} onChange={(e) => { void lireDocumentReleve(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+          </label>
+        )}
+        {messageReleve && <p className="muted" style={{ marginTop: -4, color: lectureReleve?.estUnReleve ? 'var(--vert)' : 'var(--ambre-texte)' }}>{messageReleve}</p>}
+        {lectureReleve?.estUnReleve && lectureReleve.doutes.length > 0 && (
+          <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--encre-2)' }}>
+            {lectureReleve.doutes.map((d) => <li key={d}>{d}</li>)}
+          </ul>
+        )}
+
         <div className="chips" style={{ marginBottom: 10 }}>
-          <button type="button" className={`chip ${periode === 'semaine' ? 'active' : ''}`} onClick={() => setPeriode('semaine')}>
-            Par semaine
-          </button>
-          <button type="button" className={`chip ${periode === 'mois' ? 'active' : ''}`} onClick={() => setPeriode('mois')}>
-            Par mois
-          </button>
+          <button type="button" className={`chip ${mode === 'semaine' ? 'active' : ''}`} onClick={() => setMode('semaine')}>Une semaine</button>
+          <button type="button" className={`chip ${mode === 'mois' ? 'active' : ''}`} onClick={() => setMode('mois')}>Un mois</button>
+          <button type="button" className={`chip ${mode === 'libre' ? 'active' : ''}`} onClick={() => setMode('libre')}>Dates libres</button>
         </div>
 
-        {periode === 'semaine' ? (
+        {mode === 'semaine' && (
           <div className="semaine-nav">
-            <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, -1))} aria-label="Semaine précédente">
-              ‹
-            </button>
-            <div className="titre">
-              {weekLabel(semaine)}
-              <small>
-                {bordereauxDeLaSemaineReleve.length} bordereau{bordereauxDeLaSemaineReleve.length > 1 ? 'x' : ''} ·{' '}
-                {releveExistant && releveExistant.length > 0 ? 'relevé enregistré — modifiable' : 'aucun relevé'}
-              </small>
-            </div>
-            <button className="btn btn-ghost" onClick={() => setSemaine(addWeeks(semaine, 1))} aria-label="Semaine suivante">
-              ›
-            </button>
+            <button className="btn btn-ghost" onClick={() => setSemaineSel(addWeeksLocal(semaineSel, -1))} aria-label="Semaine précédente">‹</button>
+            <div className="titre">{weekLabel(semaineSel)}<small>{etatPeriode(bordereauxDeLaPeriode.length, releveExistant.length, relevesChevauchants)}</small></div>
+            <button className="btn btn-ghost" onClick={() => setSemaineSel(addWeeksLocal(semaineSel, 1))} aria-label="Semaine suivante">›</button>
           </div>
-        ) : (
+        )}
+        {mode === 'mois' && (
           <div className="semaine-nav">
-            <button className="btn btn-ghost" onClick={() => setMois(addMois(mois, -1))} aria-label="Mois précédent">
-              ‹
-            </button>
-            <div className="titre">
-              {libelleMois(mois)}
-              <small>
-                {semainesDuMois(mois).length} semaines ·{' '}
-                {releveExistant && releveExistant.length > 0 ? 'relevé enregistré — modifiable' : 'aucun relevé'}
-              </small>
+            <button className="btn btn-ghost" onClick={() => setMoisSel(addMois(moisSel, -1))} aria-label="Mois précédent">‹</button>
+            <div className="titre" style={{ textTransform: 'capitalize' }}>
+              {new Date(Date.UTC(Number(moisSel.slice(0, 4)), Number(moisSel.slice(5, 7)) - 1, 1)).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+              <small style={{ textTransform: 'none' }}>{etatPeriode(bordereauxDeLaPeriode.length, releveExistant.length, relevesChevauchants)}</small>
             </div>
-            <button className="btn btn-ghost" onClick={() => setMois(addMois(mois, 1))} aria-label="Mois suivant">
-              ›
-            </button>
+            <button className="btn btn-ghost" onClick={() => setMoisSel(addMois(moisSel, 1))} aria-label="Mois suivant">›</button>
           </div>
+        )}
+        {mode === 'libre' && (
+          <div className="colonnes-2">
+            <label className="field"><span>Du</span><input type="date" value={duLibre} onChange={(e) => setDuLibre(e.target.value)} /></label>
+            <label className="field"><span>Au (inclus)</span><input type="date" value={auLibre} onChange={(e) => setAuLibre(e.target.value)} /></label>
+            <p className="muted" style={{ gridColumn: '1 / -1', marginTop: -6 }}>
+              {periodeValide ? `${joursEntre(du, au).length} jour${joursEntre(du, au).length > 1 ? 's' : ''} · ${etatPeriode(bordereauxDeLaPeriode.length, releveExistant.length, relevesChevauchants)}` : 'La date de fin doit suivre la date de début.'}
+            </p>
+          </div>
+        )}
+
+        <label className="field">
+          <span>Montant de la démarque « don » sur la période</span>
+          <div className="suffixe">
+            <input type="number" inputMode="decimal" min={0} step={1} value={montant} onChange={(e) => setMontant(e.target.value)} placeholder={mode === 'mois' ? 'Ex. 4 800' : 'Ex. 1 150'} />
+            <em>€</em>
+          </div>
+        </label>
+
+        <div className="colonnes-2">
+          <label className="field">
+            <span>Ce montant est…</span>
+            <div className="chips" style={{ marginBottom: 0 }}>
+              {(['ht', 'ttc'] as const).map((u) => {
+                const actif = saisiEn.endsWith(`_${u}`)
+                return (
+                  <button key={u} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setSaisiEn(`${saisiEn.startsWith('pa') ? 'pa' : 'pv'}_${u}` as SaisiEn)}>
+                    {u === 'ht' ? 'Hors taxes (HT)' : 'Toutes taxes (TTC)'}
+                  </button>
+                )
+              })}
+            </div>
+          </label>
+          <label className="field">
+            <span>…exprimé en</span>
+            <div className="chips" style={{ marginBottom: 0 }}>
+              {(['pv', 'pa'] as const).map((n) => {
+                const actif = saisiEn.startsWith(n)
+                return (
+                  <button key={n} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setSaisiEn(`${n}_${saisiEn.endsWith('ttc') ? 'ttc' : 'ht'}` as SaisiEn)}>
+                    {n === 'pv' ? 'Prix de vente' : 'Prix d’achat (coût)'}
+                  </button>
+                )
+              })}
+            </div>
+          </label>
+        </div>
+        {(saisiEn === 'pv_ttc' || saisiEn === 'pa_ttc') && (
+          <label className="field">
+            <span>Taux de TVA appliqué</span>
+            <div className="suffixe" style={{ maxWidth: 160 }}>
+              <input type="number" inputMode="decimal" min={0} step={0.1} value={tauxTVA} onChange={(e) => setTauxTVA(e.target.value)} />
+              <em>%</em>
+            </div>
+            <span className="aide">5,5 % sur l’alimentaire ; 20 % sur les rares produits taxés au taux normal.</span>
+          </label>
+        )}
+        {doutesReleve.length > 0 && (
+          <div className="info-banner alerte">
+            <strong>À confirmer avant d’enregistrer.</strong>
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{doutesReleve.map((d) => <li key={d}>{d}</li>)}</ul>
+          </div>
+        )}
+        {montantNum > 0 && saisiEn && (
+          <p className="muted" style={{ marginTop: -4 }}>
+            Retenu pour le calcul : <strong>{fmtEUR(pvHT, 2)} en prix de vente HT</strong>
+            {saisiEn !== 'pv_ht' ? ` (${fmtEUR(montantNum, 2)} ${LIBELLES_SAISI[saisiEn]}${saisiEn.endsWith('ttc') ? `, TVA ${tvaNum} %` : ''}${saisiEn.startsWith('pa') ? `, marge ${fmtPct(societe.margePct)}` : ''})` : ''}
+            {' '}→ coût de revient {fmtEUR(coutEmballes(pvHT, societe.margePct), 2)}.
+          </p>
         )}
 
         <label className="field">
           <span>Fruits &amp; légumes</span>
           <div className="chips" style={{ marginBottom: 0 }}>
-            <button type="button" className={`chip ${!flInclus ? 'active' : ''}`} onClick={() => setFlInclus(false)}>
-              Pesés sur les bordereaux
-            </button>
-            <button type="button" className={`chip ${flInclus ? 'active' : ''}`} onClick={() => setFlInclus(true)}>
-              Inclus dans le montant
-            </button>
+            <button type="button" className={`chip ${!flInclus ? 'active' : ''}`} onClick={() => setFlInclus(false)}>Pesés sur les bordereaux</button>
+            <button type="button" className={`chip ${flInclus ? 'active' : ''}`} onClick={() => setFlInclus(true)}>Inclus dans le montant</button>
           </div>
         </label>
-
-        <label className="field">
-          <span>{flInclus ? 'Démarque « don » — tous produits, F&L compris (prix de vente)' : 'Démarque « don » — produits emballés (prix de vente)'}</span>
-          <div className="suffixe">
-            <input type="number" inputMode="decimal" min={0} step={1} value={montant} onChange={(e) => setMontant(e.target.value)} placeholder={periode === 'mois' ? 'Ex. 4 800' : 'Ex. 1 150'} />
-            <em>€</em>
-          </div>
-        </label>
-
-        {periode === 'semaine' && !flInclus && bordereauxDeLaSemaineReleve.length === 0 && (
+        {!flInclus && bordereauxDeLaPeriode.length === 0 && periodeValide && (
           <label className="field">
-            <span>Fruits &amp; légumes de la semaine (pas de bordereau quotidien)</span>
+            <span>Fruits &amp; légumes de la période (pas de bordereau enregistré)</span>
             <div className="suffixe">
-              <input type="number" inputMode="decimal" min={0} step={0.5} value={kgSemaine} onChange={(e) => setKgSemaine(e.target.value)} placeholder="Ex. 55" />
+              <input type="number" inputMode="decimal" min={0} step={0.5} value={kgPeriode} onChange={(e) => setKgPeriode(e.target.value)} placeholder="Ex. 55" />
               <em>kg</em>
             </div>
             <span className="aide">Si vous enregistrez des bordereaux jour par jour, leurs poids sont déjà comptés — laissez vide.</span>
@@ -556,7 +701,7 @@ export function SaisieView({
         )}
 
         <button className="btn btn-primary btn-block" disabled={!releveValide} style={{ opacity: releveValide ? 1 : 0.5 }} onClick={enregistrerReleve}>
-          {releveExistant && releveExistant.length > 0 ? 'Mettre à jour le relevé' : periode === 'mois' ? 'Enregistrer le relevé du mois' : 'Enregistrer le relevé de la semaine'}
+          {releveExistant.length > 0 ? 'Mettre à jour le relevé de cette période' : 'Enregistrer le relevé'}
         </button>
         {confirmationReleve && (
           <p style={{ textAlign: 'center', marginTop: 10, marginBottom: 0 }}>
@@ -571,16 +716,11 @@ export function SaisieView({
         <div className="detail-lignes">
           <div className="ligne">
             <span>Bordereaux · colis · F&amp;L</span>
-            <strong>
-              {bordereauxDeLaSemaine.length} · {colisSemaine} · {fmtNum(kgTotalSemaine, 1)} kg
-            </strong>
+            <strong>{bordereauxDeLaSemaine.length} · {colisSemaine} · {fmtNum(kgTotalSemaine, 1)} kg</strong>
           </div>
           <div className="ligne">
             <span>Coût de revient emballés</span>
-            <Amount
-              titre="Coût de revient — produits emballés"
-              lignes={['coût_emballés = démarque_PV × (1 − marge)', `= ${fmtEUR(pvSemaine, 2)} × (1 − ${fmtPct(societe.margePct)})`, `= ${fmtEUR(cEmbSemaine, 2)}`]}
-            >
+            <Amount titre="Coût de revient — produits emballés" lignes={['coût_emballés = démarque_PV_HT × (1 − marge)', `= ${fmtEUR(pvSemaine, 2)} × (1 − ${fmtPct(societe.margePct)})`, `= ${fmtEUR(cEmbSemaine, 2)}`]}>
               <strong>{fmtEUR(cEmbSemaine, 2)}</strong>
             </Amount>
           </div>
@@ -592,56 +732,40 @@ export function SaisieView({
           </div>
           <div className="ligne">
             <span>Base fiscale de la semaine{corrections.length > 0 ? ' (corrections déduites)' : ''}</span>
-            <Amount
-              titre="Base de la semaine"
-              lignes={['base = coût_emballés + coût_FL − corrections', `= ${fmtEUR(baseSemaineTotale, 2)}`, `Réduction d’impôt correspondante (hors plafond) : 60 % × ${fmtEUR(baseSemaineTotale, 2)} = ${fmtEUR(0.6 * baseSemaineTotale, 2)}`]}
-            >
+            <Amount titre="Base de la semaine" lignes={['base = coût_emballés + coût_FL − corrections', `= ${fmtEUR(baseSemaineTotale, 2)}`, `Réduction d’impôt correspondante (hors plafond) : 60 % × ${fmtEUR(baseSemaineTotale, 2)} = ${fmtEUR(0.6 * baseSemaineTotale, 2)}`]}>
               <strong style={{ fontSize: 18 }} className="montant-serif">{fmtEUR(baseSemaineTotale, 2)}</strong>
             </Amount>
           </div>
         </div>
         {relevesDeLaSemaine.length === 0 && bordereauxDeLaSemaine.length > 0 && (
           <p className="muted" style={{ marginTop: 10, marginBottom: 0, color: 'var(--papier)', opacity: 0.85 }}>
-            Bordereaux enregistrés, mais pas encore de relevé de démarque pour cette semaine : la valeur des produits
-            emballés est à 0 € tant que le montant n’est pas saisi.
+            Bordereaux enregistrés, mais pas encore de relevé couvrant cette semaine : la valeur des produits emballés
+            est à 0 € tant que le montant n’est pas saisi.
           </p>
         )}
       </div>
 
-      {/* Liste des bordereaux et relevés de la semaine */}
       {(bordereauxDeLaSemaine.length > 0 || relevesDeLaSemaine.length > 0) && (
         <div className="card">
           <h3>Lignes de la semaine</h3>
           {bordereauxDeLaSemaine.map((s) => (
             <div className="facture-ligne" key={s.id}>
               <div className="infos">
-                <strong>
-                  {labelJour(s.jour!)}
-                  {s.collecteur ? ` · ${s.collecteur}` : ''}
-                </strong>
+                <strong>{labelJour(s.jour!)}{s.collecteur ? ` · ${s.collecteur}` : ''}</strong>
                 <small>
-                  {[s.colis ? `${s.colis} colis` : '', s.kgFL ? `${fmtNum(s.kgFL, 1)} kg F&L` : '', s.signe ? 'signé' : 'signature non confirmée', s.justificatifs.length ? `${s.justificatifs.length} photo${s.justificatifs.length > 1 ? 's' : ''}` : 'pas de photo']
-                    .filter(Boolean)
-                    .join(' · ')}
+                  {[s.colis ? `${s.colis} colis` : '', s.kgFL ? `${fmtNum(s.kgFL, 1)} kg F&L` : '', s.signe ? 'signé' : 'signature non confirmée', s.justificatifs.length ? `${s.justificatifs.length} photo${s.justificatifs.length > 1 ? 's' : ''}` : 'pas de photo'].filter(Boolean).join(' · ')}
                 </small>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setJour(s.jour!)}>
-                Ouvrir
-              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setJour(s.jour!); setMoisCal(s.jour!.slice(0, 7)) }}>Ouvrir</button>
             </div>
           ))}
           {relevesDeLaSemaine.map((s) => (
             <div className="facture-ligne" key={s.id}>
               <div className="infos">
-                <strong>
-                  Relevé {fmtEUR(s.pvEmballes, 2)}
-                  {s.collecteur ? ` · ${s.collecteur}` : ''}
-                </strong>
+                <strong>Relevé {fmtEUR(s.pvEmballes, 2)} PV HT{s.collecteur ? ` · ${s.collecteur}` : ''}</strong>
                 <small>{s.note ?? (s.origine ? 'relevé de démarque' : 'saisie hebdomadaire (ancien format)')}{s.kgFL ? ` · ${fmtNum(s.kgFL, 1)} kg F&L` : ''}</small>
               </div>
-              <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Supprimer cette ligne ?')) onDelete(s.id) }}>
-                ✕
-              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Supprimer cette ligne ?')) onDelete(s.id) }}>✕</button>
             </div>
           ))}
         </div>
@@ -661,7 +785,7 @@ export function SaisieView({
             </div>
             <div className="colonnes-2">
               <label className="field">
-                <span>Produits emballés (prix de vente)</span>
+                <span>Produits emballés (prix de vente HT)</span>
                 <div className="suffixe">
                   <input type="number" inputMode="decimal" max={0} step={1} value={corrPv} onChange={(e) => setCorrPv(e.target.value)} placeholder="Ex. −120" />
                   <em>€</em>
@@ -698,9 +822,7 @@ export function SaisieView({
                   <strong>{fmtEUR(c.pvEmballes, 2)} · {fmtNum(c.kgFL, 1)} kg</strong>
                   <small>{c.note}</small>
                 </div>
-                <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Supprimer cette correction ?')) onDelete(c.id) }}>
-                  Supprimer
-                </button>
+                <button className="btn btn-danger btn-sm" onClick={() => { if (confirm('Supprimer cette correction ?')) onDelete(c.id) }}>Supprimer</button>
               </div>
             ))}
           </div>
@@ -708,4 +830,22 @@ export function SaisieView({
       </div>
     </div>
   )
+}
+
+function addWeeksLocal(id: string, n: number): string {
+  const lundi = mondayOfWeek(id)
+  lundi.setUTCDate(lundi.getUTCDate() + n * 7)
+  const { year, week } = isoWeekOf(lundi)
+  return weekId(year, week)
+}
+
+function etatPeriode(nbBordereaux: number, nbReleve: number, chevauchants: Saisie[]): string {
+  const base = `${nbBordereaux} bordereau${nbBordereaux > 1 ? 'x' : ''}`
+  if (nbReleve > 0) return `${base} · relevé enregistré — modifiable`
+  if (chevauchants.length > 0) {
+    const r = chevauchants[0]
+    const periode = r.releveDu && r.releveAu ? `du ${fmtDate(r.releveDu)} au ${fmtDate(r.releveAu)}` : r.releveMois ? `du mois ${r.releveMois}` : `de la ${r.semaine}`
+    return `${base} · un relevé ${periode} recouvre en partie cette période`
+  }
+  return `${base} · aucun relevé`
 }

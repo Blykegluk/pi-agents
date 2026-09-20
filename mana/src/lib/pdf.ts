@@ -858,9 +858,10 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number, collecteu
 
   // --- Organisme bénéficiaire : complété par l'association (nom prérempli si connu) ---
   y = rubrique(doc, 'Organisme bénéficiaire des dons et versements  (à compléter par l’organisme)', y)
+  const ficheAsso = collecteur ? agg.magasins.flatMap((m) => m.collecteurs).find((c) => c.nom === collecteur) : undefined
   ligneAComplerer(doc, 'Dénomination :', 14, y, 196, collecteur)
   y += 7
-  ligneAComplerer(doc, 'Numéro SIREN ou RNA :', 14, y, 100)
+  ligneAComplerer(doc, 'Numéro SIREN ou RNA :', 14, y, 100, ficheAsso?.siren || ficheAsso?.rna || undefined)
   ligneAComplerer(doc, 'Objet :', 104, y, 196)
   y += 7
   ligneAComplerer(doc, 'Adresse — N° :', 14, y, 70)
