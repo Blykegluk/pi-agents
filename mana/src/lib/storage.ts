@@ -207,3 +207,24 @@ export function resumeEtat(etat: AppState): string {
   const n = (k: number, un: string, plusieurs: string) => `${k} ${k > 1 ? plusieurs : un}`
   return `${n(etat.societes.length, 'société', 'sociétés')}, ${n(etat.magasins.length, 'magasin', 'magasins')}, ${n(etat.saisies.length, 'ligne de saisie', 'lignes de saisie')}`
 }
+
+/**
+ * Compte auquel la copie locale est liée. Dès qu'un appareil a synchronisé
+ * avec un compte, ses données ne s'affichent plus sans connexion, et la
+ * déconnexion efface la copie locale.
+ */
+const KEY_COMPTE = 'mana-compte-v1'
+export function getCompteLie(): string | null {
+  return localStorage.getItem(KEY_COMPTE)
+}
+export function setCompteLie(id: string): void {
+  try {
+    localStorage.setItem(KEY_COMPTE, id)
+  } catch {
+    /* sans importance */
+  }
+}
+/** Efface tout ce que l'appareil garde : état, sauvegarde, horodatages, lien au compte. */
+export function purgerAppareil(): void {
+  for (const k of [KEY, KEY_SAUVEGARDE, KEY_MAJ, KEY_SYNC, KEY_COMPTE]) localStorage.removeItem(k)
+}

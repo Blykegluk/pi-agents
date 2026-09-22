@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
-import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, uid } from './lib/storage'
+import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, getCompteLie, setCompteLie, purgerAppareil, uid } from './lib/storage'
 import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces, type EtatDistant } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
@@ -70,11 +70,35 @@ export default function App() {
   const [conflit, setConflit] = useState<{ local: AppState; distant: EtatDistant } | null>(null)
   const [sauvegarde, setSauvegarde] = useState(() => lireSauvegarde())
 
+  /** Vrai dès que l'on sait si une session existe (avant, on n'affiche rien de personnel). */
+  const [sessionResolue, setSessionResolue] = useState(false)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setSessionResolue(true)
+    })
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => setSession(s))
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  /**
+   * Un appareil lié à un compte n'affiche ses données que connecté. La copie
+   * locale reste en mémoire pour la synchronisation, mais l'écran est verrouillé.
+   */
+  const verrouille = sessionResolue && !session && !!getCompteLie() && !estDemo(state)
+
+  /** Déconnexion : les données sont sur le compte, l'appareil n'en garde rien. */
+  async function seDeconnecter() {
+    if (syncStatut === 'erreur' && !confirm('La dernière synchronisation a échoué : des saisies récentes pourraient ne pas être sur le compte. Se déconnecter quand même ?')) return
+    await deconnexion()
+    purgerAppareil()
+    setSauvegarde(null)
+    setConflit(null)
+    sauterProchainPush.current = true
+    setState(buildDemoState())
+    setTab('simulateur')
+    setReglages(false)
+  }
 
   useEffect(() => {
     if (session) estAdmin().then(setAdmin)
@@ -183,6 +207,7 @@ export default function App() {
     sauterProchainPush.current = true
     setMajLocale(Date.parse(majLe))
     setSyncLocale(Date.parse(majLe))
+    if (session) setCompteLie(session.user.id)
     setState(etat)
     // À la connexion, un compte équipé quitte le simulateur pour la Saisie
     if (etat.magasins.length > 0) setTab((t) => (t === 'simulateur' ? 'saisie' : t))
@@ -196,6 +221,7 @@ export default function App() {
       const majLe = await pousserEtatDistant(userId, etat, email)
       setMajLocale(Date.parse(majLe))
       setSyncLocale(Date.parse(majLe))
+      setCompteLie(userId)
       setSyncStatut('ok')
       setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
     } catch {
@@ -556,7 +582,16 @@ export default function App() {
       </header>
 
       <main>
-        {conflit && (
+        {verrouille && (
+          <div className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
+            <h3 style={{ marginTop: 0 }}>Connectez-vous pour retrouver vos données</h3>
+            <p className="muted" style={{ margin: '0 auto 14px', maxWidth: 460 }}>
+              Cet appareil est lié à un compte Mana. Vos sociétés, magasins et saisies ne s’affichent qu’une fois connecté.
+            </p>
+            <button className="btn btn-primary" onClick={() => setReglages(true)}>Se connecter</button>
+          </div>
+        )}
+        {!verrouille && conflit && (
           <div className="info-banner" role="alertdialog" aria-label="Deux versions de vos données" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div>
               <strong>Deux versions différentes de vos données.</strong> Rien n’a été remplacé : choisissez laquelle garder.
@@ -572,7 +607,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {estDemo(state) && !session && (
+        {!verrouille && estDemo(state) && !session && (
           <div className="info-banner" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span>
               <strong>Vous explorez la démonstration</strong> (2 magasins fictifs). Créez votre compte pour démarrer
@@ -583,8 +618,8 @@ export default function App() {
             </button>
           </div>
         )}
-        {tab === 'simulateur' && <Simulateur onCommencer={() => setTab('magasins')} />}
-        {tab === 'magasins' && (
+        {!verrouille && tab === 'simulateur' && <Simulateur onCommencer={() => setTab('magasins')} />}
+        {!verrouille && tab === 'magasins' && (
           <MagasinsView
             societes={state.societes}
             magasins={state.magasins}
@@ -595,8 +630,8 @@ export default function App() {
             onPremierMagasin={() => setTab('collecte')}
           />
         )}
-        {tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
-        {tab === 'collecte' && (
+        {!verrouille && tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
+        {!verrouille && tab === 'collecte' && (
           <Collecte
             state={stateVisible}
             session={session}
@@ -607,14 +642,14 @@ export default function App() {
             onOuvrirMessages={() => setTab('messages')}
           />
         )}
-        {tab === 'saisie' && (
+        {!verrouille && tab === 'saisie' && (
           <SaisieView state={stateVisible} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
         )}
-        {tab === 'dashboard' && <Dashboard state={stateVisible} exercice={exercice} />}
-        {tab === 'registre' && (
+        {!verrouille && tab === 'dashboard' && <Dashboard state={stateVisible} exercice={exercice} />}
+        {!verrouille && tab === 'registre' && (
           <Registre state={stateVisible} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
         )}
-        {tab === 'messages' && (
+        {!verrouille && tab === 'messages' && (
           <Messages
             session={session}
             nonLus={nonLus}
@@ -623,9 +658,10 @@ export default function App() {
             onOuvrirAide={() => setAideOuverte(true)}
           />
         )}
-        {tab === 'admin' && session && admin && <Admin session={session} nonLus={nonLus} onLu={rafraichirNonLus} />}
+        {!verrouille && tab === 'admin' && session && admin && <Admin session={session} nonLus={nonLus} onLu={rafraichirNonLus} />}
       </main>
 
+      {!verrouille && (
       <nav className="tabbar">
         <div className="tabbar-inner">
           {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : acces ? TABS.filter((t) => TABS_INVITE.includes(t.id)) : TABS).map((t) => {
@@ -648,6 +684,7 @@ export default function App() {
           })}
         </div>
       </nav>
+      )}
 
       <Aide
         session={session}
@@ -668,7 +705,7 @@ export default function App() {
           <div className="sheet" role="dialog" aria-label="Réglages" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <h3>Compte &amp; synchronisation</h3>
-            <CompteSection session={session} syncStatut={syncStatut} syncHeure={syncHeure} />
+            <CompteSection session={session} syncStatut={syncStatut} syncHeure={syncHeure} onDeconnexion={seDeconnecter} />
             {acces && (
               <p className="muted" style={{ marginTop: 8 }}>
                 <strong>Accès partagé</strong>{acces.libelle ? ` · ${acces.libelle}` : ''} — vous travaillez sur les données de{' '}
@@ -759,10 +796,12 @@ function CompteSection({
   session,
   syncStatut,
   syncHeure,
+  onDeconnexion,
 }: {
   session: Session | null
   syncStatut: 'inactif' | 'encours' | 'ok' | 'erreur'
   syncHeure: string
+  onDeconnexion: () => void
 }) {
   const [email, setEmail] = useState('')
   const [motDePasse, setMotDePasse] = useState('')
@@ -783,7 +822,7 @@ function CompteSection({
               {syncStatut === 'inactif' && 'Connecté.'}
             </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => deconnexion()}>
+          <button className="btn btn-ghost btn-sm" onClick={onDeconnexion}>
             Se déconnecter
           </button>
         </div>
