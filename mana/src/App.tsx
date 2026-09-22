@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
-import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, getCompteLie, setCompteLie, purgerAppareil, uid } from './lib/storage'
-import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces, type EtatDistant } from './lib/cloud'
+import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, getCompteLie, setCompteLie, purgerAppareil, getAttentePush, setAttentePush, uid } from './lib/storage'
+import { chargerEtatDistant, dateEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces, type EtatDistant } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { completerIdentites } from './lib/identite'
@@ -66,8 +66,6 @@ export default function App() {
   const timerPush = useRef<number | undefined>(undefined)
   /** Premier passage de l'effet d'état : charger n'est pas modifier — ni horodatage, ni envoi. */
   const premierEffet = useRef(true)
-  /** Deux versions différentes (cet appareil / le cloud) : on demande, on ne tranche jamais seul. */
-  const [conflit, setConflit] = useState<{ local: AppState; distant: EtatDistant } | null>(null)
   const [sauvegarde, setSauvegarde] = useState(() => lireSauvegarde())
 
   /** Vrai dès que l'on sait si une session existe (avant, on n'affiche rien de personnel). */
@@ -93,7 +91,6 @@ export default function App() {
     await deconnexion()
     purgerAppareil()
     setSauvegarde(null)
-    setConflit(null)
     sauterProchainPush.current = true
     setState(buildDemoState())
     setTab('simulateur')
@@ -222,6 +219,7 @@ export default function App() {
       setMajLocale(Date.parse(majLe))
       setSyncLocale(Date.parse(majLe))
       setCompteLie(userId)
+      setAttentePush(false)
       setSyncStatut('ok')
       setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
     } catch {
@@ -230,20 +228,24 @@ export default function App() {
   }
 
   /**
-   * Arbitrage entre l'appareil et le cloud. Règle : on ne remplace jamais en
-   * silence des données que l'utilisateur a saisies.
-   * - pas de cloud → on y envoie l'appareil (sauf démo : on part de zéro) ;
-   * - appareil vide ou en démo → on prend le cloud ;
-   * - cloud inchangé depuis la dernière synchro de cet appareil → on envoie
-   *   ce qui a été modifié ici, s'il y a eu des modifications ;
-   * - cloud modifié ailleurs et rien de modifié ici → on prend le cloud ;
-   * - modifié des deux côtés (ou premier passage sur cet appareil avec des
-   *   données locales) → on demande.
+   * Le serveur fait foi, comme sur n'importe quel site : à l'ouverture on
+   * prend sa version, chaque modification lui est envoyée aussitôt, et les
+   * autres appareils la voient au retour sur l'onglet ou dans la minute.
+   *
+   * Seule exception : des modifications faites ici sans avoir pu partir
+   * (hors ligne, page fermée trop tôt). Si le serveur n'a pas bougé depuis
+   * qu'on l'a vu, elles partent maintenant ; s'il a bougé, il gagne et la
+   * version locale est mise de côté en sauvegarde (Réglages), sans question.
    */
-  async function arbitrer(distant: EtatDistant | null, local: AppState) {
+  async function synchroniser(distant: EtatDistant | null, local: AppState) {
     if (!session) return
     const localDemo = estDemo(local)
     if (!distant) {
+      if (acces) {
+        setSyncStatut('erreur')
+        return
+      }
+      // Premier compte : ce que l'appareil contient devient le compte (la démo ne compte pas).
       const aPousser = localDemo ? etatVide() : local
       if (localDemo) {
         sauterProchainPush.current = true
@@ -252,42 +254,17 @@ export default function App() {
       await pousser(aPousser, session.user.id, session.user.email ?? undefined)
       return
     }
-    if (localDemo || etatEstVide(local)) {
-      appliquerDistant(distant.etat, distant.majLe)
+    const enAttente = !acces && !localDemo && !etatEstVide(local) && getAttentePush()
+    if (enAttente && Date.parse(distant.majLe) <= getSyncLocale()) {
+      await pousser(local, session.user.id, session.user.email ?? undefined)
       return
     }
-    const distantMs = Date.parse(distant.majLe)
-    const derniereSync = getSyncLocale()
-    const modifieIci = getMajLocale() > derniereSync
     if (JSON.stringify(local) === JSON.stringify(distant.etat)) {
       appliquerDistant(distant.etat, distant.majLe)
       return
     }
-    if (distantMs <= derniereSync) {
-      if (modifieIci) await pousser(local, session.user.id, session.user.email ?? undefined)
-      else appliquerDistant(distant.etat, distant.majLe)
-      return
-    }
-    if (!modifieIci) {
-      appliquerDistant(distant.etat, distant.majLe, 'version de cet appareil, remplacée par le cloud')
-      return
-    }
-    setSyncStatut('ok')
-    setConflit({ local, distant })
-  }
-
-  /** Résolution du conflit par l'utilisateur : l'autre version est gardée en sauvegarde locale. */
-  async function resoudreConflit(choix: 'appareil' | 'cloud') {
-    if (!conflit || !session) return
-    const { local, distant } = conflit
-    setConflit(null)
-    if (choix === 'cloud') {
-      appliquerDistant(distant.etat, distant.majLe, 'version de cet appareil, écartée au profit du cloud')
-    } else {
-      sauvegarder(distant.etat, `version du cloud du ${new Date(distant.majLe).toLocaleString('fr-FR')}, écartée au profit de cet appareil`)
-      setSauvegarde(lireSauvegarde())
-      await pousser(local, session.user.id, session.user.email ?? undefined)
-    }
+    appliquerDistant(distant.etat, distant.majLe, enAttente ? 'modifications faites hors ligne, remplacées par la version du serveur' : undefined)
+    setAttentePush(false)
   }
 
   /** Synchronisation initiale à la connexion. */
@@ -303,15 +280,7 @@ export default function App() {
         setSyncStatut('encours')
         const distant = await chargerEtatDistant(compteId(session))
         if (annule) return
-        const local = loadState() ?? buildDemoState()
-        // Un invité travaille toujours sur les données du propriétaire, jamais sur
-        // ce que cet appareil aurait pu contenir avant.
-        if (acces) {
-          if (distant) appliquerDistant(distant.etat, distant.majLe, etatEstVide(local) || estDemo(local) ? undefined : 'données de cet appareil, avant le passage aux données partagées')
-          else setSyncStatut('erreur')
-          return
-        }
-        await arbitrer(distant, local)
+        await synchroniser(distant, loadState() ?? buildDemoState())
       } catch {
         if (!annule) setSyncStatut('erreur')
       }
@@ -322,28 +291,39 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id, acces === undefined])
 
-  /** Au retour sur l'onglet (ex. saisie faite sur un autre appareil) : rafraîchit si le cloud est plus récent. */
+  /**
+   * Rafraîchissement depuis le serveur : au retour sur l'onglet et toutes les
+   * 30 s. On ne lit d'abord que l'horodatage ; l'état complet n'est rapatrié
+   * que s'il a changé ailleurs.
+   */
   useEffect(() => {
     if (!session || acces === undefined) return
-    const surFocus = async () => {
-      if (document.visibilityState !== 'visible') return
-      if (conflit) return
+    let enCours = false
+    const rafraichir = async () => {
+      if (document.visibilityState !== 'visible' || enCours) return
+      enCours = true
       try {
-        const distant = await chargerEtatDistant(compteId(session))
-        if (!distant || Date.parse(distant.majLe) <= getSyncLocale()) return
-        if (acces || getMajLocale() <= getSyncLocale()) {
-          appliquerDistant(distant.etat, distant.majLe)
-        } else if (JSON.stringify(loadState()) !== JSON.stringify(distant.etat)) {
-          setConflit({ local: loadState() ?? etatVide(), distant })
-        }
+        const compte = compteId(session)
+        const date = await dateEtatDistant(compte)
+        if (!date || Date.parse(date) <= getSyncLocale()) return
+        const distant = await chargerEtatDistant(compte)
+        if (distant) await synchroniser(distant, loadState() ?? etatVide())
       } catch {
-        /* silencieux : on retentera au prochain focus */
+        /* silencieux : on retentera au prochain passage */
+      } finally {
+        enCours = false
       }
     }
-    document.addEventListener('visibilitychange', surFocus)
-    return () => document.removeEventListener('visibilitychange', surFocus)
+    const timer = window.setInterval(rafraichir, 30_000)
+    document.addEventListener('visibilitychange', rafraichir)
+    window.addEventListener('focus', rafraichir)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', rafraichir)
+      window.removeEventListener('focus', rafraichir)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id, acces === undefined, conflit])
+  }, [session?.user.id, acces === undefined])
 
   useEffect(() => {
     if (!saveState(state)) {
@@ -358,9 +338,12 @@ export default function App() {
       return
     }
     setMajLocale(Date.now())
-    if (session && acces !== undefined && !conflit && !estDemo(state)) {
+    if (estDemo(state)) return
+    // Modification réelle : elle part aussitôt ; le drapeau reste levé tant qu'elle n'est pas arrivée.
+    setAttentePush(true)
+    if (session && acces !== undefined) {
       window.clearTimeout(timerPush.current)
-      timerPush.current = window.setTimeout(() => pousser(state, compteId(session), acces ? undefined : session.user.email ?? undefined), 1500)
+      timerPush.current = window.setTimeout(() => pousser(state, compteId(session), acces ? undefined : session.user.email ?? undefined), 600)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state])
@@ -591,22 +574,6 @@ export default function App() {
             <button className="btn btn-primary" onClick={() => setReglages(true)}>Se connecter</button>
           </div>
         )}
-        {!verrouille && conflit && (
-          <div className="info-banner" role="alertdialog" aria-label="Deux versions de vos données" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <strong>Deux versions différentes de vos données.</strong> Rien n’a été remplacé : choisissez laquelle garder.
-              L’autre restera en sauvegarde sur cet appareil (Réglages).
-            </div>
-            <div className="detail-lignes" style={{ background: 'var(--carte)', borderRadius: 8, padding: '8px 10px' }}>
-              <div className="ligne"><span>Cet appareil</span><strong>{resumeEtat(conflit.local)} · modifié le {new Date(getMajLocale()).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</strong></div>
-              <div className="ligne"><span>Le cloud</span><strong>{resumeEtat(conflit.distant.etat)} · modifié le {new Date(conflit.distant.majLe).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</strong></div>
-            </div>
-            <div className="row-actions">
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => void resoudreConflit('appareil')}>Garder cet appareil</button>
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => void resoudreConflit('cloud')}>Prendre le cloud</button>
-            </div>
-          </div>
-        )}
         {!verrouille && estDemo(state) && !session && (
           <div className="info-banner" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span>
@@ -731,7 +698,6 @@ export default function App() {
                     onClick={() => {
                       if (!confirm('Remplacer les données actuelles par cette sauvegarde ? La version actuelle deviendra la sauvegarde.')) return
                       sauvegarder(state, 'version remplacée par la restauration d’une sauvegarde')
-                      setConflit(null)
                       setState(sauvegarde.etat)
                       setSauvegarde(lireSauvegarde())
                       setReglages(false)

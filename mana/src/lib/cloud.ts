@@ -77,6 +77,13 @@ export async function supprimerAcces(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+/** Seulement l'horodatage : assez pour savoir si le serveur a bougé, sans rapatrier l'état. */
+export async function dateEtatDistant(compte: string): Promise<string | null> {
+  const { data, error } = await supabase.from('mana_etats').select('updated_at').eq('user_id', compte).maybeSingle()
+  if (error) throw new Error(error.message)
+  return data?.updated_at ?? null
+}
+
 export async function chargerEtatDistant(compte: string): Promise<EtatDistant | null> {
   const { data, error } = await supabase.from('mana_etats').select('data, updated_at').eq('user_id', compte).maybeSingle()
   if (error) throw new Error(`Lecture cloud impossible : ${error.message}`)

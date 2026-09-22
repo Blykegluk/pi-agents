@@ -224,7 +224,25 @@ export function setCompteLie(id: string): void {
     /* sans importance */
   }
 }
+/**
+ * Modifications faites ici et pas encore parvenues au serveur (hors ligne,
+ * page fermée trop vite). Tant que ce drapeau est levé, elles ont priorité
+ * si le serveur n'a pas bougé entre-temps.
+ */
+const KEY_ATTENTE = 'mana-attente-v1'
+export function getAttentePush(): boolean {
+  return localStorage.getItem(KEY_ATTENTE) === '1'
+}
+export function setAttentePush(attente: boolean): void {
+  try {
+    if (attente) localStorage.setItem(KEY_ATTENTE, '1')
+    else localStorage.removeItem(KEY_ATTENTE)
+  } catch {
+    /* sans importance */
+  }
+}
+
 /** Efface tout ce que l'appareil garde : état, sauvegarde, horodatages, lien au compte. */
 export function purgerAppareil(): void {
-  for (const k of [KEY, KEY_SAUVEGARDE, KEY_MAJ, KEY_SYNC, KEY_COMPTE]) localStorage.removeItem(k)
+  for (const k of [KEY, KEY_SAUVEGARDE, KEY_MAJ, KEY_SYNC, KEY_COMPTE, KEY_ATTENTE]) localStorage.removeItem(k)
 }

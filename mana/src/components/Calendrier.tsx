@@ -101,9 +101,29 @@ export function Calendrier({
   // Jours attendus : ceux où une association passe (si on le sait), déjà écoulés, dans le mois affiché.
   const passages = joursDePassage(collecteurs)
   const attendu = (j: string) => j.startsWith(mois) && j <= aujourdhui && (!passages || passages.has(jourSemaine(j)))
-  const sansValeur = [...parJour.keys()].filter((j) => j.startsWith(mois) && !couverts.has(j)).length
-  const sansPreuve = [...couverts].filter((j) => attendu(j) && !parJour.has(j)).length
+  const joursSansValeur = [...parJour.keys()].filter((j) => j.startsWith(mois) && !couverts.has(j)).sort()
+  const joursSansPreuve = [...couverts].filter((j) => attendu(j) && !parJour.has(j)).sort()
+  const sansValeur = joursSansValeur.length
+  const sansPreuve = joursSansPreuve.length
   const joursPasses = passages ? [...passages].sort().map((i) => NOMS_JOURS[i]) : null
+  const libelleCourt = (j: string) => new Date(j + 'T00:00:00Z').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
+  /** Le relevé qui couvre un jour donné, pour dire d'où vient la valeur déclarée. */
+  const releveDuJour = (j: string) => releves.find((r) => joursCouvertsParReleves([r]).has(j))
+  const periodeReleve = (r: Saisie | undefined) => {
+    if (!r) return 'un relevé'
+    if (r.releveDu && r.releveAu) return `le relevé du ${libelleCourt(r.releveDu)} au ${libelleCourt(r.releveAu)}`
+    if (r.releveMois) return `le relevé du mois ${r.releveMois}`
+    return `le relevé de la ${r.semaine}`
+  }
+  const Jours = ({ liste }: { liste: string[] }) => (
+    <span className="cal-jours">
+      {liste.map((j) => (
+        <button key={j} type="button" className="cal-jour-lien" onClick={() => onChoisirJour(j)} title={`Ouvrir le ${libelleCourt(j)}`}>
+          {libelleCourt(j)}
+        </button>
+      ))}
+    </span>
+  )
 
   return (
     <div className="calendrier">
@@ -137,16 +157,18 @@ export function Calendrier({
         <div className="cal-alertes">
           {sansPreuve > 0 && (
             <p>
-              <strong>{sansPreuve} jour{sansPreuve > 1 ? 's' : ''} déclaré{sansPreuve > 1 ? 's' : ''} dans un relevé sans bordereau signé.</strong>{' '}
-              La valeur est déclarée mais aucune preuve de passage n’est archivée pour ce{sansPreuve > 1 ? 's' : ''} jour{sansPreuve > 1 ? 's' : ''} :
-              déposez les bordereaux manquants dans le smart upload.
+              <strong>{sansPreuve} jour{sansPreuve > 1 ? 's' : ''} sans bordereau signé alors que {periodeReleve(releveDuJour(joursSansPreuve[0]))} y déclare une valeur.</strong>{' '}
+              Le relevé donne le montant des dons de ces jours, mais aucun bordereau (la preuve que l’association est passée) n’y est enregistré :{' '}
+              <Jours liste={joursSansPreuve} />
+              Cliquez un jour pour y ajouter son bordereau. Si l’association n’est pas passée ce jour-là, il n’y a rien à faire.
               {joursPasses && <> Seuls les jours de passage prévus sont comptés ({joursPasses.join(', ')}).</>}
             </p>
           )}
           {sansValeur > 0 && (
             <p>
               <strong>{sansValeur} jour{sansValeur > 1 ? 's' : ''} avec bordereau signé sans relevé de démarque.</strong>{' '}
-              Le passage est prouvé mais sa valeur n’est pas encore déclarée : enregistrez le relevé de la période.
+              Le passage est prouvé mais sa valeur n’est pas encore déclarée : <Jours liste={joursSansValeur} />
+              Enregistrez le relevé de la période dans la carte « Relevé de démarque » ci-dessous.
             </p>
           )}
         </div>
