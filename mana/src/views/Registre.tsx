@@ -449,7 +449,12 @@ export function Registre({
             Un état annuel sans la valeur de ces dons serait faux, et la commission Mana avec. Ajoutez les relevés dans Saisie.
           </div>
         )}
-        <button className="btn btn-primary btn-block" disabled={agg.semainesSansReleve.length > 0} style={{ opacity: agg.semainesSansReleve.length > 0 ? 0.5 : 1 }} onClick={() => pdfEtatAnnuel(agg, exercice)}>
+        {!societe.contrat && (
+          <div className="info-banner alerte" style={{ marginBottom: 10 }}>
+            <strong>Contrat de service non signé :</strong> l’état annuel et les reçus ne sont émis qu’une fois le contrat signé (onglet Magasins, carte de la société).
+          </div>
+        )}
+        <button className="btn btn-primary btn-block" disabled={agg.semainesSansReleve.length > 0 || !societe.contrat} style={{ opacity: agg.semainesSansReleve.length > 0 || !societe.contrat ? 0.5 : 1 }} onClick={() => pdfEtatAnnuel(agg, exercice)}>
           ⬇ État annuel {exercice} — {denomination(societe)}
         </button>
       </div>
@@ -474,9 +479,9 @@ export function Registre({
               <div className="row-actions" key={nom || '—'} style={{ marginBottom: 8, alignItems: 'center', gap: 10 }}>
                 <button
                   className={`btn btn-sm ${sansNom && !unSeul ? 'btn-ghost' : 'btn-primary'}`}
-                  disabled={agg.semainesSansReleve.length > 0}
+                  disabled={agg.semainesSansReleve.length > 0 || !societe.contrat}
                   onClick={() => pdfRecuFiscal(agg, exercice, sansNom ? undefined : nom)}
-                  style={{ flex: 1, opacity: agg.semainesSansReleve.length > 0 ? 0.5 : 1 }}
+                  style={{ flex: 1, opacity: agg.semainesSansReleve.length > 0 || !societe.contrat ? 0.5 : 1 }}
                 >
                   ⬇ Reçu {exercice} — {nom || unSeul || 'association non précisée'} · {fmtEUR(montant, 2)}
                 </button>

@@ -15,6 +15,8 @@ import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
 import { creerDemande, lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
 import { categorieFL, coutPesee, libellePoids, poidsDeSaisie, profilDeMagasin } from '../lib/bordereau'
+import { VERSION_CONTRAT } from '../lib/contrat'
+import { denomination } from '../lib/identite'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
 // --- Dates locales (AAAA-MM-JJ) ---
@@ -457,6 +459,16 @@ export function SaisieView({
               {m.nom}
             </button>
           ))}
+        </div>
+      )}
+
+      {(!societe.contrat || societe.contrat.version !== VERSION_CONTRAT) && (
+        <div className="info-banner alerte" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ flex: 1, minWidth: 220 }}>
+            <strong>{societe.contrat ? 'Nouvelle version du contrat à signer' : 'Contrat de service non signé'} pour {denomination(societe)}.</strong>{' '}
+            Vous pouvez saisir, mais aucune facture ni document de fin d’année ne sera émis sans contrat.
+          </span>
+          <button className="btn btn-primary btn-sm" onClick={onAllerCollecte}>Signer dans Magasins</button>
         </div>
       )}
 

@@ -421,6 +421,8 @@ function FormulaireSociete({
         successFeePct: SUCCESS_FEE_PCT,
         verification: verif,
         justificatifCA: nouvellePiece ?? initial?.justificatifCA,
+        // Modifier la fiche ne dé-signe pas le contrat
+        contrat: initial?.contrat,
         creeLe: initial?.creeLe ?? maintenant,
       },
       !initial,
@@ -613,6 +615,8 @@ function FormulaireMagasin({
       modeFL,
       profilBordereau: { ...profil, categories: profil.categories.filter((c) => c.libelle.trim()) },
       collecteurs: collecteurs.filter((c) => c.nom.trim()),
+      // Modifier les réglages ne remet pas la mise en place de la collecte à zéro
+      miseEnPlace: initial?.miseEnPlace,
       creeLe: initial?.creeLe ?? maintenant,
       versionsParametres: versions,
     })
