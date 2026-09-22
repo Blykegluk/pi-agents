@@ -125,6 +125,7 @@ export function SaisieView({
   const [flInclus, setFlInclus] = useState(false)
   const [lectureReleve, setLectureReleve] = useState<LectureReleve | null>(null)
   const [lectureEnCours, setLectureEnCours] = useState(false)
+  const [survolReleve, setSurvolReleve] = useState(false)
   const [messageReleve, setMessageReleve] = useState('')
   const [confirmationReleve, setConfirmationReleve] = useState(false)
 
@@ -616,12 +617,29 @@ export function SaisieView({
           seulement à le répartir entre les semaines{plusieursCollecteurs ? ' et entre vos associations' : ''}.
         </p>
 
-        {session && (
-          <label className="btn btn-ghost btn-block" style={{ cursor: 'pointer', marginBottom: 10 }}>
-            {lectureEnCours ? 'Lecture en cours…' : '📄 Importer l’export (photo, capture ou PDF) — Mana remplit la période et le montant'}
-            <input type="file" accept="image/*,application/pdf" disabled={lectureEnCours} onChange={(e) => { void lireDocumentReleve(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
-          </label>
-        )}
+        <label
+          className={`zone-depot ${survolReleve ? 'survol' : ''} ${session && !lectureEnCours ? '' : 'inactive'}`}
+          style={{ padding: '16px 14px', marginBottom: 10 }}
+          onDragOver={(e) => { e.preventDefault(); if (session && !lectureEnCours) setSurvolReleve(true) }}
+          onDragLeave={() => setSurvolReleve(false)}
+          onDrop={(e) => { e.preventDefault(); setSurvolReleve(false); if (session && !lectureEnCours) void lireDocumentReleve(e.dataTransfer.files) }}
+        >
+          <input type="file" accept="image/*,application/pdf" disabled={!session || lectureEnCours} onChange={(e) => { void lireDocumentReleve(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+          <span className="zone-depot-icone" aria-hidden="true">📄</span>
+          {!session ? (
+            <>
+              <strong>Connectez-vous pour déposer votre relevé</strong>
+              <span className="muted">Mana lit l’export et remplit la période et le montant.</span>
+            </>
+          ) : lectureEnCours ? (
+            <strong>Lecture en cours…</strong>
+          ) : (
+            <>
+              <strong>Glissez ici l’export de démarque « don », ou cliquez</strong>
+              <span className="muted">Photo, capture d’écran ou PDF · Mana remplit la période et le montant, vous confirmez HT/TTC et prix de vente/d’achat.</span>
+            </>
+          )}
+        </label>
         {messageReleve && <p className="muted" style={{ marginTop: -4, color: lectureReleve?.estUnReleve ? 'var(--vert)' : 'var(--ambre-texte)' }}>{messageReleve}</p>}
         {lectureReleve?.estUnReleve && lectureReleve.doutes.length > 0 && (
           <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 13, color: 'var(--encre-2)' }}>
