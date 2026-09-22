@@ -13,7 +13,7 @@ import { Calendrier, joursCouvertsParReleves } from '../components/Calendrier'
 import { Pieces } from '../components/Pieces'
 import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
-import { lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
+import { creerDemande, lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
 // --- Dates locales (AAAA-MM-JJ) ---
@@ -471,6 +471,20 @@ export function SaisieView({
             setMoisCal(j.slice(0, 7))
           }}
           onChangerMois={(d) => setMoisCal(addMois(moisCal, d))}
+          onSignaler={
+            session
+              ? async (texte) => {
+                  await creerDemande(
+                    compteId(session),
+                    session.user.email ?? '',
+                    'support',
+                    `Alerte calendrier à vérifier — ${magasin.nom} (${moisCal})`,
+                    { magasin: magasin.nom, magasinId: magasin.id, mois: moisCal, ecran: 'saisie/calendrier' },
+                    texte,
+                  )
+                }
+              : undefined
+          }
         />
       </div>
 

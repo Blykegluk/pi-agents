@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Collecteur, Saisie } from '../types'
 import { semainesDuMois, joursEntre } from '../lib/releves'
 import { mondayOfWeek } from '../lib/iso'
@@ -76,6 +77,7 @@ export function Calendrier({
   onChoisirJour,
   onChangerMois,
   collecteurs = [],
+  onSignaler,
 }: {
   mois: string
   bordereaux: Saisie[]
@@ -84,7 +86,10 @@ export function Calendrier({
   onChoisirJour: (jour: string) => void
   onChangerMois: (delta: number) => void
   collecteurs?: Collecteur[]
+  /** Envoie le texte des alertes à l'assistance Mana (compte connecté). */
+  onSignaler?: (texte: string) => Promise<void>
 }) {
+  const [signalement, setSignalement] = useState<'repos' | 'envoi' | 'fait' | 'erreur'>('repos')
   const [annee, m] = mois.split('-').map(Number)
   const premier = new Date(Date.UTC(annee, m - 1, 1))
   const nbJours = new Date(Date.UTC(annee, m, 0)).getUTCDate()
@@ -114,6 +119,18 @@ export function Calendrier({
     if (r.releveDu && r.releveAu) return `le relevé du ${libelleCourt(r.releveDu)} au ${libelleCourt(r.releveAu)}`
     if (r.releveMois) return `le relevé du mois ${r.releveMois}`
     return `le relevé de la ${r.semaine}`
+  }
+  /** Le message tel que le client le voit, plus les identifiants utiles à l'équipe Mana. */
+  const texteAlertes = () => {
+    const lignes: string[] = [`Alerte calendrier — ${titre}`]
+    if (sansPreuve > 0) {
+      const r = releveDuJour(joursSansPreuve[0])
+      lignes.push(`${sansPreuve} jour(s) sans bordereau signé alors que ${periodeReleve(r)} y déclare une valeur : ${joursSansPreuve.join(', ')}.`)
+      if (r) lignes.push(`Relevé concerné : id ${r.id}, semaine ${r.semaine}, ${r.pvEmballes} € PV HT, ${r.kgFL} kg F&L, origine ${r.origine ?? 'ancien format'}, enregistré le ${r.horodatage}.`)
+    }
+    if (sansValeur > 0) lignes.push(`${sansValeur} jour(s) avec bordereau signé sans relevé : ${joursSansValeur.join(', ')}.`)
+    lignes.push('Le client ne comprend pas ce message ou le juge erroné — merci de vérifier.')
+    return lignes.join('\n')
   }
   const Jours = ({ liste }: { liste: string[] }) => (
     <span className="cal-jours">
@@ -170,6 +187,27 @@ export function Calendrier({
               Le passage est prouvé mais sa valeur n’est pas encore déclarée : <Jours liste={joursSansValeur} />
               Enregistrez le relevé de la période dans la carte « Relevé de démarque » ci-dessous.
             </p>
+          )}
+          {onSignaler && (
+            <div className="row-actions" style={{ marginTop: 8, alignItems: 'center' }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={signalement === 'envoi' || signalement === 'fait'}
+                onClick={async () => {
+                  setSignalement('envoi')
+                  try {
+                    await onSignaler(texteAlertes())
+                    setSignalement('fait')
+                  } catch {
+                    setSignalement('erreur')
+                  }
+                }}
+              >
+                {signalement === 'fait' ? '✓ Signalé à l’assistance Mana' : signalement === 'envoi' ? 'Envoi…' : 'Ce message ne vous semble pas juste ? Signaler à l’assistance'}
+              </button>
+              {signalement === 'fait' && <span className="muted" style={{ fontSize: 12.5 }}>L’équipe Mana vérifie et vous répond dans Messages.</span>}
+              {signalement === 'erreur' && <span className="muted" style={{ fontSize: 12.5, color: 'var(--rouge)' }}>Envoi impossible, réessayez.</span>}
+            </div>
           )}
         </div>
       )}
