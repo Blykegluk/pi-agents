@@ -25,6 +25,39 @@ export interface Collecteur {
   eligibilite?: 'inconnue' | 'a_verifier' | 'rescrit' | 'reseau_national'
   /** Statuts, récépissé de déclaration, rescrit, convention de don… */
   documents?: Justificatif[]
+  /** Dernière analyse des pièces par Mana (verdict calculé par règle fixe). */
+  analyse?: AnalyseAssociation
+}
+
+export type Tri = 'oui' | 'non' | 'inconnu'
+
+export interface CriteresAssociation {
+  declarationPrefecture: Tri
+  gestionDesinteressee: Tri
+  activiteNonLucrative: Tri
+  cercleRestreint: Tri
+  devolutionBoni: Tri
+  objetEligible: Tri
+  rescritPositif: Tri
+  dateRescrit: string
+  habilitationAideAlimentaire: Tri
+  reseauNational: Tri
+  gratuiteBeneficiaires: Tri
+}
+
+export interface AnalyseAssociation {
+  le: string
+  verdict: 'validee' | 'a_securiser' | 'refus'
+  criteres: CriteresAssociation
+  /** Ce que les pièces établissent (faits). */
+  motifs: string[]
+  /** Ce qui manque ou reste ambigu. */
+  doutes: string[]
+  /** Ce que Mana propose de faire pour sécuriser. */
+  actions: string[]
+  documents: { type: string; resume: string; lisible: boolean }[]
+  confiance: 'haute' | 'moyenne' | 'basse'
+  association: { nom: string; rna: string; siren: string; siege: string; dateDeclaration: string; objet: string }
 }
 
 /** Version des paramètres de valorisation — trace la constance de la méthode (note de méthode). */

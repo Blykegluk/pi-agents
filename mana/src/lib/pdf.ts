@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import type { Facture, Magasin, Societe } from '../types'
+import type { Collecteur, Facture, Magasin, Societe } from '../types'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct, montantEnLettres, pdfSafe } from './format'
 import { weekLabel } from './iso'
 import { baseDeLaSaisie, type AggSociete } from './selectors'
@@ -1124,4 +1124,152 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number, collecteu
 
   piedDePage(doc, 'Reçu prérempli par Mana — à faire dater, signer et cacheter par l’organisme bénéficiaire.')
   doc.save(`mana-recu-fiscal-238bis-${slug(nom)}${collecteur ? `-${slug(collecteur)}` : ''}-${exercice}.pdf`)
+}
+
+// ---------- Sécurisation de l'association : rescrit et convention ----------
+
+function paragraphe(doc: jsPDF, texte: string, y: number, opts?: { bold?: boolean; size?: number; gap?: number; x?: number; largeur?: number }): number {
+  const x = opts?.x ?? 14
+  const largeur = opts?.largeur ?? 182
+  const size = opts?.size ?? 10.5
+  doc.setFont('InstrumentSans', opts?.bold ? 'bold' : 'normal')
+  doc.setFontSize(size)
+  const lignes = doc.splitTextToSize(t(texte), largeur)
+  if (y + lignes.length * size * 0.45 > doc.internal.pageSize.getHeight() - 18) {
+    doc.addPage()
+    y = 30
+  }
+  doc.text(lignes, x, y)
+  return y + lignes.length * size * 0.45 + (opts?.gap ?? 3.5)
+}
+
+function champLigne(doc: jsPDF, label: string, y: number, valeur?: string): number {
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(10.5)
+  doc.text(t(label), 14, y)
+  const debut = 14 + doc.getTextWidth(t(label)) + 2
+  if (valeur) {
+    doc.setFont('InstrumentSans', 'bold')
+    doc.text(t(valeur), debut, y)
+  }
+  doc.setDrawColor(150, 143, 128)
+  doc.line(debut, y + 0.8, 196, y + 0.8)
+  return y + 8
+}
+
+/**
+ * Demande de rescrit mécénat (article L. 80 C du LPF), préremplie pour
+ * l'association. C'est ELLE qui la dépose auprès de la direction des finances
+ * publiques de son siège ; l'administration a six mois pour répondre, et son
+ * silence vaut protection contre l'amende de l'article 1740 A.
+ * Contenu conforme au modèle de l'annexe du BOI-SJ-RES-10-20-20-40.
+ */
+export async function pdfDemandeRescrit(asso: Collecteur, societe?: Societe) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
+  entete(doc, 'Demande de rescrit « mécénat »', 'Article L. 80 C du livre des procédures fiscales')
+  let y = 34
+  y = paragraphe(doc, 'À adresser par l’association, en recommandé avec avis de réception, à la Direction départementale ou régionale des finances publiques du département de son siège (service juridique de la fiscalité / correspondant « associations »).', y, { size: 9.5, gap: 6 })
+
+  y = paragraphe(doc, '1. Organisme demandeur', y, { bold: true, size: 12, gap: 5 })
+  y = champLigne(doc, 'Dénomination :', y, asso.nom)
+  y = champLigne(doc, 'N° RNA :', y, asso.rna)
+  y = champLigne(doc, 'N° SIREN (le cas échéant) :', y, asso.siren)
+  y = champLigne(doc, 'Adresse du siège :', y, asso.analyse?.association.siege)
+  y = champLigne(doc, 'Date de déclaration en préfecture :', y, asso.analyse?.association.dateDeclaration ? fmtDate(asso.analyse.association.dateDeclaration) : undefined)
+  y = champLigne(doc, 'Représentant légal (nom, qualité, téléphone, e-mail) :', y, [asso.contact, asso.telephone, asso.email].filter(Boolean).join(' · ') || undefined)
+  y += 2
+
+  y = paragraphe(doc, '2. Objet de la demande', y, { bold: true, size: 12, gap: 5 })
+  y = paragraphe(doc,
+    'L’association sollicite, sur le fondement de l’article L. 80 C du livre des procédures fiscales, la confirmation qu’elle relève des ' +
+    'organismes visés aux articles 200 et 238 bis du code général des impôts et qu’elle peut, à ce titre, délivrer aux entreprises ' +
+    'donatrices les reçus fiscaux (formulaire n° 2041-MEC-SD) ouvrant droit à la réduction d’impôt mécénat.', y)
+  y = paragraphe(doc,
+    `Contexte : l’association collecte les invendus alimentaires consommables de commerces de détail${societe ? ` (notamment de la société ${denomination(societe)})` : ''} ` +
+    'pour les redistribuer à des personnes en situation de précarité. Le commerçant valorise ces dons au coût de revient et souhaite ' +
+    's’assurer, avant la clôture de l’exercice, que les reçus délivrés seront opposables.', y, { gap: 6 })
+
+  y = paragraphe(doc, '3. Présentation de l’organisme (à compléter par l’association)', y, { bold: true, size: 12, gap: 5 })
+  const points = [
+    `Objet statutaire : ${asso.analyse?.association.objet || '…'}`,
+    'Activités effectivement exercées (nature, fréquence, nombre de bénéficiaires, territoire) : …',
+    'Public bénéficiaire et conditions d’accès (critères sociaux, orientation par des travailleurs sociaux, participation financière symbolique éventuelle) : …',
+    'Gestion désintéressée : dirigeants bénévoles (ou rémunération dans les limites légales), aucune distribution de bénéfices, dévolution de l’actif à un organisme similaire en cas de dissolution (préciser les articles des statuts) : …',
+    'Absence de concurrence avec le secteur marchand (règle des « 4 P » : produit, public, prix, publicité) : …',
+    'Ressources (subventions, dons, cotisations, ventes) et emploi des fonds : …',
+    'Salariés (nombre, fonctions) et bénévoles : …',
+  ]
+  for (const p of points) y = paragraphe(doc, `• ${p}`, y, { x: 18, largeur: 178, gap: 2.5 })
+  y += 4
+
+  y = paragraphe(doc, '4. Pièces jointes', y, { bold: true, size: 12, gap: 5 })
+  const pieces = ['Statuts à jour, datés et signés', 'Récépissé de déclaration en préfecture ou extrait du Journal officiel', 'Composition du bureau et du conseil d’administration', 'Derniers comptes annuels approuvés (ou budget de la première année)', 'Rapport d’activité ou tout document décrivant les actions menées', 'Habilitation aide alimentaire (article L. 266-1 du CASF), si elle existe']
+  for (const p of pieces) y = paragraphe(doc, `☐ ${p}`, y, { x: 18, largeur: 178, gap: 2.5 })
+  y += 4
+
+  y = paragraphe(doc, 'Fait à ………………………, le ……/……/………        Signature du représentant légal :', y, { gap: 20 })
+  y = paragraphe(doc,
+    'Rappel des délais : l’administration dispose de six mois pour répondre. À défaut de réponse dans ce délai, l’organisme peut délivrer des reçus ' +
+    'sans encourir l’amende prévue à l’article 1740 A du CGI (article L. 80 C du LPF). Une réponse positive vaut tant que la situation décrite ' +
+    'n’a pas changé. Conservez la demande, l’accusé de réception et la réponse : ce sont les pièces que Mana archive pour le reçu de fin d’année.',
+    y, { size: 9.5 })
+
+  piedDePage(doc, 'Modèle prérempli par Mana d’après les pièces reçues — à compléter et signer par l’association. Mana n’est pas un conseil fiscal.')
+  doc.save(`mana-demande-rescrit-${slug(asso.nom || 'association')}.pdf`)
+}
+
+/**
+ * Convention de don de denrées entre le commerçant et l'association. Elle
+ * ne remplace pas le rescrit, mais elle engage l'association par écrit sur
+ * les points dont dépend le reçu (intérêt général, gratuité, délivrance des
+ * reçus, information en cas de changement) et organise la traçabilité.
+ */
+export async function pdfConventionDon(asso: Collecteur, societe?: Societe, magasin?: Magasin) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
+  entete(doc, 'Convention de don de denrées alimentaires', 'Article 238 bis du CGI · loi n° 2016-138 du 11 février 2016')
+  let y = 34
+  y = paragraphe(doc, 'Entre les soussignés', y, { bold: true, size: 12, gap: 5 })
+  const donateur = societe ? `${denomination(societe)}, SIREN ${societe.siren}${societe.verification.adresseSiege ? `, ${societe.verification.adresseSiege.voie}, ${societe.verification.adresseSiege.codePostal} ${societe.verification.adresseSiege.commune}` : ''}${magasin ? `, pour son magasin « ${magasin.nom} »` : ''}` : '……………………………………………… (société, SIREN, siège)'
+  y = paragraphe(doc, `Le donateur : ${donateur}, représenté par ……………………………, ci-après « le Magasin » ;`, y)
+  const beneficiaire = `${asso.nom || '………………………'}${asso.rna ? `, RNA ${asso.rna}` : ''}${asso.siren ? `, SIREN ${asso.siren}` : ''}${asso.analyse?.association.siege ? `, siège : ${asso.analyse.association.siege}` : ', siège : ………………………'}`
+  y = paragraphe(doc, `Le bénéficiaire : l’association ${beneficiaire}, représentée par ${asso.contact || '……………………………'}, ci-après « l’Association ».`, y, { gap: 6 })
+
+  const articles: [string, string][] = [
+    ['Article 1 — Objet', 'Le Magasin remet gratuitement à l’Association des denrées alimentaires invendues mais propres à la consommation (produits emballés à date limite de consommation du jour ou à venir, produits à date de durabilité minimale dépassée, fruits et légumes, pain), pour distribution à des personnes en situation de précarité.'],
+    ['Article 2 — Déclarations de l’Association', 'L’Association déclare être régulièrement déclarée, poursuivre un but non lucratif, être gérée de façon désintéressée, agir au profit d’un public ouvert et non d’un cercle restreint, et remettre les denrées gratuitement ou contre une participation symbolique sans lien avec leur valeur. Elle déclare relever des organismes visés à l’article 238 bis du CGI et s’engage à fournir au Magasin ses statuts, son récépissé de déclaration et, dès qu’elle en dispose, le rescrit mécénat obtenu de l’administration. Elle informe le Magasin sans délai de tout changement de ses statuts, de son activité ou de sa situation fiscale.'],
+    ['Article 3 — Reçus fiscaux', 'L’Association délivre au Magasin, pour chaque année civile, le reçu fiscal (formulaire n° 2041-MEC-SD) mentionnant la valeur des dons en nature, telle qu’établie par le Magasin à partir de ses relevés de démarque et du coût de revient des produits, conformément à la doctrine administrative (BOI-BIC-RICI-20-30-10-20). Le Magasin fournit à l’Association l’état récapitulatif annuel et les bordereaux d’enlèvement correspondants.'],
+    ['Article 4 — Modalités de collecte', `Les enlèvements ont lieu ${resumePassages(asso) || 'aux jours et heures convenus'}, au magasin. À chaque passage, un bordereau d’enlèvement est établi et signé par les deux parties : il mentionne la date, le nombre de colis, le poids des fruits et légumes, les éventuels refus. L’Association vient avec des contenants propres et, pour les produits frais, un moyen de transport permettant le respect de la chaîne du froid.`],
+    ['Article 5 — Sécurité sanitaire', 'Le Magasin ne remet que des denrées conformes à la réglementation, retirées de la vente pour des raisons commerciales et non sanitaires. À compter de l’enlèvement, l’Association est responsable de la conservation, du transport et de la distribution des denrées, dans le respect des règles d’hygiène et des dates limites de consommation. Les produits à DLC dépassée, entamés ou dont la chaîne du froid a été rompue ne sont jamais remis.'],
+    ['Article 6 — Gratuité et destination', 'Les denrées sont destinées exclusivement à l’aide alimentaire. Toute revente au prix du marché est interdite. L’Association tient une comptabilité matière (entrées, distributions) permettant au Magasin de justifier, en cas de contrôle, la destination des dons.'],
+    ['Article 7 — Durée et résiliation', 'La convention est conclue pour une durée d’un an à compter de sa signature, renouvelable tacitement. Chaque partie peut y mettre fin à tout moment par écrit avec un préavis d’un mois. Elle prend fin de plein droit si l’Association perd la qualité d’organisme d’intérêt général ou reçoit une réponse négative à sa demande de rescrit.'],
+    ['Article 8 — Mana', 'Le Magasin utilise le service Mana pour tenir le registre des dons, archiver les bordereaux et établir l’état annuel. L’Association accepte que ces pièces soient conservées à cette fin et communiquées à l’administration fiscale ou à l’expert-comptable du Magasin en cas de demande.'],
+  ]
+  for (const [titre, corps] of articles) {
+    y = paragraphe(doc, titre, y, { bold: true, size: 11, gap: 2 })
+    y = paragraphe(doc, corps, y, { gap: 5 })
+  }
+  y += 2
+  y = paragraphe(doc, 'Fait en deux exemplaires à ………………………, le ……/……/………', y, { gap: 8 })
+  if (y > doc.internal.pageSize.getHeight() - 50) {
+    doc.addPage()
+    y = 30
+  }
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(10.5)
+  doc.text(t('Pour le Magasin'), 14, y)
+  doc.text(t('Pour l’Association'), 110, y)
+  doc.setDrawColor(150, 143, 128)
+  doc.rect(14, y + 3, 86, 30)
+  doc.rect(110, y + 3, 86, 30)
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(120, 113, 100)
+  doc.text(t('Nom, qualité, signature et cachet'), 16, y + 8)
+  doc.text(t('Nom, qualité, signature et cachet'), 112, y + 8)
+  doc.setTextColor(43, 38, 32)
+
+  piedDePage(doc, 'Modèle fourni par Mana — à adapter avec votre conseil si nécessaire. Mana n’est pas un conseil juridique ni fiscal.')
+  doc.save(`mana-convention-don-${slug(asso.nom || 'association')}.pdf`)
 }

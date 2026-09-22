@@ -384,6 +384,40 @@ export async function lireReleve(base64: string, typeMime: string, contexte: { m
   return data.lecture
 }
 
+/** Pièces d'une association → critères factuels lus par Claude (le verdict se calcule côté portail). */
+export type AnalyseBrute = Omit<import('../types').AnalyseAssociation, 'le' | 'verdict' | 'actions'>
+export async function analyserAssociation(
+  documents: { fichier: string; typeMime: string; nom: string }[],
+  contexte: { nomAssociation?: string; magasin?: string },
+): Promise<AnalyseBrute> {
+  const { data, error } = await supabase.functions.invoke<{ analyse?: AnalyseBrute; erreur?: string }>('analyser-association', {
+    body: { documents, contexte },
+  })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.analyse) throw new Error(data?.erreur ?? 'Analyse impossible.')
+  return data.analyse
+}
+
+/** Récupère en base64 des pièces déjà archivées (pour les réanalyser avec les nouvelles). */
+export async function telechargerPieces(chemins: string[]): Promise<{ chemin: string; base64: string; typeMime: string }[]> {
+  const out: { chemin: string; base64: string; typeMime: string }[] = []
+  for (const chemin of chemins) {
+    const { data, error } = await supabase.storage.from(BUCKET_BORDEREAUX).download(chemin)
+    if (error || !data) continue
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
+      r.onerror = () => reject(r.error)
+      r.readAsDataURL(data)
+    })
+    out.push({ chemin, base64, typeMime: data.type || 'application/octet-stream' })
+  }
+  return out
+}
+
 /** Archive une pièce d'association (statuts, rescrit…) dans le bucket du compte. */
 export async function televerserDocumentAssociation(userId: string, fichier: File | Blob, nom: string): Promise<string> {
   const chemin = `${userId}/associations/${crypto.randomUUID()}-${nom}`

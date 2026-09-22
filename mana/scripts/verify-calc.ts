@@ -172,3 +172,25 @@ attendre('total facturé sur l’exercice = 18 % × 30 000', totalFacture, 5_400
 
 console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)
 process.exit(echecs === 0 ? 0 : 1)
+
+// ---------- Règle de verdict d'éligibilité ----------
+{
+  const { verdictDepuisCriteres } = await import('../src/lib/eligibilite.ts')
+  const base = { declarationPrefecture: 'oui', gestionDesinteressee: 'oui', activiteNonLucrative: 'oui', cercleRestreint: 'non', devolutionBoni: 'oui', objetEligible: 'oui', rescritPositif: 'inconnu', dateRescrit: '', habilitationAideAlimentaire: 'inconnu', reseauNational: 'inconnu', gratuiteBeneficiaires: 'inconnu' } as const
+  const cas: [string, Record<string, string>, string][] = [
+    ['statuts parfaits sans rescrit → à sécuriser', {}, 'a_securiser'],
+    ['rescrit positif → validée', { rescritPositif: 'oui', dateRescrit: '2026-03-01' }, 'validee'],
+    ['réseau national → validée', { reseauNational: 'oui' }, 'validee'],
+    ['cercle restreint → refus', { cercleRestreint: 'oui' }, 'refus'],
+    ['gestion intéressée → refus, même avec réseau', { gestionDesinteressee: 'non', reseauNational: 'oui' }, 'refus'],
+    ['rescrit négatif → refus', { rescritPositif: 'non' }, 'refus'],
+    ['revente au prix du marché → refus', { gratuiteBeneficiaires: 'non' }, 'refus'],
+    ['rien de lu → à sécuriser', { declarationPrefecture: 'inconnu', gestionDesinteressee: 'inconnu', activiteNonLucrative: 'inconnu', cercleRestreint: 'inconnu', devolutionBoni: 'inconnu', objetEligible: 'inconnu' }, 'a_securiser'],
+  ]
+  for (const [nom, patch, attendu] of cas) {
+    const r = verdictDepuisCriteres({ ...base, ...patch } as never)
+    const ok = r.verdict === attendu
+    console.log(`${ok ? '✓' : '✗'} verdict : ${nom} : ${r.verdict} (attendu ${attendu})`)
+    if (!ok) process.exitCode = 1
+  }
+}

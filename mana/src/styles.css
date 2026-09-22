@@ -1325,3 +1325,13 @@ i.cal-point {
   background: var(--carte); color: var(--vert); border: 1px solid var(--vert);
 }
 .cal-jour-lien:hover { background: var(--vert); color: var(--carte); }
+
+/* ---- Verdict d'éligibilité d'une association ---- */
+.verdict { margin-top: 12px; border-radius: 12px; padding: 12px 14px; border: 1px solid transparent; background: var(--carte); }
+.verdict-vert { border-color: #a9c7b1; background: #eef5ef; }
+.verdict-ambre { border-color: #ecd9ae; background: var(--ambre-pale); }
+.verdict-rouge { border-color: #e2b2a6; background: #f9ebe7; }
+.verdict-criteres { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.verdict-titre { font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--encre-2); margin: 8px 0 2px; }
+.verdict ul, .verdict ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.5; }
+.verdict li { margin-bottom: 2px; }

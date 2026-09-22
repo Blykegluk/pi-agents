@@ -273,7 +273,7 @@ export function Collecte({
             {magasin.collecteurs.map((c, i) =>
               editionCollecteur === i ? (
                 <div className="card" key={i} style={{ background: 'var(--papier)', marginBottom: 10 }}>
-                  <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} />
+                  <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} magasin={magasin} societe={societe} />
                   <div className="row-actions" style={{ marginTop: 10 }}>
                     <button
                       className="btn btn-primary btn-sm"
@@ -337,7 +337,7 @@ export function Collecte({
         {editionCollecteur === -1 ? (
           <div className="card" style={{ background: 'var(--papier)', marginTop: 12 }}>
             <h3>Enregistrer une association</h3>
-            <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} />
+            <CollecteurForm valeur={brouillon} onChange={setBrouillon} session={session} magasin={magasin} societe={societe} />
             <div className="row-actions" style={{ marginTop: 10 }}>
               <button
                 className="btn btn-primary btn-sm"
