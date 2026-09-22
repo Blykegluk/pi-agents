@@ -30,7 +30,7 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
 
   return (
     <div>
-      <h2>Tableau de bord — {exercice}</h2>
+      <h2>Bilan — {exercice}</h2>
 
       {aggs.length > 1 && (
         <div className="card accent">

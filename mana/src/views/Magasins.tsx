@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import type { Collecteur, Justificatif, Magasin, Societe } from '../types'
+import type { Session } from '@supabase/supabase-js'
+import type { AppState, Collecteur, Justificatif, Magasin, Societe } from '../types'
+import { Collecte, avancementCollecte } from './Collecte'
+import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence } from '../lib/annuaire'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
@@ -18,27 +21,42 @@ import { pdfModeleAttestation } from '../lib/pdf'
  * 2. le Magasin — paramètres de terrain (coût F&L, collecteurs).
  */
 export function MagasinsView({
-  societes,
-  magasins,
+  state,
+  session,
+  invite = false,
   onSaveSociete,
   onDeleteSociete,
   onSaveMagasin,
   onDeleteMagasin,
-  onPremierMagasin,
+  onAllerSaisie,
+  onConnexion,
+  onOuvrirAide,
+  onOuvrirMessages,
 }: {
-  societes: Societe[]
-  magasins: Magasin[]
+  state: AppState
+  session: Session | null
+  /** Accès partagé : ni sociétés, ni ajout/suppression — seulement la collecte des magasins ouverts. */
+  invite?: boolean
   onSaveSociete: (s: Societe) => void
   onDeleteSociete: (id: string) => void
   onSaveMagasin: (m: Magasin) => void
   onDeleteMagasin: (id: string) => void
-  onPremierMagasin: () => void
+  onAllerSaisie: () => void
+  onConnexion: () => void
+  onOuvrirAide: () => void
+  onOuvrirMessages: () => void
 }) {
+  const { societes, magasins } = state
   const [edition, setEdition] = useState<
     | { type: 'societe'; societe: Societe | null }
     | { type: 'magasin'; societeId: string; magasin: Magasin | null }
     | null
   >(null)
+  // La collecte du magasin encore en mise en place s'ouvre d'elle-même ; les autres se déplient à la demande.
+  const [collecteOuverte, setCollecteOuverte] = useState<string | null>(() => {
+    const enCours = magasins.find((m) => avancementCollecte(m).faites < avancementCollecte(m).total)
+    return enCours?.id ?? (magasins.length === 1 ? magasins[0].id : null)
+  })
 
   // Entrée / sortie d'un formulaire → retour en haut de page
   useEffect(() => {
@@ -65,11 +83,11 @@ export function MagasinsView({
         initial={edition.magasin}
         onCancel={() => setEdition(null)}
         onSave={(m) => {
-          const premierMagasin = edition.magasin === null && magasins.length === 0
+          const nouveau = edition.magasin === null
           onSaveMagasin(m)
           setEdition(null)
-          // Parcours fluide : après le tout premier magasin, direction la mise en place de la collecte
-          if (premierMagasin) onPremierMagasin()
+          // Parcours fluide : un nouveau magasin s'ouvre directement sur sa mise en place
+          if (nouveau) setCollecteOuverte(m.id)
         }}
       />
     )
@@ -77,8 +95,16 @@ export function MagasinsView({
 
   return (
     <div>
-      <h2>Sociétés &amp; magasins</h2>
-      {societes.length === 0 && (
+      <h2>{invite ? 'Magasins' : 'Sociétés & magasins'}</h2>
+      {invite && societes.length === 0 && (
+        <div className="card empty">
+          <span className="ico">
+            <IconMagasins />
+          </span>
+          Aucun magasin ne vous est ouvert pour l’instant.
+        </div>
+      )}
+      {!invite && societes.length === 0 && (
         <div className="card empty">
           <span className="ico">
             <IconMagasins />
@@ -100,7 +126,7 @@ export function MagasinsView({
                 ? ` · ${s.verification.adresseSiege.voie}, ${s.verification.adresseSiege.codePostal} ${s.verification.adresseSiege.commune}`
                 : ''}
             </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            {!invite && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {s.verification.apiStatut === 'verifie' ? (
                 <span className="verif-badge">✓ Société vérifiée (registre national)</span>
               ) : (
@@ -113,8 +139,8 @@ export function MagasinsView({
               ) : (
                 <span className="verif-badge attente">CA &amp; marge en attente de justificatif</span>
               )}
-            </div>
-            <div className="detail-lignes">
+            </div>}
+            {!invite && <div className="detail-lignes">
               <div className="ligne">
                 <span>CA HT vérifié</span>
                 <strong>{fmtEUR(s.caHT)}</strong>
@@ -149,38 +175,63 @@ export function MagasinsView({
                   <strong>{(s.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base</strong>
                 </Amount>
               </div>
-            </div>
+            </div>}
 
-            {sesMagasins.map((m) => (
-              <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                  <div>
-                    <strong style={{ fontSize: 14.5 }}>{m.nom}</strong>
-                    <div className="muted">
-                      {m.enseigne ? `${m.enseigne} · ` : ''}F&amp;L {fmtEUR(m.coutKgFL, 2)}/kg
-                      {m.collecteurs.length > 0
-                        ? ` · ${m.collecteurs.map((c) => `${c.nom}${libelleFrequence(c) ? ` (${libelleFrequence(c).toLowerCase()})` : ''}`).join(', ')}`
-                        : ''}
+            {sesMagasins.map((m) => {
+              const av = avancementCollecte(m)
+              const ouverte = collecteOuverte === m.id
+              return (
+                <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <strong style={{ fontSize: 14.5 }}>{m.nom}</strong>
+                      <div className="muted">
+                        {m.enseigne ? `${m.enseigne} · ` : ''}F&amp;L {fmtEUR(m.coutKgFL, 2)}/kg
+                        {m.collecteurs.length > 0
+                          ? ` · ${m.collecteurs.map((c) => `${c.nom}${libelleFrequence(c) ? ` (${libelleFrequence(c).toLowerCase()})` : ''}`).join(', ')}`
+                          : ''}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => setCollecteOuverte(ouverte ? null : m.id)}>
+                        {ouverte ? '▾ Collecte' : '▸ Collecte'} · {av.faites}/{av.total} étape{av.total > 1 ? 's' : ''}
+                      </button>
+                      {!invite && (
+                        <>
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
+                            Modifier
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => {
+                              if (confirm(`Supprimer « ${m.nom} » et ses saisies ?`)) onDeleteMagasin(m.id)
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
-                      Modifier
-                    </button>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => {
-                        if (confirm(`Supprimer « ${m.nom} » et ses saisies ?`)) onDeleteMagasin(m.id)
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  {ouverte && (
+                    <div className="collecte-integree">
+                      <Collecte
+                        state={state}
+                        session={session}
+                        magasinIdFixe={m.id}
+                        onSaveMagasin={onSaveMagasin}
+                        onAllerSaisie={onAllerSaisie}
+                        onConnexion={onConnexion}
+                        onOuvrirAide={onOuvrirAide}
+                        onOuvrirMessages={onOuvrirMessages}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
 
-            <div className="row-actions" style={{ marginTop: 12 }}>
+            {!invite && <div className="row-actions" style={{ marginTop: 12 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: null })}>
                 + Ajouter un magasin
               </button>
@@ -195,13 +246,15 @@ export function MagasinsView({
               >
                 Supprimer
               </button>
-            </div>
+            </div>}
           </div>
         )
       })}
-      <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
-        + Ajouter une société
-      </button>
+      {!invite && (
+        <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
+          + Ajouter une société
+        </button>
+      )}
     </div>
   )
 }
@@ -451,6 +504,7 @@ function FormulaireMagasin({
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
     initial?.collecteurs?.length ? initial.collecteurs : [{ ...COLLECTEUR_VIDE }],
   )
+  const [simulateurOuvert, setSimulateurOuvert] = useState(false)
 
   if (!societe) return null
   const valide = nom.trim().length > 0
@@ -482,6 +536,22 @@ function FormulaireMagasin({
   return (
     <div className="etroit">
       <h2>{initial ? 'Modifier le magasin' : `Nouveau magasin — ${societe.raisonSociale}`}</h2>
+      {!initial && (
+        <div className="card">
+          <button className="btn btn-ghost btn-block" onClick={() => setSimulateurOuvert((o) => !o)}>
+            {simulateurOuvert ? '▾ Masquer l’estimation' : '▸ Estimer d’abord ce que ce magasin peut rapporter (simulateur)'}
+          </button>
+          {simulateurOuvert && (
+            <div style={{ marginTop: 10 }}>
+              <p className="muted" style={{ margin: '0 0 8px' }}>
+                Prérempli avec le CA et la marge de {denomination(societe)}. Ajustez la démarque et la part donnable pour ce magasin : c’est une
+                estimation, la saisie réelle fera foi.
+              </p>
+              <Simulateur compact caInitial={societe.caHT} margeInitiale={societe.margePct} onCommencer={() => setSimulateurOuvert(false)} />
+            </div>
+          )}
+        </div>
+      )}
       <div className="card">
         <label className="field">
           <span>Nom du magasin *</span>
@@ -534,7 +604,7 @@ function FormulaireMagasin({
         <h3>Votre association collectrice</h3>
         <p className="muted">
           Vous travaillez déjà avec une association ? Renseignez-la ici : ses coordonnées et son rythme de passage
-          sont repris automatiquement dans l’onglet Collecte, sur les bordereaux et dans le reçu fiscal — vous n’aurez
+          sont repris automatiquement dans la collecte du magasin, sur les bordereaux et dans le reçu fiscal — vous n’aurez
           pas à les ressaisir. Si vous n’en avez pas encore, laissez vide : l’assistant Collecte vous en trouve une.
         </p>
         {collecteurs.map((c, i) => (

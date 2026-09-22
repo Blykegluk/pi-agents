@@ -9,35 +9,42 @@ import { montantsFacture, prochainNumero } from './lib/facturation'
 import { completerIdentites } from './lib/identite'
 import { FormulaProvider } from './components/Formula'
 import { Aide } from './components/Aide'
-import { IconAdmin, IconAide, IconCollecte, IconMagasins, IconMessages, IconRegistre, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
+import { IconAdmin, IconAide, IconMagasins, IconMessages, IconReglages, IconSaisie, IconSimulateur, IconTableau, LogoMana } from './components/Icons'
 import { Simulateur } from './views/Simulateur'
 import { MagasinsView } from './views/Magasins'
-import { Collecte } from './views/Collecte'
+import { Bilan } from './views/Bilan'
 import { SaisieView } from './views/Saisie'
-import { Dashboard } from './views/Dashboard'
-import { Registre } from './views/Registre'
 import { Admin } from './views/Admin'
 import { AccesPartages } from './components/AccesPartages'
 import { Messages } from './views/Messages'
 
-type Tab = 'simulateur' | 'magasins' | 'collecte' | 'saisie' | 'dashboard' | 'registre' | 'messages' | 'admin'
+/**
+ * Quatre onglets, un par moment : Saisie (chaque jour), Magasins (mise en
+ * place, collecte comprise), Bilan (chiffres, registre, documents), Messages.
+ * Le simulateur n'est plus un onglet : c'est la page d'accueil du visiteur,
+ * et la première étape de l'ajout d'un magasin pour un client.
+ */
+type Tab = 'simulateur' | 'saisie' | 'magasins' | 'bilan' | 'messages' | 'admin'
 
 /** L'état local est-il le jeu de démonstration (jamais synchronisé vers un compte) ? */
 function estDemo(etat: AppState): boolean {
   return etat.societes.some((s) => s.id.startsWith('demo-'))
 }
 
-/** Onglets ouverts à un accès partagé (responsable de magasin, assistante). */
-const TABS_INVITE: Tab[] = ['collecte', 'saisie', 'dashboard', 'registre', 'messages']
+/** Onglets ouverts à un accès partagé : les mêmes, sans la gestion des sociétés (masquée dans Magasins). */
+const TABS_INVITE: Tab[] = ['saisie', 'magasins', 'bilan', 'messages']
 
 const TABS: { id: Tab; label: string; icone: () => JSX.Element }[] = [
-  { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
-  { id: 'magasins', label: 'Magasins', icone: IconMagasins },
-  { id: 'collecte', label: 'Collecte', icone: IconCollecte },
   { id: 'saisie', label: 'Saisie', icone: IconSaisie },
-  { id: 'dashboard', label: 'Tableau', icone: IconTableau },
-  { id: 'registre', label: 'Registre', icone: IconRegistre },
+  { id: 'magasins', label: 'Magasins', icone: IconMagasins },
+  { id: 'bilan', label: 'Bilan', icone: IconTableau },
   { id: 'messages', label: 'Messages', icone: IconMessages },
+]
+
+/** Un visiteur (sans compte) explore la démo : le simulateur est sa porte d'entrée, les messages demandent un compte. */
+const TABS_VISITEUR: { id: Tab; label: string; icone: () => JSX.Element }[] = [
+  { id: 'simulateur', label: 'Simulateur', icone: IconSimulateur },
+  ...TABS.filter((t) => t.id !== 'messages'),
 ]
 
 export default function App() {
@@ -588,33 +595,25 @@ export default function App() {
         {!verrouille && tab === 'simulateur' && <Simulateur onCommencer={() => setTab('magasins')} />}
         {!verrouille && tab === 'magasins' && (
           <MagasinsView
-            societes={state.societes}
-            magasins={state.magasins}
+            state={stateVisible}
+            session={session}
+            invite={!!acces}
             onSaveSociete={saveSociete}
             onDeleteSociete={deleteSociete}
             onSaveMagasin={saveMagasin}
             onDeleteMagasin={deleteMagasin}
-            onPremierMagasin={() => setTab('collecte')}
-          />
-        )}
-        {!verrouille && tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
-        {!verrouille && tab === 'collecte' && (
-          <Collecte
-            state={stateVisible}
-            session={session}
-            onSaveMagasin={saveMagasin}
             onAllerSaisie={() => setTab('saisie')}
             onConnexion={() => setReglages(true)}
             onOuvrirAide={() => setAideOuverte(true)}
             onOuvrirMessages={() => setTab('messages')}
           />
         )}
+        {!verrouille && tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
         {!verrouille && tab === 'saisie' && (
-          <SaisieView state={stateVisible} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('collecte')} />
+          <SaisieView state={stateVisible} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('magasins')} />
         )}
-        {!verrouille && tab === 'dashboard' && <Dashboard state={stateVisible} exercice={exercice} />}
-        {!verrouille && tab === 'registre' && (
-          <Registre state={stateVisible} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
+        {!verrouille && tab === 'bilan' && (
+          <Bilan state={stateVisible} exercice={exercice} onGenererFactures={genererFactures} onCloturer={cloturer} onSaveSaisie={saveSaisie} onDeleteSaisie={deleteSaisie} />
         )}
         {!verrouille && tab === 'messages' && (
           <Messages
@@ -631,7 +630,7 @@ export default function App() {
       {!verrouille && (
       <nav className="tabbar">
         <div className="tabbar-inner">
-          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : acces ? TABS.filter((t) => TABS_INVITE.includes(t.id)) : TABS).map((t) => {
+          {(admin ? [...TABS, { id: 'admin' as Tab, label: 'Admin', icone: IconAdmin }] : acces ? TABS.filter((t) => TABS_INVITE.includes(t.id)) : session ? TABS : TABS_VISITEUR).map((t) => {
             // La pastille vit sur l'onglet où se lisent les messages : Admin pour
             // l'équipe Mana, Messages pour le magasin.
             const porteLaPastille = admin ? t.id === 'admin' : t.id === 'messages'

@@ -7,7 +7,7 @@ import { fmtDate } from '../lib/format'
 /**
  * Accès partagés : le propriétaire du compte ouvre ses données à d'autres
  * adresses e-mail — un magasin précis (son responsable) ou tous les magasins
- * (une assistante). L'invité ne voit que Collecte, Saisie, Tableau, Registre
+ * (une assistante). L'invité ne voit que Saisie, Magasins (collecte seulement), Bilan
  * et Messages ; jamais les sociétés, le simulateur ni la console Mana.
  */
 export function AccesPartages({ session, magasins }: { session: Session; magasins: Magasin[] }) {
@@ -65,7 +65,7 @@ export function AccesPartages({ session, magasins }: { session: Session; magasin
       <p className="muted" style={{ margin: '0 0 10px' }}>
         Donnez accès à un responsable de magasin (un seul magasin) ou à votre assistante (tous les magasins). La
         personne crée son propre compte Mana avec l’adresse indiquée et arrive directement sur vos données. Elle voit
-        seulement Collecte, Saisie, Tableau, Registre et Messages — ni les sociétés, ni ces réglages.
+        seulement Saisie, Magasins (la collecte, sans les sociétés), Bilan et Messages — jamais ces réglages.
       </p>
 
       {acces.length > 0 && (

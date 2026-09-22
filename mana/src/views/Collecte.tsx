@@ -32,6 +32,13 @@ const ETAPES = [
   { id: 'premiere', titre: 'Réussir la première collecte' },
 ] as const
 
+/** Avancement de la mise en place d'un magasin, pour l'afficher sur sa fiche. */
+export function avancementCollecte(m: Magasin): { faites: number; total: number } {
+  const faites = m.miseEnPlace?.faites ?? []
+  const n = ETAPES.filter((e) => (e.id === 'collecteurs' ? m.collecteurs.length > 0 || faites.includes(e.id) : faites.includes(e.id))).length
+  return { faites: n, total: ETAPES.length }
+}
+
 const PICTOS: Record<string, ReactNode> = {
   gisement: <IconCagette />,
   collecteurs: <IconRelation />,
@@ -49,6 +56,7 @@ export function Collecte({
   onConnexion,
   onOuvrirAide,
   onOuvrirMessages,
+  magasinIdFixe,
 }: {
   state: AppState
   session: Session | null
@@ -57,8 +65,11 @@ export function Collecte({
   onConnexion: () => void
   onOuvrirAide: () => void
   onOuvrirMessages: () => void
+  /** Intégré dans la fiche d'un magasin : ce magasin, sans titre ni sélecteur. */
+  magasinIdFixe?: string
 }) {
-  const [magasinId, setMagasinId] = useState(state.magasins[0]?.id ?? '')
+  const [magasinChoisi, setMagasinId] = useState(state.magasins[0]?.id ?? '')
+  const magasinId = magasinIdFixe ?? magasinChoisi
   const magasin = state.magasins.find((m) => m.id === magasinId) ?? state.magasins[0]
   const societe = state.societes.find((s) => s.id === magasin?.societeId)
   const [invendusSaisis, setInvendusSaisis] = useState('')
@@ -181,9 +192,9 @@ export function Collecte({
 
   return (
     <div>
-      <h2>Mettre en place ma collecte</h2>
+      {!magasinIdFixe && <h2>Mettre en place ma collecte</h2>}
 
-      {state.magasins.length > 1 && (
+      {!magasinIdFixe && state.magasins.length > 1 && (
         <div className="chips">
           {state.magasins.map((m) => (
             <button key={m.id} className={`chip ${m.id === magasin.id ? 'active' : ''}`} onClick={() => setMagasinId(m.id)}>

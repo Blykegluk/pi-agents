@@ -7,9 +7,20 @@ import { Amount } from '../components/Formula'
  * Simulateur public (spec §4.6) — la page d'accueil et l'outil de vente n°1.
  * 3 champs : CA HT, marge brute, % de démarque (préréglé 3 %) + part donnable réglable (50 %).
  */
-export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
-  const [caHT, setCaHT] = useState(2_000_000)
-  const [marge, setMarge] = useState(30)
+export function Simulateur({
+  onCommencer,
+  compact = false,
+  caInitial,
+  margeInitiale,
+}: {
+  onCommencer: () => void
+  /** Intégré dans un formulaire : sans titre, sans appel à l'action, sans mentions. */
+  compact?: boolean
+  caInitial?: number
+  margeInitiale?: number
+}) {
+  const [caHT, setCaHT] = useState(caInitial && caInitial > 0 ? caInitial : 2_000_000)
+  const [marge, setMarge] = useState(margeInitiale && margeInitiale > 0 ? margeInitiale : 30)
   const [demarque, setDemarque] = useState(3)
   const [donnable, setDonnable] = useState(50)
   const FEE = SUCCESS_FEE_PCT
@@ -19,13 +30,15 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
 
   return (
     <div>
-      <div className="hero">
-        <h2>La manne cachée de vos invendus</h2>
-        <p className="muted">
-          Vos invendus alimentaires donnent droit à une réduction d’impôt de 60 % de leur coût de revient
-          (article 238 bis du CGI). Estimez ce que votre magasin laisse filer chaque année.
-        </p>
-      </div>
+      {!compact && (
+        <div className="hero">
+          <h2>La manne cachée de vos invendus</h2>
+          <p className="muted">
+            Vos invendus alimentaires donnent droit à une réduction d’impôt de 60 % de leur coût de revient
+            (article 238 bis du CGI). Estimez ce que votre magasin laisse filer chaque année.
+          </p>
+        </div>
+      )}
 
       <div className="card">
         <label className="field">
@@ -183,14 +196,18 @@ export function Simulateur({ onCommencer }: { onCommencer: () => void }) {
         </div>
       </div>
 
-      <button className="btn btn-ambre btn-block" onClick={onCommencer}>
-        Créer mon magasin — 5 minutes, 0 € d’abonnement
-      </button>
+      {!compact && (
+        <>
+          <button className="btn btn-ambre btn-block" onClick={onCommencer}>
+            Créer mon magasin — 5 minutes, 0 € d’abonnement
+          </button>
 
-      <footer className="legal">
-        0 € fixe : Mana se rémunère uniquement à {SUCCESS_FEE_PCT} % de l’économie d’impôt constatée. Estimation indicative — Mana
-        n’est pas un conseil fiscal ; les montants définitifs sont validés par votre expert-comptable.
-      </footer>
+          <footer className="legal">
+            0 € fixe : Mana se rémunère uniquement à {SUCCESS_FEE_PCT} % de l’économie d’impôt constatée. Estimation indicative — Mana
+            n’est pas un conseil fiscal ; les montants définitifs sont validés par votre expert-comptable.
+          </footer>
+        </>
+      )}
     </div>
   )
 }
