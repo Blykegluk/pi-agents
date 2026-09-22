@@ -132,14 +132,7 @@ export function MagasinsView({
         <div className="barre-societes">
           <select
             value={societeActive?.id ?? ''}
-            onChange={(e) => {
-              const v = e.target.value
-              if (v === '__nouveau_magasin') {
-                if (societeActive) setEdition({ type: 'magasin', societeId: societeActive.id, magasin: null })
-              } else if (v === '__nouvelle_societe') {
-                setEdition({ type: 'societe', societe: null })
-              } else setSocieteSel(v)
-            }}
+            onChange={(e) => setSocieteSel(e.target.value)}
             aria-label="Choisir une société"
           >
             {societes.map((so) => {
@@ -150,8 +143,6 @@ export function MagasinsView({
                 </option>
               )
             })}
-            {!invite && societeActive && <option value="__nouveau_magasin">＋ Nouveau magasin (avec simulation) — {denomination(societeActive)}</option>}
-            {!invite && <option value="__nouvelle_societe">＋ Nouvelle société</option>}
           </select>
           {societeActive && (
             <div className="barre-societes-actions">
@@ -160,6 +151,16 @@ export function MagasinsView({
                   ⬇ Bordereau {magasins.filter((x) => x.societeId === societeActive.id).length > 1 ? m.nom : ''}
                 </button>
               ))}
+              {!invite && (
+                <>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: societeActive.id, magasin: null })} title={`Ajouter un magasin à ${denomination(societeActive)} — avec estimation`}>
+                    + Magasin
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'societe', societe: null })}>
+                    + Société
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
