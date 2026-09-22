@@ -288,7 +288,7 @@ export function Registre({
               </div>
             ))}
             <p className="muted" style={{ marginTop: 8 }}>
-              Total facturé : <strong>{fmtEUR(agg.commissionsHT, 2)} HT</strong> — base facturée {fmtEUR(agg.baseFacturee, 2)} /
+              Total facturé : <strong>{fmtEUR(agg.commissionsHT, 2)} HT</strong> sur une commission due de {fmtEUR(agg.resultat.factureMana, 2)} HT — base facturée {fmtEUR(agg.baseFacturee, 2)} /
               plafond {fmtEUR(agg.resultat.plafond)}.
             </p>
           </div>
@@ -441,7 +441,15 @@ export function Registre({
             Il ne figure sur aucun reçu : c’est l’état annuel qui le suit d’une année sur l’autre, pour l’imprimé 2069-RCI.
           </div>
         )}
-        <button className="btn btn-primary btn-block" onClick={() => pdfEtatAnnuel(agg, exercice)}>
+        {agg.semainesSansReleve.length > 0 && (
+          <div className="info-banner alerte" style={{ marginBottom: 10 }}>
+            <strong>État annuel et reçus bloqués : relevé de démarque manquant.</strong>{' '}
+            {agg.semainesSansReleve.length} semaine{agg.semainesSansReleve.length > 1 ? 's ont' : ' a'} des bordereaux sans relevé :{' '}
+            {agg.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine} (${x.nbBordereaux} bordereau${x.nbBordereaux > 1 ? 'x' : ''})`).join(', ')}.
+            Un état annuel sans la valeur de ces dons serait faux, et la commission Mana avec. Ajoutez les relevés dans Saisie.
+          </div>
+        )}
+        <button className="btn btn-primary btn-block" disabled={agg.semainesSansReleve.length > 0} style={{ opacity: agg.semainesSansReleve.length > 0 ? 0.5 : 1 }} onClick={() => pdfEtatAnnuel(agg, exercice)}>
           ⬇ État annuel {exercice} — {denomination(societe)}
         </button>
       </div>
@@ -466,8 +474,9 @@ export function Registre({
               <div className="row-actions" key={nom || '—'} style={{ marginBottom: 8, alignItems: 'center', gap: 10 }}>
                 <button
                   className={`btn btn-sm ${sansNom && !unSeul ? 'btn-ghost' : 'btn-primary'}`}
+                  disabled={agg.semainesSansReleve.length > 0}
                   onClick={() => pdfRecuFiscal(agg, exercice, sansNom ? undefined : nom)}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, opacity: agg.semainesSansReleve.length > 0 ? 0.5 : 1 }}
                 >
                   ⬇ Reçu {exercice} — {nom || unSeul || 'association non précisée'} · {fmtEUR(montant, 2)}
                 </button>

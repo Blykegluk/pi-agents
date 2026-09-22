@@ -1345,3 +1345,14 @@ i.cal-point {
 .contrat-texte h4 { margin: 10px 0 2px; font-size: 13px; }
 .contrat-texte section:first-child h4 { margin-top: 0; }
 .contrat-texte p { margin: 0; }
+
+/* ---- Magasins : barre fixe de sélection de société ---- */
+.barre-societes {
+  position: sticky; top: 64px; z-index: 5;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 0 10px; margin-bottom: 8px;
+  background: var(--papier);
+  border-bottom: 1px solid var(--trait-doux);
+}
+.barre-societes select { flex: 1; min-width: 240px; padding: 10px 12px; font-weight: 700; font-size: 14px; }
+.barre-societes-actions { display: flex; gap: 6px; flex-wrap: wrap; }

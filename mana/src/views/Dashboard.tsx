@@ -23,7 +23,9 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
   }
 
   const totalReduction = aggs.reduce((t, a) => t + a.resultat.reductionIS, 0)
-  const totalCommissions = aggs.reduce((t, a) => t + a.commissionsHT, 0)
+  const totalCommissions = aggs.reduce((t, a) => t + a.resultat.factureMana, 0)
+  const totalFacture = aggs.reduce((t, a) => t + a.commissionsHT, 0)
+  const totalAttente = aggs.reduce((t, a) => t + a.estimationAttente.commission, 0)
   const totalRepas = aggs.reduce((t, a) => t + a.repas, 0)
   const totalKg = aggs.reduce((t, a) => t + a.kgTotal, 0)
   const totalCO2 = aggs.reduce((t, a) => t + a.co2, 0)
@@ -49,9 +51,15 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
               </Amount>
             </div>
             <div className="ligne">
-              <span>Commissions Mana facturées (HT)</span>
-              <strong>{fmtEUR(totalCommissions, 2)}</strong>
+              <span>Commission Mana due (30 % de la réduction acquise)</span>
+              <strong>{fmtEUR(totalCommissions, 2)} HT{totalFacture < totalCommissions - 0.005 ? ` · dont facturée ${fmtEUR(totalFacture, 2)}` : ''}</strong>
             </div>
+            {totalAttente > 0 && (
+              <div className="ligne">
+                <span>+ estimée, en attente de relevés</span>
+                <strong style={{ color: 'var(--ambre-texte)' }}>≈ {fmtEUR(totalAttente, 2)} HT</strong>
+              </div>
+            )}
             <div className="ligne">
               <span>Gain net clients</span>
               <strong>{fmtEUR(totalReduction - totalCommissions, 2)}</strong>
@@ -141,22 +149,42 @@ export function Dashboard({ state, exercice }: { state: AppState; exercice: numb
                   <strong>{fmtEUR(r.reductionIS, 2)}</strong>
                 </div>
                 <div className="ligne">
-                  <span>Commissions Mana facturées (HT)</span>
+                  <span>Commission Mana due (HT)</span>
                   <Amount
-                    titre="Commissions Mana"
+                    titre="Commission Mana"
                     lignes={[
-                      `${fmtPct(a.societe.successFeePct, 0)} de la réduction, soit ${(a.societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base documentée`,
-                      ...a.factures.map((f) => `${f.numero} (${f.periode}) : ${fmtEUR(f.montantHT, 2)} HT`),
-                      `= ${fmtEUR(a.commissionsHT, 2)} HT`,
+                      `${fmtPct(a.societe.successFeePct, 0)} de la réduction acquise, soit ${(a.societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base documentée`,
+                      `${(a.societe.successFeePct * 0.6).toLocaleString('fr-FR')} % × ${fmtEUR(r.basePlafonnee, 2)} = ${fmtEUR(r.factureMana, 2)} HT`,
+                      ...(a.factures.length ? a.factures.map((f) => `facturé : ${f.numero} (${f.periode}) ${fmtEUR(f.montantHT, 2)} HT`) : ['aucune facture émise pour l’instant']),
                     ]}
                   >
-                    <strong>− {fmtEUR(a.commissionsHT, 2)}</strong>
+                    <strong>− {fmtEUR(r.factureMana, 2)}</strong>
                   </Amount>
                 </div>
+                {a.commissionsHT < r.factureMana - 0.005 && (
+                  <div className="ligne">
+                    <span>dont déjà facturée</span>
+                    <strong>{fmtEUR(a.commissionsHT, 2)} HT</strong>
+                  </div>
+                )}
                 <div className="ligne">
                   <span>Votre gain net depuis le début de l’exercice</span>
-                  <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(r.reductionIS - a.commissionsHT, 2)}</strong>
+                  <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(r.reductionIS - r.factureMana, 2)}</strong>
                 </div>
+                {a.semainesSansReleve.length > 0 && (
+                  <div className="info-banner" style={{ margin: '10px 0 0' }}>
+                    <strong>En attente du relevé de démarque : {a.estimationAttente.nbSemaines} semaine{a.estimationAttente.nbSemaines > 1 ? 's' : ''}, {a.estimationAttente.nbBordereaux} bordereau{a.estimationAttente.nbBordereaux > 1 ? 'x' : ''}</strong>{' '}
+                    ({a.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine}`).join(', ')}). Ces bordereaux prouvent les passages mais n’ont pas encore de valeur : ils ne comptent ni dans la réduction ni dans la commission ci-dessus.
+                    {a.estimationAttente.methode !== 'aucune' ? (
+                      <>
+                        {' '}Estimation indicative en attendant : base ≈ {fmtEUR(a.estimationAttente.base, 2)}, commission ≈ {fmtEUR(a.estimationAttente.commission, 2)} HT
+                        ({a.estimationAttente.methode === 'historique' ? `${fmtEUR(a.estimationAttente.parBordereau, 0)} PV HT par bordereau, d’après vos relevés passés` : `gisement estimé à la mise en place`}). Le relevé fait foi : ajoutez-le dans Saisie.
+                      </>
+                    ) : (
+                      <> Aucune base d’estimation : ajoutez le relevé dans Saisie.</>
+                    )}
+                  </div>
+                )}
                 {a.datePlafondEstimee && (
                   <div className="ligne">
                     <span>Plafond atteint (estimation, rythme actuel)</span>

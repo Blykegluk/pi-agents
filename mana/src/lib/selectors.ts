@@ -6,6 +6,7 @@ import {
   coutFL,
   kgDetournes,
   plafondAnnuel,
+  PV_MOYEN_EMBALLES_PAR_KG,
   repasSauves,
   resultatAnnuel,
   TAUX_REDUCTION,
@@ -76,6 +77,86 @@ export interface AggSociete {
   /** Base ouvrant droit à réduction sur l'exercice : plafonnée de l'année + reports antérieurs imputés. */
   baseRetenueTotale: number
   reductionISTotale: number
+  /** Semaines qui ont des bordereaux (preuve) mais aucun relevé (valeur) : le bilan y est incomplet. */
+  semainesSansReleve: SemaineSansReleve[]
+  /** Ce que ces semaines vaudraient, en attendant le relevé — jamais facturé, seulement affiché. */
+  estimationAttente: EstimationAttente
+}
+
+export interface SemaineSansReleve {
+  magasinId: string
+  magasinNom: string
+  semaine: string
+  nbBordereaux: number
+}
+
+export interface EstimationAttente {
+  /** Prix de vente HT estimé des semaines sans relevé. */
+  pvHT: number
+  /** Base (coût de revient) estimée. */
+  base: number
+  /** Commission Mana qui en découlerait. */
+  commission: number
+  nbSemaines: number
+  nbBordereaux: number
+  /** D'où vient le ratio : historique du magasin, estimation du gisement, ou rien. */
+  methode: 'historique' | 'gisement' | 'aucune'
+  /** PV HT moyen retenu par bordereau. */
+  parBordereau: number
+}
+
+/**
+ * Semaines avec bordereaux sans relevé, et estimation de ce qu'elles vaudraient.
+ * Ratio : PV HT du relevé par bordereau, sur les semaines où le magasin a les
+ * deux ; à défaut, gisement estimé (kg/jour) × prix de vente moyen au kilo.
+ */
+function attenteDeReleve(magasins: Magasin[], saisies: Saisie[], margePct: number, successFeePct: number): { semainesSansReleve: SemaineSansReleve[]; estimationAttente: EstimationAttente } {
+  const semainesSansReleve: SemaineSansReleve[] = []
+  let pvHT = 0
+  let nbBordereaux = 0
+  let methode: EstimationAttente['methode'] = 'aucune'
+  let parBordereauRetenu = 0
+  for (const m of magasins) {
+    const lignes = saisies.filter((x) => x.magasinId === m.id && x.type === 'don')
+    const parSemaine = new Map<string, { bordereaux: number; releve: number; aReleve: boolean }>()
+    for (const x of lignes) {
+      const e = parSemaine.get(x.semaine) ?? { bordereaux: 0, releve: 0, aReleve: false }
+      if (x.origine === 'bordereau') e.bordereaux += 1
+      else {
+        e.aReleve = true
+        e.releve += x.pvEmballes
+      }
+      parSemaine.set(x.semaine, e)
+    }
+    // Ratio historique : semaines complètes (bordereaux + relevé)
+    let pvHist = 0
+    let nbHist = 0
+    for (const e of parSemaine.values()) if (e.aReleve && e.bordereaux > 0) {
+      pvHist += e.releve
+      nbHist += e.bordereaux
+    }
+    let parBordereau = 0
+    if (nbHist > 0 && pvHist > 0) {
+      parBordereau = pvHist / nbHist
+      methode = 'historique'
+    } else if ((m.miseEnPlace?.gisementKgJour ?? 0) > 0) {
+      parBordereau = (m.miseEnPlace!.gisementKgJour as number) * PV_MOYEN_EMBALLES_PAR_KG
+      if (methode !== 'historique') methode = 'gisement'
+    }
+    for (const [semaine, e] of parSemaine) if (e.bordereaux > 0 && !e.aReleve) {
+      semainesSansReleve.push({ magasinId: m.id, magasinNom: m.nom, semaine, nbBordereaux: e.bordereaux })
+      nbBordereaux += e.bordereaux
+      pvHT += e.bordereaux * parBordereau
+      parBordereauRetenu = parBordereau
+    }
+  }
+  semainesSansReleve.sort((a, b) => compareWeekIds(a.semaine, b.semaine))
+  const base = coutEmballes(pvHT, margePct)
+  const commission = (successFeePct / 100) * TAUX_REDUCTION * base
+  return {
+    semainesSansReleve,
+    estimationAttente: { pvHT, base, commission, nbSemaines: new Set(semainesSansReleve.map((x) => `${x.magasinId}|${x.semaine}`)).size, nbBordereaux, methode: semainesSansReleve.length ? methode : 'aucune', parBordereau: parBordereauRetenu },
+  }
 }
 
 
@@ -124,8 +205,11 @@ export function aggParSociete(state: AppState, exercice: number): AggSociete[] {
     const reports = suiviReports(state, societe, exercice)
     const baseRetenueTotale = resultat.basePlafonnee + reports.imputeCetExercice
     const reductionISTotale = TAUX_REDUCTION * baseRetenueTotale
+    const { semainesSansReleve, estimationAttente } = attenteDeReleve(magasins, saisies, societe.margePct, societe.successFeePct)
 
     return {
+      semainesSansReleve,
+      estimationAttente,
       societe,
       magasins,
       saisies,

@@ -4,7 +4,7 @@ import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, 
 import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordereau'
 import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
-import { pdfContratService } from '../lib/pdf'
+import { pdfBordereau, pdfContratService } from '../lib/pdf'
 import { Collecte, avancementCollecte } from './Collecte'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
@@ -57,6 +57,15 @@ export function MagasinsView({
     | null
   >(null)
   const [contratPour, setContratPour] = useState<Societe | null>(null)
+  // Barre fixe en haut : une société à la fois, avec son avancement — plus besoin de défiler.
+  const [societeSel, setSocieteSel] = useState<string>(() => societes[0]?.id ?? '')
+  const societeActive = societes.find((x) => x.id === societeSel) ?? societes[0]
+  const avancementSociete = (so: Societe) => {
+    const ms = magasins.filter((m) => m.societeId === so.id)
+    const faites = ms.reduce((t, m) => t + avancementCollecte(m).faites, 0)
+    const total = ms.reduce((t, m) => t + avancementCollecte(m).total, 0)
+    return { faites, total, nb: ms.length }
+  }
   // La collecte du magasin encore en mise en place s'ouvre d'elle-même ; les autres se déplient à la demande.
   const [collecteOuverte, setCollecteOuverte] = useState<string | null>(() => {
     const enCours = magasins.find((m) => avancementCollecte(m).faites < avancementCollecte(m).total)
@@ -119,7 +128,43 @@ export function MagasinsView({
           L’onboarding prend moins de 5 minutes (SIREN + justificatif de CA).
         </div>
       )}
-      {societes.map((s) => {
+      {societes.length > 0 && (
+        <div className="barre-societes">
+          <select
+            value={societeActive?.id ?? ''}
+            onChange={(e) => {
+              const v = e.target.value
+              if (v === '__nouveau_magasin') {
+                if (societeActive) setEdition({ type: 'magasin', societeId: societeActive.id, magasin: null })
+              } else if (v === '__nouvelle_societe') {
+                setEdition({ type: 'societe', societe: null })
+              } else setSocieteSel(v)
+            }}
+            aria-label="Choisir une société"
+          >
+            {societes.map((so) => {
+              const av = avancementSociete(so)
+              return (
+                <option key={so.id} value={so.id}>
+                  {denomination(so)} · {av.nb} magasin{av.nb > 1 ? 's' : ''}{av.total > 0 ? ` · collecte ${av.faites}/${av.total}` : ''}
+                </option>
+              )
+            })}
+            {!invite && societeActive && <option value="__nouveau_magasin">＋ Nouveau magasin (avec simulation) — {denomination(societeActive)}</option>}
+            {!invite && <option value="__nouvelle_societe">＋ Nouvelle société</option>}
+          </select>
+          {societeActive && (
+            <div className="barre-societes-actions">
+              {magasins.filter((m) => m.societeId === societeActive.id).map((m) => (
+                <button key={m.id} className="btn btn-ghost btn-sm" onClick={() => void pdfBordereau(m, denomination(societeActive))} title={`Bordereau d’enlèvement vierge — ${m.nom}`}>
+                  ⬇ Bordereau {magasins.filter((x) => x.societeId === societeActive.id).length > 1 ? m.nom : ''}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {societes.filter((s) => !societeActive || s.id === societeActive.id).map((s) => {
         const sesMagasins = magasins.filter((m) => m.societeId === s.id)
         return (
           <div className="card" key={s.id}>

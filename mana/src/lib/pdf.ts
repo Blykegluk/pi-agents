@@ -622,11 +622,10 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   const auKilo = profil.categories.filter((c) => c.valorisation === 'cout_kg').map((c) => c.libelle.toLowerCase())
   doc.text(
     t(
-      'Ce bordereau prouve la remise — il ne fixe pas la valeur fiscale. Produits scannés en démarque : valorisés dans Mana par le ' +
-        'relevé du back-office (en €) — comptez les colis (bacs, cartons ou sacs). ' +
+      'Ce bordereau atteste la remise : il ne fixe pas la valeur fiscale. ' +
         (auKilo.length > 0
-          ? `Catégories valorisées au poids dans ce magasin : ${auKilo.join(', ')} — la pesée ci-dessous fait foi.`
-          : 'Les poids ci-dessous servent de preuve et de tonnage : tout est scanné dans ce magasin.'),
+          ? `Dans ce magasin, la valeur vient du relevé de démarque pour tout ce qui a été scanné, et du poids pour ${auKilo.join(', ')} (la pesée ci-dessous fait foi pour ces catégories).`
+          : 'Dans ce magasin, tout est pesé puis scanné en démarque : la valeur de tous les produits, emballés ou pesés, vient du relevé du back-office. Les colis et les poids ci-dessous sont la preuve et le tonnage.'),
     ),
     17,
     y + 5,
@@ -637,7 +636,7 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   // Section 1 — colis remis (comptage)
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
-  doc.text(t('1. Colis remis (produits emballés, scannés en démarque)'), 14, y)
+  doc.text(t('1. Colis remis (produits emballés)'), 14, y)
   y += 8
   champ('Nombre de colis remis (bacs, cartons ou sacs) :', 112, 14)
   champ('Poids indicatif (kg) :', 196, 120)
@@ -648,7 +647,7 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   // Section 2 — poids par catégorie (selon le profil du magasin)
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
-  doc.text(t('2. Poids par catégorie (net, en kg)'), 14, y)
+  doc.text(t(`2. Poids par catégorie (net, en kg) : ${profil.categories.map((c) => c.libelle.toLowerCase()).join(', ')}`), 14, y)
   y += 5
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(8.5)
