@@ -151,3 +151,59 @@ export function setMajLocale(ms: number): void {
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }
+
+/** Horodatage (ms) de la version cloud que cet appareil a vue en dernier (appliquée ou poussée). */
+const KEY_SYNC = 'mana-sync-v1'
+export function getSyncLocale(): number {
+  return Number(localStorage.getItem(KEY_SYNC)) || 0
+}
+export function setSyncLocale(ms: number): void {
+  try {
+    localStorage.setItem(KEY_SYNC, String(ms))
+  } catch {
+    /* sans importance */
+  }
+}
+
+/**
+ * Sauvegarde de secours : la version écartée lors d'un remplacement (conflit
+ * entre appareils, restauration…). Une seule, la plus récente, sur l'appareil.
+ */
+const KEY_SAUVEGARDE = 'mana-sauvegarde-v1'
+export interface Sauvegarde {
+  etat: AppState
+  motif: string
+  le: string
+}
+export function sauvegarder(etat: AppState, motif: string): void {
+  if (etatEstVide(etat)) return
+  try {
+    localStorage.setItem(KEY_SAUVEGARDE, JSON.stringify({ etat, motif, le: new Date().toISOString() } satisfies Sauvegarde))
+  } catch {
+    /* localStorage saturé : on préfère garder l'état courant */
+  }
+}
+export function lireSauvegarde(): Sauvegarde | null {
+  try {
+    const raw = localStorage.getItem(KEY_SAUVEGARDE)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Sauvegarde
+    const etat = interpreterEtat(parsed.etat)
+    return etat ? { ...parsed, etat } : null
+  } catch {
+    return null
+  }
+}
+export function effacerSauvegarde(): void {
+  localStorage.removeItem(KEY_SAUVEGARDE)
+}
+
+export function etatEstVide(etat: AppState): boolean {
+  return etat.societes.length === 0 && etat.magasins.length === 0 && etat.saisies.length === 0
+}
+
+/** Résumé lisible d'un état, pour arbitrer entre deux versions. */
+export function resumeEtat(etat: AppState): string {
+  const n = (k: number, un: string, plusieurs: string) => `${k} ${k > 1 ? plusieurs : un}`
+  return `${n(etat.societes.length, 'société', 'sociétés')}, ${n(etat.magasins.length, 'magasin', 'magasins')}, ${n(etat.saisies.length, 'ligne de saisie', 'lignes de saisie')}`
+}

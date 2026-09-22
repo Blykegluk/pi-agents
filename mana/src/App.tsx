@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
-import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, uid } from './lib/storage'
-import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces } from './lib/cloud'
+import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, getMajLocale, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, uid } from './lib/storage'
+import { chargerEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces, type EtatDistant } from './lib/cloud'
 import { aggParSociete, calculerCloture, facturesCommissionManquantes } from './lib/selectors'
 import { montantsFacture, prochainNumero } from './lib/facturation'
 import { completerIdentites } from './lib/identite'
@@ -64,6 +64,11 @@ export default function App() {
   const [nonLus, setNonLus] = useState<NonLus>({ total: 0, parDemande: {} })
   const sauterProchainPush = useRef(false)
   const timerPush = useRef<number | undefined>(undefined)
+  /** Premier passage de l'effet d'état : charger n'est pas modifier — ni horodatage, ni envoi. */
+  const premierEffet = useRef(true)
+  /** Deux versions différentes (cet appareil / le cloud) : on demande, on ne tranche jamais seul. */
+  const [conflit, setConflit] = useState<{ local: AppState; distant: EtatDistant } | null>(null)
+  const [sauvegarde, setSauvegarde] = useState(() => lireSauvegarde())
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -157,7 +162,11 @@ export default function App() {
     if (estDemo(state)) return
     let annule = false
     completerIdentites(state).then((maj) => {
-      if (maj && !annule) setState(maj)
+      if (maj && !annule) {
+        // Complément automatique, pas une saisie : ni horodatage local, ni envoi immédiat
+        sauterProchainPush.current = true
+        setState(maj)
+      }
     })
     return () => {
       annule = true
@@ -166,9 +175,14 @@ export default function App() {
   }, [state.societes.map((s) => `${s.id}:${s.verification.apiStatut}:${s.verification.formeJuridique ?? ''}`).join('|')])
 
   /** Applique un état venu du cloud sans le re-pousser. */
-  function appliquerDistant(etat: AppState, majLe: string) {
+  function appliquerDistant(etat: AppState, majLe: string, motifSauvegarde?: string) {
+    if (motifSauvegarde) {
+      sauvegarder(state, motifSauvegarde)
+      setSauvegarde(lireSauvegarde())
+    }
     sauterProchainPush.current = true
     setMajLocale(Date.parse(majLe))
+    setSyncLocale(Date.parse(majLe))
     setState(etat)
     // À la connexion, un compte équipé quitte le simulateur pour la Saisie
     if (etat.magasins.length > 0) setTab((t) => (t === 'simulateur' ? 'saisie' : t))
@@ -181,6 +195,7 @@ export default function App() {
       setSyncStatut('encours')
       const majLe = await pousserEtatDistant(userId, etat, email)
       setMajLocale(Date.parse(majLe))
+      setSyncLocale(Date.parse(majLe))
       setSyncStatut('ok')
       setSyncHeure(new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }))
     } catch {
@@ -188,7 +203,68 @@ export default function App() {
     }
   }
 
-  /** Synchronisation initiale à la connexion : le plus récent gagne. */
+  /**
+   * Arbitrage entre l'appareil et le cloud. Règle : on ne remplace jamais en
+   * silence des données que l'utilisateur a saisies.
+   * - pas de cloud → on y envoie l'appareil (sauf démo : on part de zéro) ;
+   * - appareil vide ou en démo → on prend le cloud ;
+   * - cloud inchangé depuis la dernière synchro de cet appareil → on envoie
+   *   ce qui a été modifié ici, s'il y a eu des modifications ;
+   * - cloud modifié ailleurs et rien de modifié ici → on prend le cloud ;
+   * - modifié des deux côtés (ou premier passage sur cet appareil avec des
+   *   données locales) → on demande.
+   */
+  async function arbitrer(distant: EtatDistant | null, local: AppState) {
+    if (!session) return
+    const localDemo = estDemo(local)
+    if (!distant) {
+      const aPousser = localDemo ? etatVide() : local
+      if (localDemo) {
+        sauterProchainPush.current = true
+        setState(aPousser)
+      }
+      await pousser(aPousser, session.user.id, session.user.email ?? undefined)
+      return
+    }
+    if (localDemo || etatEstVide(local)) {
+      appliquerDistant(distant.etat, distant.majLe)
+      return
+    }
+    const distantMs = Date.parse(distant.majLe)
+    const derniereSync = getSyncLocale()
+    const modifieIci = getMajLocale() > derniereSync
+    if (JSON.stringify(local) === JSON.stringify(distant.etat)) {
+      appliquerDistant(distant.etat, distant.majLe)
+      return
+    }
+    if (distantMs <= derniereSync) {
+      if (modifieIci) await pousser(local, session.user.id, session.user.email ?? undefined)
+      else appliquerDistant(distant.etat, distant.majLe)
+      return
+    }
+    if (!modifieIci) {
+      appliquerDistant(distant.etat, distant.majLe, 'version de cet appareil, remplacée par le cloud')
+      return
+    }
+    setSyncStatut('ok')
+    setConflit({ local, distant })
+  }
+
+  /** Résolution du conflit par l'utilisateur : l'autre version est gardée en sauvegarde locale. */
+  async function resoudreConflit(choix: 'appareil' | 'cloud') {
+    if (!conflit || !session) return
+    const { local, distant } = conflit
+    setConflit(null)
+    if (choix === 'cloud') {
+      appliquerDistant(distant.etat, distant.majLe, 'version de cet appareil, écartée au profit du cloud')
+    } else {
+      sauvegarder(distant.etat, `version du cloud du ${new Date(distant.majLe).toLocaleString('fr-FR')}, écartée au profit de cet appareil`)
+      setSauvegarde(lireSauvegarde())
+      await pousser(local, session.user.id, session.user.email ?? undefined)
+    }
+  }
+
+  /** Synchronisation initiale à la connexion. */
   useEffect(() => {
     if (!session) {
       setSyncStatut('inactif')
@@ -205,23 +281,11 @@ export default function App() {
         // Un invité travaille toujours sur les données du propriétaire, jamais sur
         // ce que cet appareil aurait pu contenir avant.
         if (acces) {
-          if (distant) appliquerDistant(distant.etat, distant.majLe)
+          if (distant) appliquerDistant(distant.etat, distant.majLe, etatEstVide(local) || estDemo(local) ? undefined : 'données de cet appareil, avant le passage aux données partagées')
           else setSyncStatut('erreur')
           return
         }
-        // Le jeu de démonstration ne rejoint jamais un compte : à la connexion,
-        // on prend le cloud s'il existe, sinon on démarre sur un état vierge.
-        const localDemo = estDemo(local)
-        if (distant && (localDemo || Date.parse(distant.majLe) >= getMajLocale())) {
-          appliquerDistant(distant.etat, distant.majLe)
-        } else {
-          const aPousser = localDemo ? etatVide() : local
-          if (localDemo) {
-            sauterProchainPush.current = true
-            setState(aPousser)
-          }
-          await pousser(aPousser, session.user.id, session.user.email ?? undefined)
-        }
+        await arbitrer(distant, local)
       } catch {
         if (!annule) setSyncStatut('erreur')
       }
@@ -237,10 +301,14 @@ export default function App() {
     if (!session || acces === undefined) return
     const surFocus = async () => {
       if (document.visibilityState !== 'visible') return
+      if (conflit) return
       try {
         const distant = await chargerEtatDistant(compteId(session))
-        if (distant && Date.parse(distant.majLe) > getMajLocale() + 2000) {
+        if (!distant || Date.parse(distant.majLe) <= getSyncLocale()) return
+        if (acces || getMajLocale() <= getSyncLocale()) {
           appliquerDistant(distant.etat, distant.majLe)
+        } else if (JSON.stringify(loadState()) !== JSON.stringify(distant.etat)) {
+          setConflit({ local: loadState() ?? etatVide(), distant })
         }
       } catch {
         /* silencieux : on retentera au prochain focus */
@@ -249,18 +317,22 @@ export default function App() {
     document.addEventListener('visibilitychange', surFocus)
     return () => document.removeEventListener('visibilitychange', surFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id, acces === undefined])
+  }, [session?.user.id, acces === undefined, conflit])
 
   useEffect(() => {
     if (!saveState(state)) {
       alert('Espace de stockage local saturé : allégez les justificatifs (photos plus légères) ou exportez puis purgez les anciennes semaines.')
+    }
+    if (premierEffet.current) {
+      premierEffet.current = false
+      return
     }
     if (sauterProchainPush.current) {
       sauterProchainPush.current = false
       return
     }
     setMajLocale(Date.now())
-    if (session && acces !== undefined && !estDemo(state)) {
+    if (session && acces !== undefined && !conflit && !estDemo(state)) {
       window.clearTimeout(timerPush.current)
       timerPush.current = window.setTimeout(() => pousser(state, compteId(session), acces ? undefined : session.user.email ?? undefined), 1500)
     }
@@ -484,6 +556,22 @@ export default function App() {
       </header>
 
       <main>
+        {conflit && (
+          <div className="info-banner" role="alertdialog" aria-label="Deux versions de vos données" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <strong>Deux versions différentes de vos données.</strong> Rien n’a été remplacé : choisissez laquelle garder.
+              L’autre restera en sauvegarde sur cet appareil (Réglages).
+            </div>
+            <div className="detail-lignes" style={{ background: 'var(--carte)', borderRadius: 8, padding: '8px 10px' }}>
+              <div className="ligne"><span>Cet appareil</span><strong>{resumeEtat(conflit.local)} · modifié le {new Date(getMajLocale()).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</strong></div>
+              <div className="ligne"><span>Le cloud</span><strong>{resumeEtat(conflit.distant.etat)} · modifié le {new Date(conflit.distant.majLe).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</strong></div>
+            </div>
+            <div className="row-actions">
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => void resoudreConflit('appareil')}>Garder cet appareil</button>
+              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => void resoudreConflit('cloud')}>Prendre le cloud</button>
+            </div>
+          </div>
+        )}
         {estDemo(state) && !session && (
           <div className="info-banner" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span>
@@ -596,6 +684,29 @@ export default function App() {
                 ? 'Vos données sont synchronisées entre tous vos appareils connectés à ce compte. L’export JSON reste votre sauvegarde de secours.'
                 : 'Sans compte, les données restent sur cet appareil. Créez un compte ci-dessus pour retrouver les mêmes données sur le site et l’application.'}
             </p>
+            {sauvegarde && !acces && (
+              <div className="info-banner" style={{ marginTop: 10 }}>
+                <strong>Sauvegarde de secours sur cet appareil</strong> ({resumeEtat(sauvegarde.etat)}) — {sauvegarde.motif}, le{' '}
+                {new Date(sauvegarde.le).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}.
+                <div className="row-actions" style={{ marginTop: 8 }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      if (!confirm('Remplacer les données actuelles par cette sauvegarde ? La version actuelle deviendra la sauvegarde.')) return
+                      sauvegarder(state, 'version remplacée par la restauration d’une sauvegarde')
+                      setConflit(null)
+                      setState(sauvegarde.etat)
+                      setSauvegarde(lireSauvegarde())
+                      setReglages(false)
+                    }}
+                  >
+                    Restaurer cette sauvegarde
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => exportJSON(sauvegarde.etat)}>Exporter (JSON)</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { if (confirm('Supprimer la sauvegarde de secours ?')) { effacerSauvegarde(); setSauvegarde(null) } }}>Supprimer</button>
+                </div>
+              </div>
+            )}
             {!acces && <div className="row-actions" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, marginTop: 12 }}>
               <button className="btn btn-primary" onClick={() => exportJSON(state)}>
                 ⬇ Exporter les données (JSON)
