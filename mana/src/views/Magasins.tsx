@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { AppState, Collecteur, Justificatif, Magasin, Societe } from '../types'
+import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe } from '../types'
+import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordereau'
+import { ContratModal } from '../components/ContratModal'
+import { VERSION_CONTRAT } from '../lib/contrat'
+import { pdfContratService } from '../lib/pdf'
 import { Collecte, avancementCollecte } from './Collecte'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
@@ -52,6 +56,7 @@ export function MagasinsView({
     | { type: 'magasin'; societeId: string; magasin: Magasin | null }
     | null
   >(null)
+  const [contratPour, setContratPour] = useState<Societe | null>(null)
   // La collecte du magasin encore en mise en place s'ouvre d'elle-même ; les autres se déplient à la demande.
   const [collecteOuverte, setCollecteOuverte] = useState<string | null>(() => {
     const enCours = magasins.find((m) => avancementCollecte(m).faites < avancementCollecte(m).total)
@@ -126,6 +131,24 @@ export function MagasinsView({
                 ? ` · ${s.verification.adresseSiege.voie}, ${s.verification.adresseSiege.codePostal} ${s.verification.adresseSiege.commune}`
                 : ''}
             </p>
+            {!invite && (
+              s.contrat ? (
+                <p className="muted" style={{ margin: '0 0 8px', fontSize: 13 }}>
+                  ✓ Contrat de service signé le {fmtDate(s.contrat.signeLe.slice(0, 10))} par {s.contrat.nomSignataire} (version {s.contrat.version}).{' '}
+                  <button className="amt" onClick={() => void pdfContratService(s, { ...s.contrat!, adresseIp: null })}>Télécharger</button>
+                  {s.contrat.version !== VERSION_CONTRAT && <> · <button className="amt" onClick={() => setContratPour(s)}>Nouvelle version à signer</button></>}
+                </p>
+              ) : (
+                <div className="info-banner" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <span style={{ flex: 1, minWidth: 220 }}>
+                    <strong>Contrat de service à signer.</strong> Sans abonnement : 30 % de la réduction d’impôt acquise, facturée sur le réel. Il faut le signer avant la première facture.
+                  </span>
+                  <button className="btn btn-primary btn-sm" onClick={() => (session ? setContratPour(s) : onConnexion())}>
+                    {session ? 'Lire et signer' : 'Se connecter pour signer'}
+                  </button>
+                </div>
+              )
+            )}
             {!invite && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {s.verification.apiStatut === 'verifie' ? (
                 <span className="verif-badge">✓ Société vérifiée (registre national)</span>
@@ -254,6 +277,14 @@ export function MagasinsView({
         <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
           + Ajouter une société
         </button>
+      )}
+      {contratPour && session && (
+        <ContratModal
+          societe={contratPour}
+          session={session}
+          onFermer={() => setContratPour(null)}
+          onSigne={(contrat: ContratSigne) => onSaveSociete({ ...contratPour, contrat })}
+        />
       )}
     </div>
   )
@@ -500,7 +531,13 @@ function FormulaireMagasin({
   const [enseigne, setEnseigne] = useState(initial?.enseigne ?? '')
   const [coutKgFL, setCoutKgFL] = useState(initial?.coutKgFL ?? 2.2)
   const [frequence, setFrequence] = useState<'hebdomadaire' | 'quotidienne'>(initial?.frequenceSaisie ?? 'hebdomadaire')
-  const [modeFL, setModeFL] = useState<'poids' | 'inclus'>(initial?.modeFL ?? 'poids')
+  const [profil, setProfil] = useState<ProfilBordereau>(() =>
+    initial ? profilDeMagasin(initial) : { colis: true, categories: PROFILS_PRESETS.tout_scanne.categories.map((c) => ({ ...c })) },
+  )
+  const majCategorie = (i: number, patch: Partial<CategoriePesee>) =>
+    setProfil((p) => ({ ...p, categories: p.categories.map((c, j) => (j === i ? { ...c, ...patch } : c)) }))
+  const catFL = profil.categories.find((c) => c.id === 'fl')
+  const modeFL: 'poids' | 'inclus' = catFL?.valorisation === 'cout_kg' ? 'poids' : 'inclus'
   const [collecteurs, setCollecteurs] = useState<Collecteur[]>(
     initial?.collecteurs?.length ? initial.collecteurs : [{ ...COLLECTEUR_VIDE }],
   )
@@ -512,21 +549,24 @@ function FormulaireMagasin({
   function enregistrer() {
     if (!valide || !societe) return
     const maintenant = new Date().toISOString()
+    // Compatibilité : coutKgFL / modeFL restent le reflet de la catégorie F&L du profil
+    const coutKgFLEffectif = catFL?.valorisation === 'cout_kg' ? (catFL.coutKg ?? coutKgFL) : coutKgFL
     const versions = [...(initial?.versionsParametres ?? [])]
     const derniere = versions[versions.length - 1]
     if (!derniere) {
-      versions.push({ version: 1, date: maintenant, margePct: societe.margePct, coutKgFL })
-    } else if (derniere.coutKgFL !== coutKgFL || derniere.margePct !== societe.margePct) {
-      versions.push({ version: derniere.version + 1, date: maintenant, margePct: societe.margePct, coutKgFL })
+      versions.push({ version: 1, date: maintenant, margePct: societe.margePct, coutKgFL: coutKgFLEffectif })
+    } else if (derniere.coutKgFL !== coutKgFLEffectif || derniere.margePct !== societe.margePct) {
+      versions.push({ version: derniere.version + 1, date: maintenant, margePct: societe.margePct, coutKgFL: coutKgFLEffectif })
     }
     onSave({
       id: initial?.id ?? uid(),
       societeId: societe.id,
       nom: nom.trim(),
       enseigne: enseigne.trim() || undefined,
-      coutKgFL,
+      coutKgFL: coutKgFLEffectif,
       frequenceSaisie: frequence,
       modeFL,
+      profilBordereau: { ...profil, categories: profil.categories.filter((c) => c.libelle.trim()) },
       collecteurs: collecteurs.filter((c) => c.nom.trim()),
       creeLe: initial?.creeLe ?? maintenant,
       versionsParametres: versions,
@@ -561,29 +601,71 @@ function FormulaireMagasin({
           <span>Enseigne (facultatif)</span>
           <input type="text" value={enseigne} onChange={(e) => setEnseigne(e.target.value)} placeholder="Ex. Bio&Local" />
         </label>
-        <label className="field">
-          <span>Coût de revient moyen F&amp;L</span>
-          <div className="suffixe">
-            <input type="number" inputMode="decimal" min={0} step={0.1} value={coutKgFL} onChange={(e) => setCoutKgFL(Number(e.target.value))} />
-            <em>€/kg</em>
+        <div className="field">
+          <span>Bordereau : ce qui est pesé et comment c’est valorisé</span>
+          <div className="chips" style={{ marginBottom: 6 }}>
+            {(Object.keys(PROFILS_PRESETS) as (keyof typeof PROFILS_PRESETS)[]).map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`chip ${presetDuProfil(profil) === k ? 'active' : ''}`}
+                onClick={() => setProfil({ colis: true, categories: PROFILS_PRESETS[k].categories.map((c) => ({ ...c })) })}
+              >
+                {PROFILS_PRESETS[k].libelle}
+              </button>
+            ))}
           </div>
-          <span className="aide">Préréglé à 2,20 €/kg. Source : total des achats F&amp;L annuels ÷ tonnage acheté, ou échantillonnage sur 2 semaines.</span>
-        </label>
-        <label className="field">
-          <span>Fruits &amp; légumes</span>
-          <div className="chips" style={{ marginBottom: 0 }}>
-            <button type="button" className={`chip ${modeFL === 'poids' ? 'active' : ''}`} onClick={() => setModeFL('poids')}>
-              Pesés à l’enlèvement (kg)
-            </button>
-            <button type="button" className={`chip ${modeFL === 'inclus' ? 'active' : ''}`} onClick={() => setModeFL('inclus')}>
-              Inclus dans le montant scanné
-            </button>
-          </div>
-          <span className="aide">
-            Pesés : valorisés au coût moyen du kilo ci-dessus. Inclus : votre démarque « don » comprend déjà les F&amp;L,
-            un seul montant à saisir, pas de pesée. Modifiable à chaque saisie.
+          <span className="aide" style={{ display: 'block', marginBottom: 8 }}>
+            {presetDuProfil(profil) ? PROFILS_PRESETS[presetDuProfil(profil)!].description : 'Profil personnalisé : chaque catégorie a sa propre règle.'}{' '}
+            Chaque enseigne a ses habitudes de scan des pertes : ajustez catégorie par catégorie.
           </span>
-        </label>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Catégorie pesée</th>
+                  <th>Sa valeur vient…</th>
+                  <th className="num">€/kg</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {profil.categories.map((c, i) => (
+                  <tr key={c.id}>
+                    <td><input type="text" value={c.libelle} onChange={(e) => majCategorie(i, { libelle: e.target.value })} style={{ padding: 6, minWidth: 140 }} /></td>
+                    <td>
+                      <select value={c.valorisation} onChange={(e) => majCategorie(i, { valorisation: e.target.value as CategoriePesee['valorisation'], coutKg: e.target.value === 'cout_kg' ? (c.coutKg ?? 2.2) : undefined })} style={{ padding: 6 }}>
+                        <option value="releve">du relevé (scanné en démarque)</option>
+                        <option value="cout_kg">du poids × coût au kilo</option>
+                      </select>
+                    </td>
+                    <td className="num">
+                      {c.valorisation === 'cout_kg' && (
+                        <input type="number" inputMode="decimal" min={0} step={0.1} value={c.coutKg ?? ''} onChange={(e) => majCategorie(i, { coutKg: Number(e.target.value) || 0 })} style={{ width: 80, padding: 6, textAlign: 'right' }} />
+                      )}
+                    </td>
+                    <td>
+                      {c.id !== 'fl' && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setProfil((p) => ({ ...p, categories: p.categories.filter((_, j) => j !== i) }))} aria-label="Retirer">✕</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            style={{ marginTop: 6 }}
+            onClick={() => setProfil((p) => ({ ...p, categories: [...p.categories, { id: `cat${Date.now().toString(36)}`, libelle: '', valorisation: 'releve' }] }))}
+          >
+            + Ajouter une catégorie
+          </button>
+          <span className="aide" style={{ display: 'block', marginTop: 6 }}>
+            Coût au kilo : total des achats annuels de la catégorie ÷ tonnage acheté, ou échantillonnage sur deux semaines. Modifiable à tout moment ; chaque ligne du registre fige les coefficients du jour.
+          </span>
+        </div>
         <label className="field" style={{ marginBottom: 0 }}>
           <span>Fréquence de saisie des pertes</span>
           <div className="chips" style={{ marginBottom: 0 }}>

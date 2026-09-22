@@ -1,4 +1,4 @@
-import type { AppState, Facture, Magasin, Saisie, Societe } from '../types'
+import type { AppState, Facture, Magasin, Saisie, Societe } from '../types.ts'
 import {
   baseSemaine,
   co2Evite,
@@ -10,8 +10,8 @@ import {
   resultatAnnuel,
   TAUX_REDUCTION,
   type ResultatAnnuel,
-} from './calc'
-import { compareWeekIds, mondayOfWeek, parseWeekId, weeksInYear } from './iso'
+} from './calc.ts'
+import { compareWeekIds, mondayOfWeek, parseWeekId, weeksInYear } from './iso.ts'
 import {
   depasseSeuilAlerte,
   derouleFacturation,
@@ -23,10 +23,10 @@ import {
   tauxCommissionPct,
   SEUIL_ALERTE_CA,
   type LigneFacturation,
-} from './facturation'
-import { fmtEUR } from './format'
-import { suiviReports, type SuiviReports } from './reports'
-import { uid } from './storage'
+} from './facturation.ts'
+import { fmtEUR } from './format.ts'
+import { suiviReports, type SuiviReports } from './reports.ts'
+import { uid } from './storage.ts'
 
 export function saisiesDuMagasin(state: AppState, magasinId: string, exercice: number): Saisie[] {
   return state.saisies
@@ -35,6 +35,9 @@ export function saisiesDuMagasin(state: AppState, magasinId: string, exercice: n
 }
 
 export function baseDeLaSaisie(s: Saisie): number {
+  // Lignes récentes : la valeur des pesées est figée à l'enregistrement selon le profil
+  // du bordereau (catégories valorisées au kilo). Anciennes lignes : kg F&L × coût/kg.
+  if (s.coutPeseeApplique !== undefined) return baseSemaine(s.pvEmballes, s.margePctAppliquee, 0, 0) + s.coutPeseeApplique
   return baseSemaine(s.pvEmballes, s.margePctAppliquee, s.kgFL, s.coutKgFLApplique)
 }
 

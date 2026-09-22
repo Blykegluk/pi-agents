@@ -135,6 +135,12 @@ export function ScanBordereau({
               <span>Fruits &amp; légumes (net)</span>
               <strong>{l.kgFL > 0 ? `${fmtNum(l.kgFL, 1)} kg` : '— non lu'}</strong>
             </div>
+            {(l.kgPain > 0 || l.kgAutres > 0) && (
+              <div className="ligne">
+                <span>Autres pesées</span>
+                <strong>{[l.kgPain > 0 ? `pain ${fmtNum(l.kgPain, 1)} kg` : '', l.kgAutres > 0 ? `autres ${fmtNum(l.kgAutres, 1)} kg${l.autresPrecision ? ` (${l.autresPrecision})` : ''}` : ''].filter(Boolean).join(' · ')}</strong>
+              </div>
+            )}
             <div className="ligne">
               <span>Signatures</span>
               <strong>{l.signe ? 'présentes' : 'absentes ou illisibles'}</strong>

@@ -170,8 +170,7 @@ attendre('total facturé sur l’exercice = 18 % × 30 000', totalFacture, 5_400
   attendre('cohérence : coût = PV HT × (1 − marge) redonne le prix d’achat saisi', normaliserEnPVHT(700, 'pa_ht', 30) * 0.7, 700)
 }
 
-console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)
-process.exit(echecs === 0 ? 0 : 1)
+
 
 // ---------- Règle de verdict d'éligibilité ----------
 {
@@ -194,3 +193,25 @@ process.exit(echecs === 0 ? 0 : 1)
     if (!ok) process.exitCode = 1
   }
 }
+
+// ---------- Profils de bordereau : valorisation des pesées ----------
+{
+  const { coutPesee, profilDeMagasin } = await import('../src/lib/bordereau.ts')
+  const { baseDeLaSaisie } = await import('../src/lib/selectors.ts')
+  const base = { id: 'x', magasinId: 'm', semaine: '2026-W38', type: 'don' as const, pvEmballes: 1000, kgFL: 10, justificatifs: [], horodatage: '', margePctAppliquee: 30, coutKgFLApplique: 2 }
+  const cas: [string, number, number][] = [
+    ['ancienne ligne : 1000 × 0,7 + 10 kg × 2 €', baseDeLaSaisie(base), 720],
+    ['tout scanné : coutPeseeApplique = 0 → 700', baseDeLaSaisie({ ...base, coutPeseeApplique: 0, poids: { fl: 10, pain: 3 } }), 700],
+    ['vrac pesé : 10 kg F&L × 2,2 + 3 kg pain × 2,5 = 29,5', coutPesee({ fl: 10, pain: 3 }, { colis: true, categories: [{ id: 'fl', libelle: 'F&L', valorisation: 'cout_kg', coutKg: 2.2 }, { id: 'pain', libelle: 'Pain', valorisation: 'cout_kg', coutKg: 2.5 }, { id: 'autres', libelle: 'Autres', valorisation: 'releve' }] }), 29.5],
+    ['profil dérivé (modeFL inclus) : F&L au relevé', profilDeMagasin({ id: 'm', societeId: 's', nom: 'x', coutKgFL: 2, modeFL: 'inclus', collecteurs: [], creeLe: '', versionsParametres: [] }).categories[0].valorisation === 'releve' ? 1 : 0, 1],
+    ['profil dérivé (modeFL poids) : F&L au kilo, 2 €', profilDeMagasin({ id: 'm', societeId: 's', nom: 'x', coutKgFL: 2, modeFL: 'poids', collecteurs: [], creeLe: '', versionsParametres: [] }).categories[0].coutKg ?? 0, 2],
+  ]
+  for (const [nom, obtenu, attendu] of cas) {
+    const ok = Math.abs(obtenu - attendu) < 0.005
+    console.log(`${ok ? '✓' : '✗'} bordereau : ${nom} : ${obtenu} (attendu ${attendu})`)
+    if (!ok) process.exitCode = 1
+  }
+}
+
+console.log(echecs === 0 ? '\nToutes les vérifications passent.' : `\n${echecs} vérification(s) en échec !`)
+process.exit(echecs === 0 && !process.exitCode ? 0 : 1)

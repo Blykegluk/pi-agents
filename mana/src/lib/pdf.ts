@@ -7,6 +7,8 @@ import { coutEmballes, coutFL, kgDetournes } from './calc'
 import { libelleMois, moisDeLaSemaine } from './facturation'
 import { denomination } from './identite'
 import { resumePassages } from './annuaire'
+import { profilDeMagasin } from './bordereau'
+import { EDITEUR, VERSION_CONTRAT, articlesContrat } from './contrat'
 
 const MENTION_LEGALE =
   'Mana n’est pas un conseil fiscal ; ce document est destiné à validation par votre expert-comptable.'
@@ -408,10 +410,10 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
   // Émetteur / client
   doc.setFontSize(9)
   doc.setFont('InstrumentSans', 'bold')
-  doc.text('Mana SAS', 14, y)
+  doc.text(t(`${EDITEUR.denomination} ${EDITEUR.forme} — service Mana`), 14, y)
   doc.setFont('InstrumentSans', 'normal')
-  doc.text(t('[Adresse Mana — à compléter]'), 14, y + 5)
-  doc.text(t('SIREN : [SIREN Mana] — TVA : [N° TVA Mana]'), 14, y + 10)
+  doc.text(t(EDITEUR.adresse), 14, y + 5)
+  doc.text(t(`${EDITEUR.rcs} — capital ${EDITEUR.capital} — TVA ${EDITEUR.tva}`), 14, y + 10)
 
   doc.setFont('InstrumentSans', 'bold')
   doc.text(t(denomination(societe)), 196, y, { align: 'right' })
@@ -488,7 +490,23 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
     y += lines.length * 4.2 + 1.5
   }
 
-  piedDePage(doc, 'Facture établie par Mana SAS. Pas d’économie d’impôt = pas de facture.')
+    // Conditions de paiement et coordonnées bancaires
+  y += 6
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(9)
+  doc.text(t('Règlement'), 14, y)
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(8.5)
+  doc.text(
+    t(
+      `Payable à 30 jours par prélèvement SEPA (mandat signé) ou par virement : IBAN ${EDITEUR.iban} — BIC ${EDITEUR.bic} (${EDITEUR.banque}). ` +
+        'Pénalités de retard : trois fois le taux d’intérêt légal ; indemnité forfaitaire de recouvrement : 40 € (art. L. 441-10 et D. 441-5 du code de commerce). Pas d’escompte pour paiement anticipé.',
+    ),
+    14,
+    y + 5,
+    { maxWidth: 182 },
+  )
+  piedDePage(doc, EDITEUR.mention)
   doc.save(`${facture.numero.toLowerCase()}-${slug(denomination(societe))}.pdf`)
 }
 
@@ -600,11 +618,15 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFillColor(243, 228, 198)
   doc.roundedRect(14, y, 182, 17, 2, 2, 'F')
   doc.setFontSize(8.5)
+  const profil = profilDeMagasin(magasin)
+  const auKilo = profil.categories.filter((c) => c.valorisation === 'cout_kg').map((c) => c.libelle.toLowerCase())
   doc.text(
     t(
-      'Ce bordereau prouve la remise — il ne fixe pas la valeur fiscale. Produits emballés : valorisés dans Mana par la ' +
-        'démarque scannée en magasin (en €) — comptez les colis (bacs, cartons ou sacs), pas besoin de peser. ' +
-        'Fruits & légumes : valorisés au poids — la pesée ci-dessous est la référence à reporter dans Mana.',
+      'Ce bordereau prouve la remise — il ne fixe pas la valeur fiscale. Produits scannés en démarque : valorisés dans Mana par le ' +
+        'relevé du back-office (en €) — comptez les colis (bacs, cartons ou sacs). ' +
+        (auKilo.length > 0
+          ? `Catégories valorisées au poids dans ce magasin : ${auKilo.join(', ')} — la pesée ci-dessous fait foi.`
+          : 'Les poids ci-dessous servent de preuve et de tonnage : tout est scanné dans ce magasin.'),
     ),
     17,
     y + 5,
@@ -612,10 +634,10 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   )
   y += 24
 
-  // Section 1 — produits emballés (comptage)
+  // Section 1 — colis remis (comptage)
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
-  doc.text(t('1. Produits emballés (démarque scannée en magasin)'), 14, y)
+  doc.text(t('1. Colis remis (produits emballés, scannés en démarque)'), 14, y)
   y += 8
   champ('Nombre de colis remis (bacs, cartons ou sacs) :', 112, 14)
   champ('Poids indicatif (kg) :', 196, 120)
@@ -623,16 +645,16 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   champ('Produits refusés / remarques :', 196, 14)
   y += 12
 
-  // Section 2 — fruits & légumes (pesée obligatoire)
+  // Section 2 — poids par catégorie (selon le profil du magasin)
   doc.setFont('InstrumentSans', 'bold')
   doc.setFontSize(11)
-  doc.text(t('2. Fruits & légumes (pesée obligatoire)'), 14, y)
+  doc.text(t('2. Poids par catégorie (net, en kg)'), 14, y)
   y += 5
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(120, 113, 100)
   doc.text(
-    t('Sac : pesez et notez directement en net (tare nulle). Cagette ou bac : notez le brut, la tare du contenant (~1 kg pour une cagette bois), et le net.'),
+    t('Sac : pesez et notez directement en net (tare nulle). Cagette ou bac : notez le brut, la tare du contenant (~1 kg pour une cagette bois), et le net. Une ligne par catégorie, plusieurs contenants s’additionnent.'),
     14,
     y,
     { maxWidth: 182 },
@@ -643,19 +665,20 @@ export async function pdfBordereau(magasin: Magasin, raisonSociale: string) {
   doc.setFontSize(9)
   doc.setFillColor(233, 223, 201)
   doc.rect(14, y, 182, 8, 'F')
-  doc.text(t('Contenant (cagette, sac…)'), 17, y + 5.5)
+  doc.text(t('Catégorie'), 17, y + 5.5)
   doc.text(t('Poids brut (kg)'), 92, y + 5.5)
   doc.text(t('Tare (kg)'), 130, y + 5.5)
   doc.text(t('Poids net (kg)'), 160, y + 5.5)
   y += 8
   doc.setFont('InstrumentSans', 'normal')
-  for (let i = 1; i <= 5; i++) {
+  const lignesPesee = [...profil.categories.map((c) => (c.preciser ? `${c.libelle} (préciser) : ` : c.libelle)), '']
+  for (const libelle of lignesPesee) {
     doc.setDrawColor(210, 200, 180)
     doc.rect(14, y, 182, 9)
     doc.line(88, y, 88, y + 9)
     doc.line(126, y, 126, y + 9)
     doc.line(156, y, 156, y + 9)
-    doc.text(t(`${i}.`), 17, y + 6)
+    doc.text(t(libelle), 17, y + 6)
     y += 9
   }
   y += 7
@@ -1273,3 +1296,80 @@ export async function pdfConventionDon(asso: Collecteur, societe?: Societe, maga
   piedDePage(doc, 'Modèle fourni par Mana — à adapter avec votre conseil si nécessaire. Mana n’est pas un conseil juridique ni fiscal.')
   doc.save(`mana-convention-don-${slug(asso.nom || 'association')}.pdf`)
 }
+
+
+// ---------- Contrat de service (signé en ligne) et convention intra-groupe ----------
+
+/** Exemplaire du contrat de service, avec les mentions de la signature électronique. */
+export async function pdfContratService(societe: Societe, signature?: { nomSignataire: string; email: string; signeLe: string; adresseIp?: string | null; id: string }) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
+  entete(doc, 'Contrat de service Mana', `Version ${VERSION_CONTRAT}`)
+  let y = 32
+  for (const a of articlesContrat(societe)) {
+    y = paragraphe(doc, a.titre, y, { bold: true, size: 11, gap: 2 })
+    y = paragraphe(doc, a.corps, y, { size: 9.5, gap: 4.5 })
+  }
+  y += 2
+  if (y > doc.internal.pageSize.getHeight() - 60) {
+    doc.addPage()
+    y = 30
+  }
+  doc.setFillColor(233, 223, 201)
+  doc.roundedRect(14, y, 182, signature ? 34 : 24, 2, 2, 'F')
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(10)
+  doc.text(t(signature ? 'Signé électroniquement' : 'Non signé'), 18, y + 7)
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(9)
+  if (signature) {
+    doc.text(t(`Pour ${denomination(societe)} : ${signature.nomSignataire} (${signature.email})`), 18, y + 13)
+    doc.text(t(`Le ${fmtDateHeure(signature.signeLe)}${signature.adresseIp ? ` — depuis l’adresse ${signature.adresseIp}` : ''}`), 18, y + 18)
+    doc.text(t(`Référence de signature : ${signature.id} — version du texte : ${VERSION_CONTRAT}`), 18, y + 23)
+    doc.text(t(`Pour ${EDITEUR.denomination} ${EDITEUR.forme} : ${EDITEUR.president}, président — accepté par la mise à disposition du service.`), 18, y + 29)
+  } else {
+    doc.text(t('Ce contrat se signe en ligne, dans Mana (onglet Magasins, carte de la société).'), 18, y + 13)
+    doc.text(t(`Pour ${EDITEUR.denomination} ${EDITEUR.forme} : ${EDITEUR.president}, président.`), 18, y + 18)
+  }
+  piedDePage(doc, EDITEUR.mention)
+  doc.save(`mana-contrat-service-${slug(societe.raisonSociale)}.pdf`)
+}
+
+/**
+ * Convention de prestations de services intra-groupe : LAB facture Mana à une
+ * société qu'elle contrôle. Le prix est celui du marché (le même que pour tout
+ * client), la convention l'établit noir sur blanc.
+ */
+export async function pdfConventionIntraGroupe(societe: Societe) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  await marque(doc)
+  entete(doc, 'Convention de prestations de services intra-groupe', `${EDITEUR.denomination} ${EDITEUR.forme} / ${denomination(societe)}`)
+  let y = 32
+  const parties = `Entre ${EDITEUR.denomination} ${EDITEUR.forme}, au capital de ${EDITEUR.capital}, ${EDITEUR.rcs}, siège ${EDITEUR.adresse}, représentée par son président ${EDITEUR.president}, ci-après « le Prestataire », ` +
+    `et ${denomination(societe)}, SIREN ${societe.siren}, représentée par son représentant légal, ci-après « la Filiale ». Le Prestataire détient le contrôle de la Filiale.`
+  y = paragraphe(doc, parties, y, { size: 10, gap: 6 })
+  const articles: [string, string][] = [
+    ['Article 1 — Objet', 'Le Prestataire fournit à la Filiale, par l’intermédiaire de son service Mana, la gestion des dons d’invendus alimentaires ouvrant droit à la réduction d’impôt de l’article 238 bis du CGI : application, accompagnement, registre, documents de fin d’exercice, dans les termes du contrat de service Mana signé en ligne par la Filiale, qui fait partie intégrante de la présente convention.'],
+    ['Article 2 — Prix de marché', `La rémunération est identique à celle pratiquée par le service Mana envers tout client tiers : ${SUCCESS_FEE_TEXTE}. Elle est fixée à des conditions normales de marché, sans avantage ni désavantage lié aux liens capitalistiques entre les parties.`],
+    ['Article 3 — Facturation', 'Les prestations sont facturées mensuellement sur les dons documentés, puis régularisées à la clôture sur la liasse fiscale de la Filiale, avec TVA au taux en vigueur. Chaque facture détaille la base retenue et le calcul, de sorte que la réalité et la valeur de la prestation puissent être justifiées auprès de l’administration.'],
+    ['Article 4 — Réalité de la prestation', 'La Filiale dispose à tout moment, dans l’application, du registre horodaté des dons, des bordereaux archivés et des documents produits : ils constituent la preuve de l’exécution des prestations facturées.'],
+    ['Article 5 — Durée', 'La convention prend effet à sa signature pour la durée du contrat de service Mana et suit son sort. Elle est soumise, le cas échéant, à la procédure des conventions réglementées applicable à la Filiale.'],
+    ['Article 6 — Droit applicable', 'Droit français. Tribunal de commerce de Nanterre.'],
+  ]
+  for (const [titre, corps] of articles) {
+    y = paragraphe(doc, titre, y, { bold: true, size: 11, gap: 2 })
+    y = paragraphe(doc, corps, y, { size: 10, gap: 5 })
+  }
+  y = paragraphe(doc, 'Fait en deux exemplaires à ………………………, le ……/……/………', y, { gap: 8 })
+  doc.setFont('InstrumentSans', 'bold')
+  doc.setFontSize(10.5)
+  doc.text(t(`Pour ${EDITEUR.denomination} ${EDITEUR.forme}`), 14, y)
+  doc.text(t(`Pour ${denomination(societe)}`), 110, y)
+  doc.setDrawColor(150, 143, 128)
+  doc.rect(14, y + 3, 86, 30)
+  doc.rect(110, y + 3, 86, 30)
+  piedDePage(doc, EDITEUR.mention)
+  doc.save(`convention-intra-groupe-lab-${slug(societe.raisonSociale)}.pdf`)
+}
+
+const SUCCESS_FEE_TEXTE = '30 % de la réduction d’impôt acquise au titre des dons documentés, soit 18 % de la base retenue, sans abonnement ni frais fixe'

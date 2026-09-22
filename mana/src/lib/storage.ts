@@ -1,4 +1,4 @@
-import type { AppState, Magasin, Societe } from '../types'
+import type { AppState, Magasin, Societe } from '../types.ts'
 
 const KEY = 'mana-state-v1'
 

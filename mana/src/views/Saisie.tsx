@@ -14,6 +14,7 @@ import { Pieces } from '../components/Pieces'
 import { uid } from '../lib/storage'
 import { compresserPhoto, lireFichiers } from '../lib/fichiers'
 import { creerDemande, lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
+import { categorieFL, coutPesee, libellePoids, poidsDeSaisie, profilDeMagasin } from '../lib/bordereau'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
 // --- Dates locales (AAAA-MM-JJ) ---
@@ -108,6 +109,8 @@ export function SaisieView({
   const [kg, setKg] = useState('')
   const [collecteur, setCollecteur] = useState('')
   const [signe, setSigne] = useState(false)
+  const [poids, setPoids] = useState<Record<string, string>>({})
+  const [precisionPoids, setPrecisionPoids] = useState('')
   const [noteJour, setNoteJour] = useState('')
   const [justificatifs, setJustificatifs] = useState<Justificatif[]>([])
   const [confirmationJour, setConfirmationJour] = useState(false)
@@ -169,6 +172,8 @@ export function SaisieView({
   useEffect(() => {
     setColis(bordereauExistant?.colis ? String(bordereauExistant.colis) : '')
     setKg(bordereauExistant?.kgFL ? String(bordereauExistant.kgFL) : '')
+    setPoids(bordereauExistant ? Object.fromEntries(Object.entries(poidsDeSaisie(bordereauExistant)).map(([k, v]) => [k, v ? String(v) : ''])) : {})
+    setPrecisionPoids(bordereauExistant?.precisionPoids ?? '')
     setCollecteur(bordereauExistant?.collecteur ?? (magasin?.collecteurs.length === 1 ? magasin.collecteurs[0].nom : ''))
     setSigne(bordereauExistant?.signe ?? false)
     setNoteJour(bordereauExistant?.note ?? '')
@@ -210,8 +215,13 @@ export function SaisieView({
 
   const plusieursCollecteurs = magasin.collecteurs.length >= 2
   const colisNum = Number(colis) || 0
-  const kgNum = flInclus ? 0 : Number(kg) || 0
-  const bordereauValide = (colisNum > 0 || kgNum > 0 || justificatifs.length > 0) && !(plusieursCollecteurs && !collecteur)
+  const profil = profilDeMagasin(magasin)
+  const catFL = categorieFL(profil)
+  const flValoriseAuKilo = catFL?.valorisation === 'cout_kg'
+  const poidsNum: Record<string, number> = Object.fromEntries(profil.categories.map((c) => [c.id, Number(poids[c.id]) || 0]))
+  const kgNum = poidsNum.fl ?? 0
+  const poidsTotalNum = Object.values(poidsNum).reduce((t, v) => t + v, 0)
+  const bordereauValide = (colisNum > 0 || poidsTotalNum > 0 || justificatifs.length > 0) && !(plusieursCollecteurs && !collecteur)
 
   const montantNum = Number(montant) || 0
   const tvaNum = Number(tauxTVA) || 0
@@ -266,7 +276,13 @@ export function SaisieView({
 
   function appliquerScan({ lecture, justificatif }: PropositionScan) {
     if (lecture.nbColis > 0) setColis(String(lecture.nbColis))
-    if (lecture.kgFL > 0 && !flInclus) setKg(String(lecture.kgFL))
+    setPoids((p) => ({
+      ...p,
+      ...(lecture.kgFL > 0 ? { fl: String(lecture.kgFL) } : {}),
+      ...(lecture.kgPain > 0 ? { pain: String(lecture.kgPain) } : {}),
+      ...(lecture.kgAutres > 0 ? { autres: String(lecture.kgAutres) } : {}),
+    }))
+    if (lecture.autresPrecision) setPrecisionPoids(lecture.autresPrecision)
     if (lecture.association) {
       const connue = magasin?.collecteurs.find((c) => c.nom.toLowerCase() === lecture.association.toLowerCase())
       if (connue) setCollecteur(connue.nom)
@@ -288,7 +304,10 @@ export function SaisieView({
       origine: 'bordereau',
       pvEmballes: 0,
       kgFL: kgNum,
-      flInclus: flInclus || undefined,
+      flInclus: !flValoriseAuKilo || undefined,
+      poids: poidsNum,
+      precisionPoids: precisionPoids.trim() || undefined,
+      coutPeseeApplique: coutPesee(poidsNum, profil),
       colis: colisNum || undefined,
       signe,
       collecteur: collecteur || undefined,
@@ -311,8 +330,11 @@ export function SaisieView({
         type: 'don',
         origine: 'bordereau',
         pvEmballes: 0,
-        kgFL: flInclus ? 0 : l.kgFL,
-        flInclus: flInclus || undefined,
+        kgFL: l.kgFL,
+        flInclus: !flValoriseAuKilo || undefined,
+        poids: { fl: l.kgFL, pain: l.kgPain, autres: l.kgAutres },
+        precisionPoids: l.autresPrecision || undefined,
+        coutPeseeApplique: coutPesee({ fl: l.kgFL, pain: l.kgPain, autres: l.kgAutres }, profil),
         colis: l.colis || undefined,
         signe: l.signe,
         collecteur: l.collecteur || undefined,
@@ -556,17 +578,27 @@ export function SaisieView({
             <span>Colis remis (bacs, cartons ou sacs)</span>
             <input type="number" inputMode="numeric" min={0} step={1} value={colis} onChange={(e) => setColis(e.target.value)} placeholder="Ex. 4" />
           </label>
-          {!flInclus && (
-            <label className="field">
-              <span>Fruits &amp; légumes pesés (net)</span>
+          {profil.categories.map((c) => (
+            <label className="field" key={c.id}>
+              <span>{c.libelle} pesé{c.libelle.endsWith('s') ? 's' : ''} (net){c.valorisation === 'cout_kg' ? ` · ${fmtEUR(c.coutKg ?? 0, 2)}/kg` : ''}</span>
               <div className="suffixe">
-                <input type="number" inputMode="decimal" min={0} step={0.5} value={kg} onChange={(e) => setKg(e.target.value)} placeholder="Ex. 12,5" />
+                <input type="number" inputMode="decimal" min={0} step={0.5} value={poids[c.id] ?? ''} onChange={(e) => setPoids((p) => ({ ...p, [c.id]: e.target.value }))} placeholder="Ex. 12,5" />
                 <em>kg</em>
               </div>
             </label>
+          ))}
+          {profil.categories.some((c) => c.preciser && (Number(poids[c.id]) || 0) > 0) && (
+            <label className="field">
+              <span>Précisez ce qui a été pesé en « Autres »</span>
+              <input type="text" value={precisionPoids} onChange={(e) => setPrecisionPoids(e.target.value)} placeholder="Ex. fromage à la coupe, vrac" />
+            </label>
           )}
         </div>
-        {flInclus && <p className="muted" style={{ marginTop: -4 }}>Fruits &amp; légumes inclus dans le montant du relevé pour ce magasin — pas de pesée à saisir.</p>}
+        <p className="muted" style={{ marginTop: -4 }}>
+          {profil.categories.every((c) => c.valorisation === 'releve')
+            ? 'Tout est scanné dans ce magasin : ces poids servent de preuve et de tonnage, la valeur vient du relevé.'
+            : `Valorisé au poids : ${profil.categories.filter((c) => c.valorisation === 'cout_kg').map((c) => c.libelle.toLowerCase()).join(', ')}. Le reste vient du relevé.`}
+        </p>
 
         <label className="field" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <input type="checkbox" checked={signe} onChange={(e) => setSigne(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--vert)' }} />
@@ -811,7 +843,7 @@ export function SaisieView({
               <div className="infos">
                 <strong>{labelJour(s.jour!)}{s.collecteur ? ` · ${s.collecteur}` : ''}</strong>
                 <small>
-                  {[s.colis ? `${s.colis} colis` : '', s.kgFL ? `${fmtNum(s.kgFL, 1)} kg F&L` : '', s.signe ? 'signé' : 'signature non confirmée', s.justificatifs.length ? `${s.justificatifs.length} photo${s.justificatifs.length > 1 ? 's' : ''}` : 'pas de photo'].filter(Boolean).join(' · ')}
+                  {[s.colis ? `${s.colis} colis` : '', libellePoids(s, profil), s.signe ? 'signé' : 'signature non confirmée', s.justificatifs.length ? `${s.justificatifs.length} photo${s.justificatifs.length > 1 ? 's' : ''}` : 'pas de photo'].filter(Boolean).join(' · ')}
                 </small>
               </div>
               <button className="btn btn-ghost btn-sm" onClick={() => { setJour(s.jour!); setMoisCal(s.jour!.slice(0, 7)) }}>Ouvrir</button>

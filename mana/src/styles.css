@@ -1339,3 +1339,9 @@ i.cal-point {
 /* ---- Collecte intégrée à la fiche magasin ---- */
 .collecte-integree { margin-top: 12px; padding: 12px 12px 4px; background: var(--papier); border-radius: 12px; border: 1px solid var(--trait-doux); }
 .collecte-integree .etapes .card { box-shadow: none; }
+
+/* ---- Contrat de service : texte défilant ---- */
+.contrat-texte { overflow: auto; flex: 1; min-height: 160px; max-height: 42vh; padding: 10px 12px; background: var(--sable); border-radius: 10px; font-size: 13px; line-height: 1.5; }
+.contrat-texte h4 { margin: 10px 0 2px; font-size: 13px; }
+.contrat-texte section:first-child h4 { margin-top: 0; }
+.contrat-texte p { margin: 0; }

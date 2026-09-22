@@ -107,6 +107,16 @@ export interface Societe {
   verification: VerificationSociete
   justificatifCA?: Justificatif
   creeLe: string
+  /** Contrat de service Mana signé en ligne (la preuve complète est en base, table mana_contrats). */
+  contrat?: ContratSigne
+}
+
+export interface ContratSigne {
+  id: string
+  version: string
+  signeLe: string
+  email: string
+  nomSignataire: string
 }
 
 /** Avancement de l'assistant « Mise en place de la collecte » (accompagnement). */
@@ -117,6 +127,29 @@ export interface MiseEnPlace {
   gisementKgJour?: number
 }
 
+/**
+ * Une catégorie pesée sur le bordereau. Sa valeur fiscale vient soit du relevé
+ * de démarque (le produit a été scanné en caisse : 'releve'), soit du poids
+ * multiplié par un coût de revient au kilo ('cout_kg') quand le magasin ne
+ * scanne pas ce type de produit. Chaque enseigne a ses habitudes : le profil
+ * est réglable magasin par magasin.
+ */
+export interface CategoriePesee {
+  id: string
+  libelle: string
+  valorisation: 'releve' | 'cout_kg'
+  /** €/kg, seulement si valorisation = 'cout_kg'. */
+  coutKg?: number
+  /** Demander de préciser ce qui a été pesé (catégorie fourre-tout). */
+  preciser?: boolean
+}
+
+export interface ProfilBordereau {
+  /** Le bordereau compte les colis de produits emballés. */
+  colis: boolean
+  categories: CategoriePesee[]
+}
+
 export interface Magasin {
   id: string
   societeId: string
@@ -124,6 +157,8 @@ export interface Magasin {
   enseigne?: string
   /** Coût de revient moyen fruits & légumes, €/kg */
   coutKgFL: number
+  /** Profil du bordereau (catégories pesées et leur valorisation). Dérivé de modeFL/coutKgFL s'il est absent. */
+  profilBordereau?: ProfilBordereau
   /** Rythme de saisie des pertes choisi par le magasin (hebdomadaire par défaut). */
   frequenceSaisie?: 'hebdomadaire' | 'quotidienne'
   /**
@@ -152,6 +187,16 @@ export interface Saisie {
   kgFL: number
   /** Les F&L sont compris dans `pvEmballes` (pas de pesée séparée). */
   flInclus?: boolean
+  /** Poids par catégorie du profil de bordereau (kg), ex. { fl: 12.5, pain: 3 }. */
+  poids?: Record<string, number>
+  /** Ce qui a été pesé dans une catégorie « à préciser ». */
+  precisionPoids?: string
+  /**
+   * Valeur (€, coût de revient) des catégories pesées valorisées au kilo,
+   * figée à l'enregistrement. Absente sur les anciennes lignes : le moteur
+   * retombe alors sur kgFL × coutKgFLApplique.
+   */
+  coutPeseeApplique?: number
   /** Association qui a enlevé les denrées — indispensable dès qu'un magasin en a plusieurs. */
   collecteur?: string
   /**

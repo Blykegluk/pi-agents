@@ -441,6 +441,10 @@ export default function App() {
   function genererFactures(societeId: string): number {
     const agg = aggParSociete(state, exercice).find((a) => a.societe.id === societeId)
     if (!agg) return 0
+    if (!agg.societe.contrat) {
+      alert('Signez d’abord le contrat de service Mana (onglet Magasins, carte de la société) : aucune facture n’est émise sans contrat.')
+      return 0
+    }
     const nouvelles = facturesCommissionManquantes(agg, exercice, new Date(), state.factures.map((f) => f.numero))
     if (nouvelles.length > 0) setState((s) => ({ ...s, factures: [...s.factures, ...nouvelles] }))
     return nouvelles.length
@@ -624,7 +628,7 @@ export default function App() {
             onOuvrirAide={() => setAideOuverte(true)}
           />
         )}
-        {!verrouille && tab === 'admin' && session && admin && <Admin session={session} nonLus={nonLus} onLu={rafraichirNonLus} />}
+        {!verrouille && tab === 'admin' && session && admin && <Admin session={session} nonLus={nonLus} onLu={rafraichirNonLus} societes={state.societes} />}
       </main>
 
       {!verrouille && (

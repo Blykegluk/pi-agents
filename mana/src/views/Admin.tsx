@@ -1,3 +1,4 @@
+import type { Societe } from '../types'
 import { useEffect, useMemo, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import {
@@ -22,7 +23,11 @@ import { exerciceCourant } from '../lib/demo'
  * Console administrateur Mana : demandes entrantes (mise en relation, support)
  * avec fil de discussion, et suivi d'activité de chaque client.
  */
-export function Admin({ session, nonLus, onLu }: { session: Session; nonLus: NonLus; onLu: () => void }) {
+import { pdfConventionIntraGroupe } from '../lib/pdf'
+
+export function Admin({ session, nonLus, onLu, societes = [] }: { session: Session; nonLus: NonLus; onLu: () => void
+  societes?: Societe[]
+}) {
   const [onglet, setOnglet] = useState<'demandes' | 'clients'>('demandes')
   const [demandes, setDemandes] = useState<Demande[]>([])
   const [clients, setClients] = useState<ClientAdmin[]>([])
@@ -79,6 +84,22 @@ export function Admin({ session, nonLus, onLu }: { session: Session; nonLus: Non
         <button className="amt" onClick={recharger}>Actualiser</button>
       </p>
       {erreur && <div className="info-banner alerte">{erreur}</div>}
+
+      {societes.length > 0 && (
+        <div className="card">
+          <h3>Documents LAB (éditeur de Mana)</h3>
+          <p className="muted" style={{ margin: '0 0 8px' }}>
+            LAB détient des sociétés clientes : la facturation intra-groupe doit s’appuyer sur une convention de prestations au prix de marché. Une par société, à signer une fois.
+          </p>
+          <div className="row-actions">
+            {societes.map((so) => (
+              <button key={so.id} className="btn btn-ghost btn-sm" onClick={() => void pdfConventionIntraGroupe(so)}>
+                ⬇ Convention intra-groupe — {so.raisonSociale}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="chips">
         <button className={`chip ${onglet === 'demandes' ? 'active' : ''}`} onClick={() => setOnglet('demandes')}>

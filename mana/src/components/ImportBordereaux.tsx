@@ -17,6 +17,9 @@ export interface BordereauImporte {
   collecteur: string
   colis: number
   kgFL: number
+  kgPain: number
+  kgAutres: number
+  autresPrecision: string
   signe: boolean
   garder: boolean
 }
@@ -61,7 +64,7 @@ export function ImportBordereaux({
       const paquet = fichiers.slice(i, i + 3)
       const resultats = await Promise.all(
         paquet.map(async (f): Promise<BordereauImporte> => {
-          const base = { id: uid(), fichier: f.name, jour: '', collecteur: magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '', colis: 0, kgFL: 0, signe: false, garder: true }
+          const base = { id: uid(), fichier: f.name, jour: '', collecteur: magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '', colis: 0, kgFL: 0, kgPain: 0, kgAutres: 0, autresPrecision: '', signe: false, garder: true }
           try {
             const { blob, base64, typeMime } = await compresserPhoto(f)
             const chemin = await televerserBordereau(compteId(session), blob, 'bordereau.jpg')
@@ -76,6 +79,9 @@ export function ImportBordereaux({
               collecteur: connue?.nom ?? base.collecteur,
               colis: lecture.nbColis,
               kgFL: lecture.kgFL,
+              kgPain: lecture.kgPain ?? 0,
+              kgAutres: lecture.kgAutres ?? 0,
+              autresPrecision: lecture.autresPrecision ?? '',
               signe: lecture.signe,
               garder: lecture.estUnBordereau,
             }
@@ -147,6 +153,8 @@ export function ImportBordereaux({
                 {magasin.collecteurs.length >= 2 && <th>Association</th>}
                 <th className="num">Colis</th>
                 <th className="num">F&amp;L (kg)</th>
+                <th className="num">Pain (kg)</th>
+                <th className="num">Autres (kg)</th>
                 <th>Signé</th>
                 <th>Lecture</th>
               </tr>
@@ -170,6 +178,11 @@ export function ImportBordereaux({
                   )}
                   <td className="num"><input type="number" min={0} step={1} value={l.colis || ''} onChange={(e) => maj(l.id, { colis: Number(e.target.value) || 0 })} style={{ width: 70, padding: 6, textAlign: 'right' }} /></td>
                   <td className="num"><input type="number" min={0} step={0.5} value={l.kgFL || ''} onChange={(e) => maj(l.id, { kgFL: Number(e.target.value) || 0 })} style={{ width: 80, padding: 6, textAlign: 'right' }} /></td>
+                  <td className="num"><input type="number" min={0} step={0.5} value={l.kgPain || ''} onChange={(e) => maj(l.id, { kgPain: Number(e.target.value) || 0 })} style={{ width: 80, padding: 6, textAlign: 'right' }} /></td>
+                  <td className="num">
+                    <input type="number" min={0} step={0.5} value={l.kgAutres || ''} onChange={(e) => maj(l.id, { kgAutres: Number(e.target.value) || 0 })} style={{ width: 80, padding: 6, textAlign: 'right' }} />
+                    {l.kgAutres > 0 && <input type="text" value={l.autresPrecision} onChange={(e) => maj(l.id, { autresPrecision: e.target.value })} placeholder="quoi ?" style={{ width: 90, padding: 4, marginTop: 4, fontSize: 12 }} />}
+                  </td>
                   <td><input type="checkbox" checked={l.signe} onChange={(e) => maj(l.id, { signe: e.target.checked })} /></td>
                   <td style={{ fontSize: 12.5, maxWidth: 260 }}>
                     {l.erreur ? <span style={{ color: 'var(--rouge)' }}>{l.erreur}</span>
@@ -204,7 +217,7 @@ export function ImportBordereaux({
               onClick={() => {
                 onEnregistrer(pretes)
                 setLignes([])
-                setMessage(`${pretes.length} bordereau${pretes.length > 1 ? 'x' : ''} enregistré${pretes.length > 1 ? 's' : ''} au registre — ${fmtNum(pretes.reduce((t, l) => t + l.kgFL, 0), 1)} kg de F&L, ${pretes.reduce((t, l) => t + l.colis, 0)} colis.`)
+                setMessage(`${pretes.length} bordereau${pretes.length > 1 ? 'x' : ''} enregistré${pretes.length > 1 ? 's' : ''} au registre — ${fmtNum(pretes.reduce((t, l) => t + l.kgFL + l.kgPain + l.kgAutres, 0), 1)} kg pesés, ${pretes.reduce((t, l) => t + l.colis, 0)} colis.`)
               }}
             >
               Enregistrer {pretes.length} bordereau{pretes.length > 1 ? 'x' : ''}

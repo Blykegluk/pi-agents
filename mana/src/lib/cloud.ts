@@ -327,6 +327,9 @@ export interface LectureBordereau {
   nomCollecteur: string
   nbColis: number
   kgFL: number
+  kgPain: number
+  kgAutres: number
+  autresPrecision: string
   refus: string
   signe: boolean
   confiance: 'haute' | 'moyenne' | 'basse'
@@ -424,4 +427,36 @@ export async function televerserDocumentAssociation(userId: string, fichier: Fil
   const { error } = await supabase.storage.from(BUCKET_BORDEREAUX).upload(chemin, fichier, { contentType: (fichier as File).type || 'application/octet-stream', upsert: false })
   if (error) throw new Error(`Archivage impossible : ${error.message}`)
   return chemin
+}
+
+// ---------- Contrat de service signé en ligne ----------
+
+export interface ContratDistant {
+  id: string
+  signe_le: string
+  email: string
+  adresse_ip: string | null
+  version: string
+}
+
+/** Signe le contrat : la fonction serveur ajoute IP, agent et horodatage à la preuve. */
+export async function signerContrat(corps: { societeId: string; raisonSociale: string; siren: string; version: string; empreinte: string; nomSignataire: string }): Promise<ContratDistant> {
+  const { data, error } = await supabase.functions.invoke<{ contrat?: ContratDistant; erreur?: string }>('signer-contrat', { body: corps })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.contrat) throw new Error(data?.erreur ?? 'Signature impossible.')
+  return data.contrat
+}
+
+/** Les preuves de signature d'une société (la plus récente en premier). */
+export async function contratsSignes(societeId: string): Promise<(ContratDistant & { nom_signataire: string; empreinte: string })[]> {
+  const { data, error } = await supabase
+    .from('mana_contrats')
+    .select('id, signe_le, email, adresse_ip, version, nom_signataire, empreinte')
+    .eq('societe_id', societeId)
+    .order('signe_le', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as (ContratDistant & { nom_signataire: string; empreinte: string })[]
 }

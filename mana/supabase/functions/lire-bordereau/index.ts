@@ -23,7 +23,7 @@ const enTetes = {
 const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['estUnBordereau', 'date', 'association', 'nomCollecteur', 'nbColis', 'kgFL', 'refus', 'signe', 'confiance', 'doutes'],
+  required: ['estUnBordereau', 'date', 'association', 'nomCollecteur', 'nbColis', 'kgFL', 'kgPain', 'kgAutres', 'autresPrecision', 'refus', 'signe', 'confiance', 'doutes'],
   properties: {
     estUnBordereau: {
       type: 'boolean',
@@ -47,6 +47,9 @@ const SCHEMA = {
       description:
         'Total NET des fruits & légumes en kilogrammes (ligne « Total net F&L », ou somme des poids nets du tableau). 0 si absent.',
     },
+    kgPain: { type: 'number', description: 'Poids NET de pain en kilogrammes (ligne « Pain » du tableau des pesées). 0 si absent.' },
+    kgAutres: { type: 'number', description: 'Poids NET des autres produits pesés en kilogrammes (ligne « Autres »). 0 si absent.' },
+    autresPrecision: { type: 'string', description: 'Ce qui a été pesé en « Autres », tel qu’écrit. Chaîne vide si rien.' },
     refus: { type: 'string', description: 'Produits refusés ou remarques manuscrites. Chaîne vide si rien.' },
     signe: { type: 'boolean', description: 'true si les deux cadres de signature portent une signature.' },
     confiance: {
@@ -65,7 +68,7 @@ const SCHEMA = {
 
 const INSTRUCTIONS = `Tu lis la photo d'un bordereau d'enlèvement de denrées alimentaires, rempli à la main en magasin puis signé par l'association qui collecte.
 
-Le gabarit imprimé par Mana comporte : date et heure, association bénéficiaire, nom du collecteur, une section « 1. Produits emballés » avec le nombre de colis remis et un poids indicatif facultatif, une section « 2. Fruits & légumes » avec un tableau (contenant / poids brut / tare / poids net) et une ligne « Total net F&L », puis deux cadres de signature. Une association peut aussi utiliser son propre modèle : retrouve alors les mêmes informations où qu'elles soient.
+Le gabarit imprimé par Mana comporte : date et heure, association bénéficiaire, nom du collecteur, une section « 1. Colis remis » (produits emballés) avec le nombre de colis, une section « 2. Poids par catégorie » avec un tableau (catégorie / poids brut / tare / poids net) dont les lignes sont typiquement « Fruits & légumes », « Pain » et « Autres (préciser) », puis deux cadres de signature. Un ancien gabarit n'a qu'un tableau « Fruits & légumes » avec une ligne « Total net F&L ». Une association peut aussi utiliser son propre modèle : retrouve alors les mêmes informations où qu'elles soient. Renvoie chaque catégorie dans son champ (kgFL, kgPain, kgAutres) sans jamais les additionner entre elles.
 
 Règles de lecture, à suivre strictement :
 - Ne devine jamais un chiffre. Si une case est vide, illisible ou ambiguë, renvoie 0 (ou une chaîne vide) et signale-le dans « doutes ».
