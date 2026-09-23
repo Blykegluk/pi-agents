@@ -246,6 +246,40 @@ export async function majStatutDemande(demandeId: string, statut: Demande['statu
   if (error) throw new Error(error.message)
 }
 
+/** Complète le contenu d'une demande (admin) : propositions d'associations, mails envoyés… */
+export async function majContenuDemande(demandeId: string, contenu: Record<string, unknown>): Promise<void> {
+  const { error } = await supabase
+    .from('mana_demandes')
+    .update({ contenu, updated_at: new Date().toISOString() })
+    .eq('id', demandeId)
+  if (error) throw new Error(error.message)
+}
+
+export interface AssociationTrouvee {
+  nom: string
+  type: string
+  adresse: string
+  telephone: string
+  email: string
+  site: string
+  distance: string
+  eligibilite: 'reseau_national' | 'a_verifier' | 'inconnue'
+  collecteMagasin: 'oui' | 'non' | 'inconnu'
+  note: string
+  source: string
+}
+
+/** Associations d'aide alimentaire autour d'un magasin, cherchées sur le web par Claude (admin). */
+export async function trouverAssociations(params: { adresse: string; magasin?: string; societe?: string; besoin?: string; exclure?: string[] }): Promise<{ associations: AssociationTrouvee[]; remarque: string }> {
+  const { data, error } = await supabase.functions.invoke<{ associations?: AssociationTrouvee[]; remarque?: string; erreur?: string }>('trouver-associations', { body: params })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.associations) throw new Error(data?.erreur ?? 'Recherche impossible.')
+  return { associations: data.associations, remarque: data.remarque ?? '' }
+}
+
 export async function connexion(email: string, motDePasse: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse })
   if (!error) return null

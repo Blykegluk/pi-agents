@@ -91,6 +91,8 @@ export function Collecte({
   const [frequence, setFrequence] = useState<string>('')
   const [editionCollecteur, setEditionCollecteur] = useState<number | null>(null)
   const [brouillon, setBrouillon] = useState<Collecteur>({ ...COLLECTEUR_VIDE })
+  // Une association s'enregistre avec son e-mail : c'est par lui que Mana suit la collecte.
+  const brouillonValide = brouillon.nom.trim() !== '' && /^\S+@\S+\.\S+$/.test((brouillon.email ?? '').trim())
   const [plage, setPlage] = useState<string>('')
   const [ville, setVille] = useState('')
   const [precision, setPrecision] = useState('')
@@ -158,6 +160,7 @@ export function Collecte({
     setMessageChangement('')
     try {
       const asso = assoConcernee || (magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '')
+      const fiche = magasin.collecteurs.find((c) => c.nom === asso)
       await creerDemande(
         compteId(session),
         session.user.email ?? '',
@@ -166,7 +169,11 @@ export function Collecte({
         {
           magasin: magasin.nom,
           societe: societe?.raisonSociale ?? '',
+          adresse_magasin: magasin.adresse ?? (societe?.verification.adresseSiege ? `${societe.verification.adresseSiege.voie}, ${societe.verification.adresseSiege.codePostal} ${societe.verification.adresseSiege.commune} (siège)` : ''),
           association_concernee: asso || 'aucune en particulier',
+          association_email: fiche?.email ?? '',
+          association_contact: [fiche?.contact, fiche?.telephone].filter(Boolean).join(' · '),
+          rythme_convenu: fiche ? resumePassages(fiche) : '',
           motif,
           associations_en_place: magasin.collecteurs.map((c) => c.nom).join(', ') || 'aucune',
         },
@@ -359,8 +366,8 @@ export function Collecte({
                   <div className="row-actions" style={{ marginTop: 10 }}>
                     <button
                       className="btn btn-primary btn-sm"
-                      disabled={!brouillon.nom.trim()}
-                      style={{ opacity: brouillon.nom.trim() ? 1 : 0.5, flex: 1 }}
+                      disabled={!brouillonValide}
+                      style={{ opacity: brouillonValide ? 1 : 0.5, flex: 1 }}
                       onClick={() => {
                         onSaveMagasin({
                           ...magasin,
@@ -485,8 +492,8 @@ export function Collecte({
             <div className="row-actions" style={{ marginTop: 10 }}>
               <button
                 className="btn btn-primary btn-sm"
-                disabled={!brouillon.nom.trim()}
-                style={{ opacity: brouillon.nom.trim() ? 1 : 0.5, flex: 1 }}
+                disabled={!brouillonValide}
+                style={{ opacity: brouillonValide ? 1 : 0.5, flex: 1 }}
                 onClick={() => {
                   onSaveMagasin({ ...magasin, collecteurs: [...magasin.collecteurs, { ...brouillon, nom: brouillon.nom.trim() }] })
                   setBrouillon({ ...COLLECTEUR_VIDE })

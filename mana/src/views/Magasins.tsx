@@ -596,6 +596,7 @@ function FormulaireMagasin({
 }) {
   const [nom, setNom] = useState(initial?.nom ?? '')
   const [enseigne, setEnseigne] = useState(initial?.enseigne ?? '')
+  const [adresse, setAdresse] = useState(initial?.adresse ?? '')
   const [coutKgFL, setCoutKgFL] = useState(initial?.coutKgFL ?? 2.2)
   const [frequence, setFrequence] = useState<'hebdomadaire' | 'quotidienne'>(initial?.frequenceSaisie ?? 'hebdomadaire')
   const [profil, setProfil] = useState<ProfilBordereau>(() =>
@@ -630,6 +631,7 @@ function FormulaireMagasin({
       societeId: societe.id,
       nom: nom.trim(),
       enseigne: enseigne.trim() || undefined,
+      adresse: adresse.trim() || undefined,
       coutKgFL: coutKgFLEffectif,
       frequenceSaisie: frequence,
       modeFL,
@@ -669,6 +671,11 @@ function FormulaireMagasin({
         <label className="field">
           <span>Enseigne (facultatif)</span>
           <input type="text" value={enseigne} onChange={(e) => setEnseigne(e.target.value)} placeholder="Ex. Bio&Local" />
+        </label>
+        <label className="field">
+          <span>Adresse du magasin</span>
+          <input type="text" value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Ex. 58 boulevard Ornano, 75018 Paris" />
+          <span className="aide">Sert à trouver des associations à proximité et figure sur les bordereaux.</span>
         </label>
         <div className="field">
           <span>Bordereau : ce qui est pesé et comment c’est valorisé</span>

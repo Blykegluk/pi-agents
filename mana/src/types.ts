@@ -155,6 +155,8 @@ export interface Magasin {
   societeId: string
   nom: string
   enseigne?: string
+  /** Adresse du point de vente (rue, code postal, ville) : bordereaux, recherche d'associations à proximité. */
+  adresse?: string
   /** Coût de revient moyen fruits & légumes, €/kg */
   coutKgFL: number
   /** Profil du bordereau (catégories pesées et leur valorisation). Dérivé de modeFL/coutKgFL s'il est absent. */

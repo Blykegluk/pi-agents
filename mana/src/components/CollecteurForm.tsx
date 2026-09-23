@@ -194,8 +194,9 @@ export function CollecteurForm({
           <input type="tel" inputMode="tel" value={valeur.telephone ?? ''} onChange={(e) => maj('telephone', e.target.value)} placeholder="Ex. 01 45 22 18 40" />
         </label>
         <label className="field">
-          <span>E-mail (facultatif)</span>
+          <span>E-mail de l’association *</span>
           <input type="email" inputMode="email" value={valeur.email ?? ''} onChange={(e) => maj('email', e.target.value)} placeholder="Ex. contact@association.org" />
+          <span className="aide">Mana s’en sert pour le suivi de la collecte : justificatifs, relances, changement d’association.</span>
         </label>
         <label className="field">
           <span>N° RNA ou SIREN (facultatif — repris sur le reçu fiscal)</span>

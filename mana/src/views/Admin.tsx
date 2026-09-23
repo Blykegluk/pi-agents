@@ -5,6 +5,7 @@ import {
   envoyerMessage,
   listerClients,
   marquerLu,
+  majContenuDemande,
   majStatutDemande,
   mesDemandes,
   messagesDe,
@@ -14,6 +15,7 @@ import {
   type NonLus,
 } from '../lib/cloud'
 import { Composer } from '../components/Composer'
+import { ActionsAssociation } from '../components/ActionsAssociation'
 import { aggParSociete } from '../lib/selectors'
 import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
 import { LIBELLES_STATUT } from '../components/Aide'
@@ -132,13 +134,25 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
 
               {Object.keys(d.contenu).length > 0 && (
                 <div className="detail-lignes" style={{ marginTop: 6 }}>
-                  {Object.entries(d.contenu).map(([cle, valeur]) => (
+                  {Object.entries(d.contenu).filter(([cle]) => !cle.startsWith('propositions')).map(([cle, valeur]) => (
                     <div className="ligne" key={cle}>
                       <span style={{ textTransform: 'capitalize' }}>{cle.replace(/_/g, ' ')}</span>
                       <strong style={{ whiteSpace: 'normal', textAlign: 'right' }}>{String(valeur)}</strong>
                     </div>
                   ))}
                 </div>
+              )}
+
+              {(d.type === 'association' || d.type === 'collecte') && d.statut !== 'traitee' && (
+                <ActionsAssociation
+                  demande={d}
+                  adminEmail={session.user.email ?? ''}
+                  onConsigner={(texte) => repondre(d, texte)}
+                  onPropositions={async (associations, remarque) => {
+                    await majContenuDemande(d.id, { ...d.contenu, propositions: associations, propositions_remarque: remarque })
+                    setDemandes(await mesDemandes())
+                  }}
+                />
               )}
 
               <div className="row-actions" style={{ marginTop: 10 }}>
