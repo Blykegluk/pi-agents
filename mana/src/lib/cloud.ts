@@ -375,7 +375,7 @@ export interface LectureReleve {
 }
 
 /** Lecture d'un export de démarque (image ou PDF) par la fonction `lire-releve`. Proposition à valider. */
-export async function lireReleve(base64: string, typeMime: string, contexte: { magasin?: string; periodeAttendue?: string }): Promise<LectureReleve> {
+export async function lireReleve(base64: string, typeMime: string, contexte: { magasin?: string; periodeAttendue?: string; nomFichier?: string }): Promise<LectureReleve> {
   const { data, error } = await supabase.functions.invoke<{ lecture?: LectureReleve; erreur?: string }>('lire-releve', {
     body: { fichier: base64, typeMime, contexte },
   })

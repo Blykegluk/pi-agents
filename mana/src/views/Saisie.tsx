@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { coutEmballes, coutFL } from '../lib/calc'
@@ -16,7 +16,7 @@ import { compresserPhoto, lireFichiers } from '../lib/fichiers'
 import { creerDemande, lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
 import { categorieFL, coutPesee, libellePoids, poidsDeSaisie, profilDeMagasin } from '../lib/bordereau'
 import { VERSION_CONTRAT } from '../lib/contrat'
-import { estUnTableur, tableurEnTexte, texteEnBase64 } from '../lib/tableur'
+import { analyserTableur, estUnTableur, tableurEnTexte, texteEnBase64, type AnalyseTableur } from '../lib/tableur'
 import { denomination } from '../lib/identite'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
@@ -128,7 +128,16 @@ export function SaisieView({
   const [duLibre, setDuLibre] = useState(addJours(jourAujourdhui(), -6))
   const [auLibre, setAuLibre] = useState(jourAujourdhui())
   const [montant, setMontant] = useState('')
-  const [saisiEn, setSaisiEn] = useState<SaisiEn | ''>('')
+  // Nature (prix de vente / d'achat) et unité (HT / TTC) se choisissent séparément :
+  // une lecture peut connaître l'une sans l'autre, et il ne faut pas perdre ce qu'elle sait.
+  const [nature, setNature] = useState<'pv' | 'pa' | ''>('')
+  const [unite, setUnite] = useState<'ht' | 'ttc' | ''>('')
+  const saisiEn: SaisiEn | '' = nature && unite ? (`${nature}_${unite}` as SaisiEn) : ''
+  const setSaisiEn = (v: SaisiEn | '') => {
+    setNature(v ? (v.slice(0, 2) as 'pv' | 'pa') : '')
+    setUnite(v ? (v.slice(3) as 'ht' | 'ttc') : '')
+  }
+  const [analyseLocale, setAnalyseLocale] = useState<AnalyseTableur | null>(null)
   const [tauxTVA, setTauxTVA] = useState(String(TVA_ALIMENTAIRE))
   const [kgPeriode, setKgPeriode] = useState('')
   const [flInclus, setFlInclus] = useState(false)
@@ -187,8 +196,16 @@ export function SaisieView({
     setConfirmationJour(false)
   }, [bordereauExistant, magasinId, jour, magasin])
 
-  // Recharge le relevé quand la période change : ce qui a été saisi tel quel, pas la valeur normalisée
+  // Recharge le relevé quand la période change : ce qui a été saisi tel quel, pas la valeur normalisée.
+  // Sauf quand c'est une lecture de document qui vient de déplacer la période : ses valeurs priment.
+  const periodeDeplaceeParLecture = useRef(false)
+  const periodeCourante = useRef({ du, au })
+  periodeCourante.current = { du, au }
   useEffect(() => {
+    if (periodeDeplaceeParLecture.current) {
+      periodeDeplaceeParLecture.current = false
+      return
+    }
     const premiere = releveExistant[0]
     if (premiere?.montantSaisi !== undefined) {
       setMontant(String(premiere.montantSaisi))
@@ -204,7 +221,9 @@ export function SaisieView({
     setKgPeriode(kgs > 0 ? String(kgs) : '')
     setFlInclus(releveExistant.some((s) => s.flInclus) || (releveExistant.length === 0 && magasin?.modeFL === 'inclus'))
     setLectureReleve(null)
-    setConfirmationReleve(false)
+    setAnalyseLocale(null)
+    // (la confirmation « ✓ enregistré » n'est pas effacée ici : l'enregistrement lui-même
+    // recharge le relevé, et le badge doit rester visible quelques secondes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [releveExistant, magasin])
 
@@ -235,9 +254,8 @@ export function SaisieView({
   const pvHT = saisiEn ? normaliserEnPVHT(montantNum, saisiEn, societe.margePct, tvaNum) : 0
   const releveValide = periodeValide && ((montantNum > 0 && saisiEn !== '') || kgPeriodeNum > 0)
   const doutesReleve: string[] = []
-  if (montantNum > 0 && !saisiEn) doutesReleve.push('Précisez si le montant est HT ou TTC, et s’il s’agit du prix de vente ou du prix d’achat.')
-  if (lectureReleve?.unite === 'inconnu' && montantNum > 0) doutesReleve.push('Le document ne dit pas si le montant est HT ou TTC.')
-  if (lectureReleve?.nature === 'inconnu' && montantNum > 0) doutesReleve.push('Le document ne dit pas s’il s’agit du prix de vente ou du prix d’achat.')
+  if (montantNum > 0 && !unite) doutesReleve.push(lectureReleve || analyseLocale ? 'Le document ne dit pas si le montant est HT ou TTC : choisissez.' : 'Précisez si le montant est HT ou TTC.')
+  if (montantNum > 0 && !nature) doutesReleve.push(lectureReleve || analyseLocale ? 'Le document ne dit pas s’il s’agit du prix de vente ou du prix d’achat : choisissez.' : 'Précisez s’il s’agit du prix de vente ou du prix d’achat.')
 
   const semainePasseeCorr = compareWeekIds(semaineRecap, currentWeekId()) < 0
   const corrPvNum = Number(corrPv) || 0
@@ -357,13 +375,20 @@ export function SaisieView({
     if (!f || !session) return
     setLectureEnCours(true)
     setMessageReleve('')
+    setAnalyseLocale(null)
+    let analyse: AnalyseTableur | null = null
     try {
       let base64: string
       let typeMime: string
       if (estUnTableur(f)) {
-        // Excel, CSV, ODS : le tableur devient un texte tabulaire que la lecture comprend
-        base64 = texteEnBase64(await tableurEnTexte(f))
+        // Excel, CSV, ODS : le tableur devient un texte tabulaire que la lecture comprend…
+        const texte = await tableurEnTexte(f)
+        base64 = texteEnBase64(texte)
         typeMime = 'text/csv'
+        // …et on additionne nous-mêmes les lignes produit, sans attendre la lecture automatique
+        analyse = analyserTableur(texte, f.name)
+        setAnalyseLocale(analyse)
+        appliquerAnalyseLocale(analyse)
       } else if (f.type === 'application/pdf') {
         base64 = await fichierEnBase64(f)
         typeMime = 'application/pdf'
@@ -374,31 +399,55 @@ export function SaisieView({
       } else {
         throw new Error(`Format non pris en charge (${f.name}) : déposez une photo, une capture d’écran, un PDF ou un fichier Excel / CSV.`)
       }
-      const lecture = await lireReleve(base64, typeMime, { magasin: magasin.nom, periodeAttendue: periodeValide ? `${du} → ${au}` : undefined })
+      const periodeConnue = analyse?.du && analyse.au ? `${analyse.du} → ${analyse.au}` : periodeValide ? `${du} → ${au}` : undefined
+      const lecture = await lireReleve(base64, typeMime, { magasin: magasin.nom, periodeAttendue: periodeConnue, nomFichier: f.name })
       setLectureReleve(lecture)
-      if (!lecture.estUnReleve) {
+      if (!lecture.estUnReleve && !analyse?.sommeLignes) {
         setMessageReleve('Ce document ne ressemble pas à un relevé de démarque — rien n’a été repris.')
         return
       }
       if (lecture.du && lecture.au) {
+        if (lecture.du !== periodeCourante.current.du || lecture.au !== periodeCourante.current.au) periodeDeplaceeParLecture.current = true
         setMode('libre')
         setDuLibre(lecture.du)
         setAuLibre(lecture.au)
       }
       if (lecture.montant > 0) setMontant(String(lecture.montant))
       if (lecture.tauxTVA > 0) setTauxTVA(String(lecture.tauxTVA))
-      // On ne décide HT/TTC et PV/PA que si le document l'écrit : sinon la question reste posée au magasin
-      if (lecture.unite !== 'inconnu' && lecture.nature !== 'inconnu') {
-        setSaisiEn(`${lecture.nature === 'prix_vente' ? 'pv' : 'pa'}_${lecture.unite}` as SaisiEn)
-      } else {
-        setSaisiEn('')
-      }
-      setMessageReleve('Lecture reportée — vérifiez la période, le montant et sa nature, puis enregistrez.')
+      // On ne décide HT/TTC et PV/PA que si le document l'écrit : sinon la question reste posée au magasin.
+      // Ce que la lecture sait complète ce que l'analyse locale a trouvé, sans l'effacer.
+      if (lecture.nature !== 'inconnu') setNature(lecture.nature === 'prix_vente' ? 'pv' : 'pa')
+      if (lecture.unite !== 'inconnu') setUnite(lecture.unite)
+      setMessageReleve(analyse?.sommeLignes ? `${messageAnalyse(analyse)} Lecture automatique confirmée — vérifiez puis enregistrez.` : 'Lecture reportée — vérifiez la période, le montant et sa nature, puis enregistrez.')
     } catch (e) {
-      setMessageReleve((e as Error).message)
+      // Un tableur déjà additionné localement reste exploitable même si la lecture automatique échoue
+      setMessageReleve(analyse?.sommeLignes ? `${messageAnalyse(analyse)} (Lecture automatique indisponible : ${(e as Error).message})` : (e as Error).message)
     } finally {
       setLectureEnCours(false)
     }
+  }
+
+  /** Reporte dans le formulaire ce que le tableur dit de lui-même, avant toute lecture automatique. */
+  function appliquerAnalyseLocale(a: AnalyseTableur) {
+    const total = a.sommeLignes ?? a.totalFichier
+    if (total && total > 0) setMontant(String(total))
+    if (a.du && a.au) {
+      if (a.du !== periodeCourante.current.du || a.au !== periodeCourante.current.au) periodeDeplaceeParLecture.current = true
+      setMode('libre')
+      setDuLibre(a.du)
+      setAuLibre(a.au)
+    }
+    setNature(a.nature ?? '')
+    setUnite(a.unite ?? '')
+  }
+
+  function messageAnalyse(a: AnalyseTableur): string {
+    const total = a.sommeLignes ?? 0
+    let m = `Somme des ${a.nbLignes} lignes produit (colonne « ${a.colonneMontant} ») : ${fmtEUR(total, 2)}`
+    if (a.totalFichier !== undefined) m += Math.abs(a.totalFichier - total) < 0.01 ? ', égale au total du fichier.' : ` ; le fichier indique un total de ${fmtEUR(a.totalFichier, 2)}.`
+    else m += '.'
+    if (a.du && a.au) m += a.sourceDates === 'nom' ? ' Période lue dans le nom du fichier.' : ' Période lue dans la colonne des dates.'
+    return m
   }
 
   function enregistrerReleve() {
@@ -435,7 +484,7 @@ export function SaisieView({
     }))
     onSaveReleve(magasin.id, { du, au }, nouvelles)
     setConfirmationReleve(true)
-    setTimeout(() => setConfirmationReleve(false), 2500)
+    setTimeout(() => setConfirmationReleve(false), 5000)
   }
 
   function enregistrerCorrection() {
@@ -766,9 +815,9 @@ export function SaisieView({
             <span>Ce montant est…</span>
             <div className="chips" style={{ marginBottom: 0 }}>
               {(['ht', 'ttc'] as const).map((u) => {
-                const actif = saisiEn.endsWith(`_${u}`)
+                const actif = unite === u
                 return (
-                  <button key={u} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setSaisiEn(`${saisiEn.startsWith('pa') ? 'pa' : 'pv'}_${u}` as SaisiEn)}>
+                  <button key={u} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setUnite(u)}>
                     {u === 'ht' ? 'Hors taxes (HT)' : 'Toutes taxes (TTC)'}
                   </button>
                 )
@@ -779,9 +828,9 @@ export function SaisieView({
             <span>…exprimé en</span>
             <div className="chips" style={{ marginBottom: 0 }}>
               {(['pv', 'pa'] as const).map((n) => {
-                const actif = saisiEn.startsWith(n)
+                const actif = nature === n
                 return (
-                  <button key={n} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setSaisiEn(`${n}_${saisiEn.endsWith('ttc') ? 'ttc' : 'ht'}` as SaisiEn)}>
+                  <button key={n} type="button" className={`chip ${actif ? 'active' : ''}`} onClick={() => setNature(n)}>
                     {n === 'pv' ? 'Prix de vente' : 'Prix d’achat (coût)'}
                   </button>
                 )
@@ -834,11 +883,16 @@ export function SaisieView({
         <button className="btn btn-primary btn-block" disabled={!releveValide} style={{ opacity: releveValide ? 1 : 0.5 }} onClick={enregistrerReleve}>
           {releveExistant.length > 0 ? 'Mettre à jour le relevé de cette période' : 'Enregistrer le relevé'}
         </button>
-        {confirmationReleve && (
+        {confirmationReleve ? (
           <p style={{ textAlign: 'center', marginTop: 10, marginBottom: 0 }}>
-            <span className="badge vert">✓ Relevé enregistré au registre</span>
+            <span className="badge vert">✓ Relevé enregistré au registre — rien d’autre à faire</span>
           </p>
-        )}
+        ) : releveExistant.length > 0 ? (
+          <p className="muted" style={{ textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
+            Cette période a déjà son relevé, enregistré le {fmtDate(releveExistant[0].horodatage.slice(0, 10))}. Rien à faire, sauf si vous corrigez
+            une valeur : « Mettre à jour » remplace alors l’ancien relevé.
+          </p>
+        ) : null}
       </div>
 
       {/* ============ 3. Récapitulatif de la semaine ============ */}

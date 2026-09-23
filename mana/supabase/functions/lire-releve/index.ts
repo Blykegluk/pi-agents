@@ -59,7 +59,8 @@ Ce qu'il faut en tirer : la période couverte, le montant TOTAL correspondant au
 
 Règles, à suivre strictement :
 - Si le document distingue plusieurs motifs de démarque (casse, vol, péremption, don…), ne retiens QUE le motif don. Si aucun motif « don » n'est identifiable, prends le total et signale-le dans « doutes ».
-- Dans un tableur, la période est celle des dates des lignes retenues (première et dernière), et le montant est la somme des lignes du motif don ; dis dans « doutes » quelle colonne tu as additionnée et combien de lignes.
+- Dans un tableur, la période est celle des dates des lignes retenues (première et dernière), et le montant est la somme des lignes du motif don ; dis dans « doutes » quelle colonne tu as additionnée et combien de lignes. Sans colonne de dates, prends les dates du nom du fichier si on te le donne. Un export intitulé « dons » ou « don » ne contient que des dons : pas de motif à isoler, prends le total.
+- Les montants de démarque sont souvent en négatif dans les exports : renvoie-les en positif.
 - « unite » n'est « ht » ou « ttc » que si c'est ÉCRIT (en-tête de colonne compris). Un montant sans mention → « inconnu ». Ne déduis jamais l'unité du contexte.
 - « nature » n'est « prix_vente » ou « prix_achat » que si le document le dit (PV, PA, prix de vente, prix d'achat, coût, valeur d'achat, PRMP, CA). Sinon « inconnu ».
 - Ne devine jamais un chiffre : 0 et un doute valent mieux qu'une invention.
@@ -105,6 +106,7 @@ Deno.serve(async (req: Request) => {
   const ctx = corps.contexte ?? {}
   const indices = [
     ctx.magasin ? `Magasin : ${ctx.magasin}.` : '',
+    ctx.nomFichier ? `Nom du fichier : « ${String(ctx.nomFichier).slice(0, 200)} » — s'il contient des dates, c'est la période de l'export (à reprendre dans du/au si le document lui-même n'en donne pas, en le signalant dans doutes).` : '',
     ctx.periodeAttendue ? `Période attendue par le magasin : ${ctx.periodeAttendue} — à confirmer par ce que tu lis.` : '',
   ]
     .filter(Boolean)
