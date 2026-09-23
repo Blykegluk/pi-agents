@@ -1,6 +1,6 @@
 /**
  * Lecture d'un relevé de démarque « don » — l'export du back-office, photographié,
- * capturé à l'écran ou exporté en PDF.
+ * capturé à l'écran, exporté en PDF, ou en Excel / CSV (converti en texte par le portail).
  *
  * Renvoie la période couverte, le montant total, ce que ce montant représente
  * (HT ou TTC ; prix de vente ou prix d'achat) et, quand le document le donne,
@@ -53,13 +53,14 @@ const SCHEMA = {
   },
 } as const
 
-const INSTRUCTIONS = `Tu lis un relevé de démarque issu d'un logiciel de caisse ou de back-office de magasin alimentaire (export « pertes », « démarque », « casse », « dons »), sous forme de photo, de capture d'écran ou de PDF.
+const INSTRUCTIONS = `Tu lis un relevé de démarque issu d'un logiciel de caisse ou de back-office de magasin alimentaire (export « pertes », « démarque », « casse », « dons »), sous forme de photo, de capture d'écran, de PDF, ou d'un export tableur (Excel / CSV) transmis en texte, une feuille après l'autre, cellules séparées par « ; ».
 
 Ce qu'il faut en tirer : la période couverte, le montant TOTAL correspondant au motif « don » (ou « don association », « invendus donnés »…), et ce que ce montant représente.
 
 Règles, à suivre strictement :
 - Si le document distingue plusieurs motifs de démarque (casse, vol, péremption, don…), ne retiens QUE le motif don. Si aucun motif « don » n'est identifiable, prends le total et signale-le dans « doutes ».
-- « unite » n'est « ht » ou « ttc » que si c'est ÉCRIT. Un montant sans mention → « inconnu ». Ne déduis jamais l'unité du contexte.
+- Dans un tableur, la période est celle des dates des lignes retenues (première et dernière), et le montant est la somme des lignes du motif don ; dis dans « doutes » quelle colonne tu as additionnée et combien de lignes.
+- « unite » n'est « ht » ou « ttc » que si c'est ÉCRIT (en-tête de colonne compris). Un montant sans mention → « inconnu ». Ne déduis jamais l'unité du contexte.
 - « nature » n'est « prix_vente » ou « prix_achat » que si le document le dit (PV, PA, prix de vente, prix d'achat, coût, valeur d'achat, PRMP, CA). Sinon « inconnu ».
 - Ne devine jamais un chiffre : 0 et un doute valent mieux qu'une invention.
 - Les dates françaises sont JJ/MM/AAAA. Le séparateur décimal est la virgule ; les espaces séparent les milliers (« 1 234,50 » vaut 1234.5).
@@ -85,8 +86,20 @@ Deno.serve(async (req: Request) => {
   if (!corps.fichier) return Response.json({ erreur: 'Aucun document transmis.' }, { status: 400, headers: enTetes })
   const typeMime = corps.typeMime ?? 'image/jpeg'
   const estPdf = typeMime === 'application/pdf'
-  if (!estPdf && !['image/jpeg', 'image/png', 'image/webp'].includes(typeMime)) {
+  // Un export Excel / CSV arrive déjà converti en texte tabulaire (base64 UTF-8) par le portail.
+  const estTexte = typeMime === 'text/csv' || typeMime === 'text/plain'
+  if (!estPdf && !estTexte && !['image/jpeg', 'image/png', 'image/webp'].includes(typeMime)) {
     return Response.json({ erreur: `Format non pris en charge : ${typeMime}.` }, { status: 400, headers: enTetes })
+  }
+  let texteTableur = ''
+  if (estTexte) {
+    try {
+      const octets = Uint8Array.from(atob(corps.fichier), (c) => c.charCodeAt(0))
+      texteTableur = new TextDecoder('utf-8').decode(octets).slice(0, 250_000)
+    } catch {
+      return Response.json({ erreur: 'Tableur illisible.' }, { status: 400, headers: enTetes })
+    }
+    if (!texteTableur.trim()) return Response.json({ erreur: 'Tableur vide.' }, { status: 400, headers: enTetes })
   }
 
   const ctx = corps.contexte ?? {}
@@ -99,9 +112,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     const client = new Anthropic({ apiKey: cle })
-    const source = estPdf
-      ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: corps.fichier } }
-      : { type: 'image' as const, source: { type: 'base64' as const, media_type: typeMime as 'image/jpeg', data: corps.fichier } }
+    const source = estTexte
+      ? { type: 'text' as const, text: `Contenu de l'export tableur (une ligne par cellule séparée par « ; », une section par feuille) :\n\n${texteTableur}` }
+      : estPdf
+        ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: corps.fichier } }
+        : { type: 'image' as const, source: { type: 'base64' as const, media_type: typeMime as 'image/jpeg', data: corps.fichier } }
     const reponse = await client.messages.create({
       model: 'claude-opus-5',
       max_tokens: 4000,

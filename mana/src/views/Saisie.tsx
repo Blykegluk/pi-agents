@@ -16,6 +16,7 @@ import { compresserPhoto, lireFichiers } from '../lib/fichiers'
 import { creerDemande, lireReleve, televerserBordereau, type LectureReleve, compteId } from '../lib/cloud'
 import { categorieFL, coutPesee, libellePoids, poidsDeSaisie, profilDeMagasin } from '../lib/bordereau'
 import { VERSION_CONTRAT } from '../lib/contrat'
+import { estUnTableur, tableurEnTexte, texteEnBase64 } from '../lib/tableur'
 import { denomination } from '../lib/identite'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
@@ -356,13 +357,19 @@ export function SaisieView({
     try {
       let base64: string
       let typeMime: string
-      if (f.type === 'application/pdf') {
+      if (estUnTableur(f)) {
+        // Excel, CSV, ODS : le tableur devient un texte tabulaire que la lecture comprend
+        base64 = texteEnBase64(await tableurEnTexte(f))
+        typeMime = 'text/csv'
+      } else if (f.type === 'application/pdf') {
         base64 = await fichierEnBase64(f)
         typeMime = 'application/pdf'
-      } else {
+      } else if (f.type.startsWith('image/')) {
         const c = await compresserPhoto(f, 2000, 0.8)
         base64 = c.base64
         typeMime = c.typeMime
+      } else {
+        throw new Error(`Format non pris en charge (${f.name}) : déposez une photo, une capture d’écran, un PDF ou un fichier Excel / CSV.`)
       }
       const lecture = await lireReleve(base64, typeMime, { magasin: magasin.nom, periodeAttendue: periodeValide ? `${du} → ${au}` : undefined })
       setLectureReleve(lecture)
@@ -668,7 +675,7 @@ export function SaisieView({
           onDragLeave={() => setSurvolReleve(false)}
           onDrop={(e) => { e.preventDefault(); setSurvolReleve(false); if (session && !lectureEnCours) void lireDocumentReleve(e.dataTransfer.files) }}
         >
-          <input type="file" accept="image/*,application/pdf" disabled={!session || lectureEnCours} onChange={(e) => { void lireDocumentReleve(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
+          <input type="file" accept="image/*,application/pdf,.xlsx,.xlsm,.xls,.csv,.tsv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" disabled={!session || lectureEnCours} onChange={(e) => { void lireDocumentReleve(e.target.files); e.target.value = '' }} style={{ display: 'none' }} />
           <span className="zone-depot-icone" aria-hidden="true">📄</span>
           {!session ? (
             <>
@@ -680,7 +687,7 @@ export function SaisieView({
           ) : (
             <>
               <strong>Glissez ici l’export de démarque « don », ou cliquez</strong>
-              <span className="muted">Photo, capture d’écran ou PDF · Mana remplit la période et le montant, vous confirmez HT/TTC et prix de vente/d’achat.</span>
+              <span className="muted">Excel, CSV, PDF, photo ou capture d’écran · Mana remplit la période et le montant, vous confirmez HT/TTC et prix de vente/d’achat.</span>
             </>
           )}
         </label>
