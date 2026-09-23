@@ -1356,3 +1356,13 @@ i.cal-point {
 }
 .barre-societes select { flex: 1; min-width: 240px; padding: 10px 12px; font-weight: 700; font-size: 14px; }
 .barre-societes-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---- Saisie : barre figée du magasin en cours ---- */
+.barre-magasins {
+  position: sticky; top: 64px; z-index: 5;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 8px 0 10px; margin-bottom: 12px;
+  background: var(--papier);
+  border-bottom: 1px solid var(--trait-doux);
+}
+.barre-magasins-libelle { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vert-fonce); }

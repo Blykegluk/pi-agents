@@ -459,15 +459,17 @@ export function SaisieView({
     <div className="etroit">
       <h2>Saisie</h2>
 
-      {magasins.length > 1 && (
-        <div className="chips">
+      {/* Barre figée : on voit toujours pour quel magasin on saisit, même en bas de page. */}
+      <div className="barre-magasins">
+        <span className="barre-magasins-libelle">Magasin</span>
+        <div className="chips" style={{ marginBottom: 0 }}>
           {magasins.map((m) => (
             <button key={m.id} className={`chip ${m.id === magasin.id ? 'active' : ''}`} onClick={() => setMagasinId(m.id)}>
               {m.nom}
             </button>
           ))}
         </div>
-      )}
+      </div>
 
       {(!societe.contrat || societe.contrat.version !== VERSION_CONTRAT) && (
         <div className="info-banner alerte" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
