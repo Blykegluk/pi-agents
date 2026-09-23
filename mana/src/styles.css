@@ -545,6 +545,12 @@ button.amt {
 .card.accent .detail-lignes .ligne {
   border-color: rgba(248, 243, 233, 0.16);
 }
+/* Dans le bloc vert, les éléments prévus pour fond clair doivent rester lisibles */
+.card.accent .btn-ghost { color: var(--papier); border-color: rgba(248, 243, 233, 0.55); }
+.card.accent .btn-ghost:hover { background: rgba(248, 243, 233, 0.12); }
+.card.accent .impact .tuile { background: rgba(248, 243, 233, 0.12); }
+.card.accent .impact .tuile strong { color: var(--papier); }
+.card.accent .impact .tuile span { color: var(--vert-texte-2); }
 
 .badge {
   display: inline-block;
