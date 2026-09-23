@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Collecteur, Magasin } from '../types'
 import { FREQUENCES, PLAGES, RESEAUX_COLLECTEURS, recommanderFrequence, resumePassages } from '../lib/annuaire'
@@ -14,6 +14,16 @@ import {
 } from '../components/Icons'
 import { creerDemande, mesDemandes, type Demande, compteId } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
+
+/** Raisons prédéfinies d'une demande de changement d'association : Mana gère la relation. */
+const MOTIFS_CHANGEMENT = [
+  'L’association ne vient plus',
+  'Passages irréguliers ou en retard',
+  'Elle ne reprend pas assez de produits',
+  'Relation difficile sur place',
+  'Nous voulons une association supplémentaire',
+  'Autre raison',
+]
 import { fmtNum } from '../lib/format'
 import { COLLECTEUR_VIDE, CollecteurForm, LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
 import { denomination } from '../lib/identite'
@@ -57,6 +67,7 @@ export function Collecte({
   onOuvrirAide,
   onOuvrirMessages,
   magasinIdFixe,
+  focusAssociation,
 }: {
   state: AppState
   session: Session | null
@@ -67,6 +78,8 @@ export function Collecte({
   onOuvrirMessages: () => void
   /** Intégré dans la fiche d'un magasin : ce magasin, sans titre ni sélecteur. */
   magasinIdFixe?: string
+  /** Change de valeur quand on demande, depuis la fiche magasin, d'aller droit à l'étape Association. */
+  focusAssociation?: number
 }) {
   const [magasinChoisi, setMagasinId] = useState(state.magasins[0]?.id ?? '')
   const magasinId = magasinIdFixe ?? magasinChoisi
@@ -85,15 +98,41 @@ export function Collecte({
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [messageDemande, setMessageDemande] = useState('')
 
+  // Demande de changement d'association (l'association ne vient plus, passages irréguliers…)
+  const [demandesAssociation, setDemandesAssociation] = useState<Demande[]>([])
+  const [changementOuvert, setChangementOuvert] = useState(false)
+  const [assoConcernee, setAssoConcernee] = useState('')
+  const [motif, setMotif] = useState('')
+  const [detailMotif, setDetailMotif] = useState('')
+  const [envoiChangement, setEnvoiChangement] = useState(false)
+  const [messageChangement, setMessageChangement] = useState('')
+  const etapeAssociationRef = useRef<HTMLDivElement>(null)
+
   useEffect(() => {
     if (session) {
       mesDemandes()
-        .then((ds) => setDemandesCollecte(ds.filter((d) => d.type === 'collecte')))
+        .then((ds) => {
+          setDemandesCollecte(ds.filter((d) => d.type === 'collecte'))
+          setDemandesAssociation(ds.filter((d) => d.type === 'association'))
+        })
         .catch(() => {})
     } else {
       setDemandesCollecte([])
+      setDemandesAssociation([])
     }
   }, [session])
+
+  // Depuis la fiche magasin, « Associations » amène droit ici : on fait défiler jusqu'à l'étape,
+  // et s'il n'y a encore aucune association, on ouvre directement le formulaire d'enregistrement.
+  useEffect(() => {
+    if (!focusAssociation) return
+    if (magasin && magasin.collecteurs.length === 0) {
+      setBrouillon({ ...COLLECTEUR_VIDE })
+      setEditionCollecteur(-1)
+    }
+    window.setTimeout(() => etapeAssociationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusAssociation])
 
   if (!magasin || !societe) {
     return (
@@ -111,6 +150,38 @@ export function Collecte({
   const kgJour = mp.gisementKgJour ?? (Number(invendusSaisis) || 0)
   const reco = kgJour > 0 ? recommanderFrequence(kgJour) : null
   const demandeDuMagasin = demandesCollecte.find((d) => d.contenu?.magasin === magasin.nom)
+  const changementsEnCours = demandesAssociation.filter((d) => d.contenu?.magasin === magasin.nom && d.statut !== 'traitee')
+
+  async function envoyerChangement() {
+    if (!session || !magasin || !motif) return
+    setEnvoiChangement(true)
+    setMessageChangement('')
+    try {
+      const asso = assoConcernee || (magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '')
+      await creerDemande(
+        compteId(session),
+        session.user.email ?? '',
+        'association',
+        `${motif} — ${magasin.nom}${asso ? ` (${asso})` : ''}`,
+        {
+          magasin: magasin.nom,
+          societe: societe?.raisonSociale ?? '',
+          association_concernee: asso || 'aucune en particulier',
+          motif,
+          associations_en_place: magasin.collecteurs.map((c) => c.nom).join(', ') || 'aucune',
+        },
+        detailMotif.trim() || motif,
+      )
+      setDemandesAssociation((await mesDemandes()).filter((d) => d.type === 'association'))
+      setChangementOuvert(false)
+      setMotif('')
+      setDetailMotif('')
+      setMessageChangement('Demande envoyée : Mana reprend contact avec l’association ou vous en propose une autre, et vous tient au courant dans Messages.')
+    } catch (e) {
+      setMessageChangement((e as Error).message)
+    }
+    setEnvoiChangement(false)
+  }
 
   const kgParPassage = (f: string) =>
     f === 'Quotidienne' ? kgJour : f === 'Hebdomadaire' ? kgJour * 7 : kgJour * 2.5
@@ -261,7 +332,7 @@ export function Collecte({
       </div>
 
       {/* Étape 2 — l'association : celle déjà connue, ou une mise en relation */}
-      <div className={`card pleine ${estFaite('collecteurs') ? 'faite' : ''}`}>
+      <div className={`card pleine ${estFaite('collecteurs') ? 'faite' : ''}`} ref={etapeAssociationRef} style={{ scrollMarginTop: 120 }}>
         <TeteEtape
           id="collecteurs"
           num={2}
@@ -342,6 +413,68 @@ export function Collecte({
               ),
             )}
           </>
+        )}
+
+        {/* A bis. Un problème avec une association en place : Mana gère la relation */}
+        {magasin.collecteurs.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            {changementsEnCours.map((d) => (
+              <div className="info-banner" key={d.id} style={{ marginBottom: 8 }}>
+                <strong>Demande {LIBELLES_STATUT[d.statut].texte} : {d.sujet}.</strong> Mana s’en occupe et vous répond dans Messages.{' '}
+                <button className="amt" onClick={onOuvrirMessages}>Voir les messages</button>
+              </div>
+            ))}
+            {messageChangement && <p className="muted" style={{ color: 'var(--vert)', marginBottom: 8 }}>{messageChangement}</p>}
+            {!changementOuvert ? (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  if (!session) { onConnexion(); return }
+                  setAssoConcernee(magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '')
+                  setChangementOuvert(true)
+                }}
+              >
+                ⚠ Un problème avec l’association ? Demander à Mana de changer
+              </button>
+            ) : (
+              <div className="card" style={{ background: 'var(--papier)' }}>
+                <h3>Demander un changement d’association</h3>
+                <p className="muted">
+                  Mana gère la relation avec les associations : nous recontactons celle en place pour régler le problème,
+                  ou nous vous en proposons une nouvelle. Dites-nous simplement ce qui se passe.
+                </p>
+                {magasin.collecteurs.length > 1 && (
+                  <label className="field">
+                    <span>Association concernée</span>
+                    <div className="chips" style={{ marginBottom: 0 }}>
+                      {magasin.collecteurs.map((c) => (
+                        <button key={c.nom} type="button" className={`chip ${assoConcernee === c.nom ? 'active' : ''}`} onClick={() => setAssoConcernee(c.nom)}>{c.nom}</button>
+                      ))}
+                      <button type="button" className={`chip ${assoConcernee === '' ? 'active' : ''}`} onClick={() => setAssoConcernee('')}>Aucune en particulier</button>
+                    </div>
+                  </label>
+                )}
+                <label className="field">
+                  <span>Que se passe-t-il ? *</span>
+                  <div className="chips" style={{ marginBottom: 0 }}>
+                    {MOTIFS_CHANGEMENT.map((m) => (
+                      <button key={m} type="button" className={`chip ${motif === m ? 'active' : ''}`} onClick={() => setMotif(m)}>{m}</button>
+                    ))}
+                  </div>
+                </label>
+                <label className="field">
+                  <span>Précisions (facultatif)</span>
+                  <textarea rows={3} value={detailMotif} onChange={(e) => setDetailMotif(e.target.value)} placeholder="Ex. plus de passage depuis le 10 septembre, personne ne répond au téléphone." />
+                </label>
+                <div className="row-actions">
+                  <button className="btn btn-primary btn-sm" disabled={!motif || envoiChangement} style={{ opacity: motif && !envoiChangement ? 1 : 0.5, flex: 1 }} onClick={() => void envoyerChangement()}>
+                    {envoiChangement ? 'Envoi…' : 'Envoyer à Mana'}
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setChangementOuvert(false)}>Annuler</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* B. Ajouter une association déjà trouvée */}

@@ -71,6 +71,12 @@ export function MagasinsView({
     const enCours = magasins.find((m) => avancementCollecte(m).faites < avancementCollecte(m).total)
     return enCours?.id ?? (magasins.length === 1 ? magasins[0].id : null)
   })
+  // Raccourci « Associations » : ouvre la collecte du magasin et amène à l'étape Association.
+  const [focusAssociation, setFocusAssociation] = useState<Record<string, number>>({})
+  function ouvrirAssociations(magasinId: string) {
+    setCollecteOuverte(magasinId)
+    setFocusAssociation((f) => ({ ...f, [magasinId]: Date.now() }))
+  }
 
   // Entrée / sortie d'un formulaire → retour en haut de page
   useEffect(() => {
@@ -267,6 +273,13 @@ export function MagasinsView({
                       </button>
                       {!invite && (
                         <>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            title={m.collecteurs.length > 0 ? 'Modifier, ajouter ou changer d’association' : 'Enregistrer une association'}
+                            onClick={() => ouvrirAssociations(m.id)}
+                          >
+                            {m.collecteurs.length > 0 ? 'Associations' : '+ Association'}
+                          </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
                             Modifier
                           </button>
@@ -293,6 +306,7 @@ export function MagasinsView({
                         onConnexion={onConnexion}
                         onOuvrirAide={onOuvrirAide}
                         onOuvrirMessages={onOuvrirMessages}
+                        focusAssociation={focusAssociation[m.id]}
                       />
                     </div>
                   )}
@@ -304,6 +318,11 @@ export function MagasinsView({
               <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: null })}>
                 + Ajouter un magasin
               </button>
+              {sesMagasins.length === 1 && (
+                <button className="btn btn-ghost btn-sm" onClick={() => ouvrirAssociations(sesMagasins[0].id)} title="Modifier, ajouter ou changer d’association">
+                  {sesMagasins[0].collecteurs.length > 0 ? 'Associations' : '+ Association'}
+                </button>
+              )}
               <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'societe', societe: s })}>
                 Modifier la société
               </button>

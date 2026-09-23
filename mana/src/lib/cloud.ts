@@ -107,7 +107,8 @@ export interface Demande {
   id: string
   user_id: string
   email: string | null
-  type: 'collecte' | 'support'
+  /** collecte = mise en relation initiale ; association = changement ou problème avec une association en place ; support = autre. */
+  type: 'collecte' | 'support' | 'association'
   sujet: string
   contenu: Record<string, unknown>
   statut: 'nouvelle' | 'en_cours' | 'traitee'

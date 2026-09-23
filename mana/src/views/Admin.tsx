@@ -118,7 +118,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ minWidth: 0 }}>
                   <strong style={{ fontSize: 14.5 }}>
-                    {d.type === 'collecte' ? 'Mise en relation' : 'Support'} — {d.sujet}
+                    {d.type === 'collecte' ? 'Mise en relation' : d.type === 'association' ? 'Association : changement ou problème' : 'Support'} — {d.sujet}
                   </strong>
                   <div className="muted">{d.email ?? d.user_id} · {fmtDateHeure(d.created_at)}</div>
                 </div>

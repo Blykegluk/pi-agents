@@ -126,7 +126,7 @@ export function Messages({
           <div className={`card fil ${estOuverte ? 'ouvert' : ''}`} key={d.id}>
             <button className="fil-tete" onClick={() => setOuverte(estOuverte ? null : d.id)}>
               <span className="fil-sujet">
-                {d.type === 'collecte' ? '🤝 ' : ''}
+                {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : ''}
                 {d.sujet}
               </span>
               <span className="fil-etat">
