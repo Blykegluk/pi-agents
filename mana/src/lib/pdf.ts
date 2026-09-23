@@ -511,6 +511,92 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
 }
 
 /** Affiche A4 « Le bac don — règles de tri » à imprimer pour la réserve. */
+/** Résumé consolidé du groupe : une ligne par société, totaux, impact — pour la holding et l'expert-comptable. */
+export async function pdfResumeGroupe(aggs: AggSociete[], exercice: number) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  await marque(doc)
+  entete(doc, 'Résumé du groupe — dons d’invendus', `${aggs.length} sociétés — Exercice ${exercice} — édité le ${fmtDate(new Date().toISOString().slice(0, 10))}`)
+  const W = doc.internal.pageSize.getWidth()
+  let y = 32
+  doc.setFontSize(9)
+  doc.setTextColor(120, 113, 100)
+  doc.text(t('Le plafond de dons (20 000 € ou 0,5 % du CA HT) s’apprécie société par société. Réduction d’impôt : 60 % du coût de revient des denrées données (article 238 bis du CGI). Commission Mana : 30 % de la réduction acquise, charge déductible.'), 14, y, { maxWidth: W - 28 })
+  doc.setTextColor(43, 38, 32)
+  y += 12
+  const cols = [
+    { x: 14, w: 58, label: 'Société', right: false },
+    { x: 72, w: 26, label: 'Magasins', right: false },
+    { x: 98, w: 28, label: 'Base de dons', right: true },
+    { x: 126, w: 24, label: 'Plafond', right: true },
+    { x: 150, w: 28, label: 'Réduction d’IS', right: true },
+    { x: 178, w: 28, label: 'Commission HT', right: true },
+    { x: 206, w: 26, label: 'Facturé HT', right: true },
+    { x: 232, w: 30, label: 'Avantage réel*', right: true },
+    { x: 262, w: 21, label: 'Repas', right: true },
+  ]
+  const enTeteTableau = () => {
+    doc.setFillColor(237, 227, 204)
+    doc.rect(14, y - 4.5, W - 28, 7, 'F')
+    doc.setFont('InstrumentSans', 'bold')
+    doc.setFontSize(8)
+    for (const c of cols) doc.text(t(c.label), c.right ? c.x + c.w : c.x, y, c.right ? { align: 'right' } : undefined)
+    doc.setFont('InstrumentSans', 'normal')
+    y += 7
+  }
+  enTeteTableau()
+  doc.setFontSize(8.5)
+  const cellule = (i: number, texte: string, gras = false) => {
+    const c = cols[i]
+    doc.setFont('InstrumentSans', gras ? 'bold' : 'normal')
+    doc.text(t(texte), c.right ? c.x + c.w : c.x, y, { align: c.right ? 'right' : 'left', maxWidth: c.w - 1 })
+  }
+  const tot = { base: 0, reduction: 0, commission: 0, facture: 0, avantage: 0, repas: 0, kg: 0, co2: 0 }
+  for (const a of aggs) {
+    if (y > doc.internal.pageSize.getHeight() - 30) {
+      doc.addPage()
+      y = 20
+      enTeteTableau()
+    }
+    const r = a.resultat
+    cellule(0, denomination(a.societe))
+    cellule(1, a.magasins.map((m) => m.nom).join(', ') || '—')
+    cellule(2, fmtEUR(r.baseBrute, 0))
+    cellule(3, fmtEUR(r.plafond, 0))
+    cellule(4, fmtEUR(a.reductionISTotale, 0), true)
+    cellule(5, fmtEUR(r.factureMana, 0))
+    cellule(6, fmtEUR(a.commissionsHT, 0))
+    cellule(7, fmtEUR(r.avantageReel, 0), true)
+    cellule(8, fmtNum(a.repas, 0))
+    tot.base += r.baseBrute; tot.reduction += a.reductionISTotale; tot.commission += r.factureMana; tot.facture += a.commissionsHT; tot.avantage += r.avantageReel; tot.repas += a.repas; tot.kg += a.kgTotal; tot.co2 += a.co2
+    y += 7
+    doc.setDrawColor(226, 215, 192)
+    doc.line(14, y - 3, W - 14, y - 3)
+  }
+  doc.setFillColor(35, 79, 62)
+  doc.rect(14, y - 4.5, W - 28, 7.5, 'F')
+  doc.setTextColor(248, 243, 233)
+  cellule(0, 'Total groupe', true)
+  cellule(1, `${aggs.reduce((n, a) => n + a.magasins.length, 0)} magasins`)
+  cellule(2, fmtEUR(tot.base, 0), true)
+  cellule(4, fmtEUR(tot.reduction, 0), true)
+  cellule(5, fmtEUR(tot.commission, 0), true)
+  cellule(6, fmtEUR(tot.facture, 0), true)
+  cellule(7, fmtEUR(tot.avantage, 0), true)
+  cellule(8, fmtNum(tot.repas, 0), true)
+  doc.setTextColor(43, 38, 32)
+  y += 14
+  doc.setFont('InstrumentSans', 'normal')
+  doc.setFontSize(8.5)
+  doc.setTextColor(120, 113, 100)
+  doc.text(t(`* Avantage réel par rapport à la destruction, IS à 25 % : (60 % − 25 %) × base retenue − 75 % × commission Mana. Jeter est déductible, donner est réintégré ; la commission est une charge déductible. PME au taux réduit de 15 % : avantage plus élevé.`), 14, y, { maxWidth: W - 28 })
+  y += 10
+  doc.text(t(`Impact du groupe : ${fmtNum(tot.kg, 0)} kg détournés de la poubelle, ${fmtNum(tot.repas, 0)} repas, ${fmtNum(tot.co2, 0)} kg de CO₂ évités. En intégration fiscale, la société mère impute la réduction de chaque filiale sur l’IS du groupe (article 223 O du CGI).`), 14, y, { maxWidth: W - 28 })
+  doc.setTextColor(43, 38, 32)
+  piedDePage(doc)
+  doc.save(`mana-resume-groupe-${exercice}.pdf`)
+}
+
+/** Affiche « tri des invendus » à imprimer pour la réserve du magasin. */
 export async function pdfAfficheTri(nomMagasin: string) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   await marque(doc)

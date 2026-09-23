@@ -450,6 +450,28 @@ export default function App() {
     return nouvelles.length
   }
 
+  /**
+   * Facturation automatique : les mois échus non facturés des sociétés sous contrat
+   * sont facturés à l'ouverture de l'application, une fois l'état du cloud chargé
+   * (jamais sur un état local possiblement en retard). Le client n'a rien à faire.
+   */
+  const facturationFaitePour = useRef('')
+  useEffect(() => {
+    if (!session || estDemo(state) || acces || syncStatut !== 'ok') return
+    const cle = `${session.user.id}:${new Date().toISOString().slice(0, 10)}`
+    if (facturationFaitePour.current === cle) return
+    facturationFaitePour.current = cle
+    const numeros = state.factures.map((f) => f.numero)
+    const nouvelles: Facture[] = []
+    for (const agg of aggParSociete(state, exercice)) {
+      if (!agg.societe.contrat) continue
+      const n = facturesCommissionManquantes(agg, exercice, new Date(), [...numeros, ...nouvelles.map((f) => f.numero)])
+      nouvelles.push(...n)
+    }
+    if (nouvelles.length > 0) setState((s) => ({ ...s, factures: [...s.factures, ...nouvelles] }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id, syncStatut, acces])
+
   /** Clôture d'exercice : régularisation sur la liasse réelle + mise à jour de la société. */
   function cloturer(societeId: string, caReel: number, margeReellePct: number, justificatif: Justificatif | null) {
     const agg = aggParSociete(state, exercice).find((a) => a.societe.id === societeId)
@@ -546,7 +568,23 @@ export default function App() {
   return (
     <FormulaProvider>
       <header className="header">
-        <div className="brand">
+        <div
+          className="brand"
+          role="button"
+          tabIndex={0}
+          title="Retour à l’accueil (Saisie)"
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            setTab('saisie')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              setTab('saisie')
+              window.scrollTo(0, 0)
+            }
+          }}
+        >
           <LogoMana taille={36} />
           <h1>mana</h1>
           <span>la manne cachée de vos invendus</span>

@@ -193,6 +193,20 @@ export function Simulateur({
               <strong style={{ fontSize: 17 }}>{fmtEUR(r.gainNetClient)} / an</strong>
             </Amount>
           </div>
+          <div className="ligne">
+            <span>Avantage réel par rapport à la destruction (IS à 25 %)</span>
+            <Amount
+              titre="Avantage réel vs destruction"
+              lignes={[
+                `Jeter est déductible : l’impôt baisse déjà de 25 % du coût de revient. Donner n’est pas déductible (réintégration) mais ouvre 60 % de réduction.`,
+                `Avantage brut = (60 % − 25 %) × ${fmtEUR(r.basePlafonnee)} = ${fmtEUR((0.6 - 0.25) * r.basePlafonnee)}`,
+                `Honoraires Mana déductibles : coût réel = 75 % × ${fmtEUR(r.factureMana)} = ${fmtEUR(0.75 * r.factureMana)}`,
+                `= ${fmtEUR(r.avantageReel)} (PME au taux réduit de 15 % : davantage)`,
+              ]}
+            >
+              <strong>{fmtEUR(r.avantageReel)} / an</strong>
+            </Amount>
+          </div>
         </div>
       </div>
 

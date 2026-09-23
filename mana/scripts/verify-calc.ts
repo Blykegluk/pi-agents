@@ -37,6 +37,7 @@ attendre('excédent (reportable 5 exercices)', r.excedent, 4_000)
 attendre('réduction_IS = 60 % × 20 000', r.reductionIS, 12_000)
 attendre('facture_Mana = 30 % × 12 000', r.factureMana, 3_600)
 attendre('gain_net_client = 12 000 − 3 600', r.gainNetClient, 8_400)
+attendre('avantage réel = 35 % × 20 000 − 75 % × 3 600', r.avantageReel, 4_300)
 
 console.log('\n— Exemple 3 : plafond au CA élevé (CA 5 M€) —')
 attendre('plafond = max(20 000 ; 0,5 % × 5 000 000)', plafondAnnuel(5_000_000), 25_000)

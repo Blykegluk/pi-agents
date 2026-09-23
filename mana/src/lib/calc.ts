@@ -52,8 +52,18 @@ export interface ResultatAnnuel {
   excedent: number
   reductionIS: number
   factureMana: number
+  /** Réduction d'impôt moins la commission Mana : ce que la ligne d'impôt gagne, avant effet de la réintégration. */
   gainNetClient: number
+  /**
+   * Avantage réel par rapport à la destruction, IS à 25 % : le don est réintégré au résultat
+   * (là où jeter aurait été déductible), donc l'avantage brut est de 60 − 25 = 35 % de la base ;
+   * la commission Mana est une charge déductible, elle ne coûte que 75 % de son montant HT.
+   */
+  avantageReel: number
 }
+
+/** Taux normal de l'IS retenu pour l'avantage réel (15 % sur les premiers 42 500 € des PME : plus favorable encore). */
+export const TAUX_IS = 0.25
 
 /**
  * Résultat annuel à partir de la base brute cumulée (Σ base_semaine de l'exercice),
@@ -66,7 +76,8 @@ export function resultatAnnuel(baseBrute: number, caHT: number, successFeePct: n
   const reductionIS = TAUX_REDUCTION * basePlafonnee
   const factureMana = (successFeePct / 100) * reductionIS
   const gainNetClient = reductionIS - factureMana
-  return { baseBrute, plafond, basePlafonnee, excedent, reductionIS, factureMana, gainNetClient }
+  const avantageReel = (TAUX_REDUCTION - TAUX_IS) * basePlafonnee - factureMana * (1 - TAUX_IS)
+  return { baseBrute, plafond, basePlafonnee, excedent, reductionIS, factureMana, gainNetClient, avantageReel }
 }
 
 /** Kg détournés de la poubelle : kg F&L réels + estimation des emballés (hypothèse PV moyen). */
@@ -94,6 +105,7 @@ export interface ResultatSimulateur {
   reductionIS: number
   factureMana: number
   gainNetClient: number
+  avantageReel: number
 }
 
 /**

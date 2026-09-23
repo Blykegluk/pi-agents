@@ -1,11 +1,11 @@
 import { Fragment, useState } from 'react'
 import type { AppState, Justificatif, Saisie } from '../types'
-import { aggParSociete, baseDeLaSaisie, calculerCloture } from '../lib/selectors'
+import { aggParSociete, baseDeLaSaisie, calculerCloture, lignesFacturationSociete } from '../lib/selectors'
 import { coutEmballes, coutFL } from '../lib/calc'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct } from '../lib/format'
 import { compareWeekIds, weekLabel } from '../lib/iso'
 import { semaineDuJourISO } from '../lib/releves'
-import { libelleMois } from '../lib/facturation'
+import { libelleMois, tauxCommissionPct } from '../lib/facturation'
 import { pdfEtatAnnuel, pdfFacture, pdfNoteDeMethode, pdfRecuFiscal, pdfRegistre } from '../lib/pdf'
 import { lireFichiers } from '../lib/fichiers'
 import { IconRegistre } from '../components/Icons'
@@ -17,6 +17,7 @@ import { denomination } from '../lib/identite'
 export function Registre({
   state,
   exercice,
+  societeId: societeIdProp,
   onGenererFactures,
   onCloturer,
   onSaveSaisie,
@@ -24,14 +25,15 @@ export function Registre({
 }: {
   state: AppState
   exercice: number
+  /** Société choisie dans le Bilan ; à défaut la première. */
+  societeId?: string
   onGenererFactures: (societeId: string) => number
   onCloturer: (societeId: string, caReel: number, margeReellePct: number, justificatif: Justificatif | null) => void
   onSaveSaisie: (s: Saisie) => void
   onDeleteSaisie: (id: string) => void
 }) {
   const aggs = aggParSociete(state, exercice)
-  const [societeId, setSocieteId] = useState(aggs[0]?.societe.id ?? '')
-  const agg = aggs.find((a) => a.societe.id === societeId) ?? aggs[0]
+  const agg = aggs.find((a) => a.societe.id === societeIdProp) ?? aggs[0]
   const [messageFactures, setMessageFactures] = useState('')
   const [ligneOuverte, setLigneOuverte] = useState<string | null>(null)
 
@@ -107,24 +109,7 @@ export function Registre({
 
   return (
     <div>
-      <h2>Registre &amp; documents</h2>
-
-      {aggs.length > 1 && (
-        <div className="chips">
-          {aggs.map((a) => (
-            <button
-              key={a.societe.id}
-              className={`chip ${a.societe.id === societe.id ? 'active' : ''}`}
-              onClick={() => {
-                setSocieteId(a.societe.id)
-                setMessageFactures('')
-              }}
-            >
-              {denomination(a.societe)}
-            </button>
-          ))}
-        </div>
-      )}
+      <h2>Registre &amp; documents — {denomination(societe)}</h2>
 
       <div className="card">
         <h3>Registre des dons — exercice {exercice}</h3>
@@ -256,15 +241,36 @@ export function Registre({
       <div className="card">
         <h3>Factures Mana — commission au succès</h3>
         <p className="muted">
-          Facture mensuelle à terme échu : {(societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons
-          documentés du mois (TVA 20 %, règlement par prélèvement SEPA B2B). La facturation s’arrête automatiquement au
-          plafond de la société.
+          Une facture par mois, émise automatiquement le 1<sup>er</sup> du mois suivant dès que le contrat est signé :{' '}
+          {(societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons documentés du mois, soit 30 % de la
+          réduction d’impôt qu’ils génèrent (TVA 20 %, règlement à 30 jours par prélèvement SEPA ou virement). Rien à faire
+          de votre côté : les factures apparaissent ici, téléchargeables en PDF, et la facturation s’arrête d’elle-même au
+          plafond de la société. Une régularisation intervient à la clôture, sur la liasse définitive.
         </p>
+        {!societe.contrat && (
+          <div className="info-banner alerte">Contrat de service non signé : aucune facture n’est émise tant qu’il ne l’est pas (onglet Magasins).</div>
+        )}
         {agg.plafondAtteint && (
           <div className="info-banner vert">Plafond fiscal atteint — vos prochains dons ne sont plus facturés.</div>
         )}
+        {(() => {
+          const lignes = lignesFacturationSociete(agg)
+          const moisCourant = new Date().toISOString().slice(0, 7)
+          const enCours = lignes.find((l) => l.mois === moisCourant)
+          const prochain = new Date(Date.UTC(Number(moisCourant.slice(0, 4)), Number(moisCourant.slice(5, 7)), 1))
+          const pctCommission = tauxCommissionPct(societe.successFeePct)
+          if (!societe.contrat || agg.plafondAtteint) return null
+          return (
+            <p className="muted" style={{ marginTop: 0 }}>
+              <strong>Prochaine facture le {fmtDate(prochain.toISOString().slice(0, 10))}</strong>, pour {libelleMois(moisCourant)} :{' '}
+              {enCours && enCours.montantHT > 0.005
+                ? <>base documentée à ce jour {fmtEUR(enCours.baseDuMois, 2)} → {fmtEUR(enCours.montantHT, 2)} HT ({pctCommission.toLocaleString('fr-FR')} %).</>
+                : <>aucun don documenté sur le mois pour l’instant, donc pas de facture si rien n’est ajouté.</>}
+            </p>
+          )
+        })()}
         {agg.factures.length === 0 ? (
-          <p className="muted">Aucune facture émise sur cet exercice.</p>
+          <p className="muted">Aucune facture émise sur cet exercice : les mois échus n’ont pas de don documenté.</p>
         ) : (
           <div>
             {agg.factures.map((f) => (
@@ -294,7 +300,7 @@ export function Registre({
           </div>
         )}
         <button
-          className="btn btn-primary btn-block"
+          className="btn btn-ghost btn-block"
           style={{ marginTop: 10 }}
           onClick={() => {
             const n = onGenererFactures(societe.id)
@@ -302,12 +308,12 @@ export function Registre({
               n === 0
                 ? agg.plafondAtteint
                   ? 'Aucune facture à émettre : plafond atteint, les dons documentés ne sont plus facturés.'
-                  : 'Aucune facture à émettre : tous les mois échus sont déjà facturés.'
+                  : 'Rien à émettre : les mois échus sont déjà facturés ou n’ont pas de don documenté.'
                 : `${n} facture${n > 1 ? 's' : ''} émise${n > 1 ? 's' : ''}.`,
             )
           }}
         >
-          Générer les factures des mois échus
+          Vérifier maintenant les factures en attente
         </button>
         {messageFactures && <p className="muted" style={{ marginTop: 8, textAlign: 'center' }}>{messageFactures}</p>}
       </div>
