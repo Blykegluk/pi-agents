@@ -20,6 +20,9 @@ import { estUnTableur, tableurEnTexte, texteEnBase64 } from '../lib/tableur'
 import { denomination } from '../lib/identite'
 import { aggParSociete, baseDeLaSaisie } from '../lib/selectors'
 
+/** Jusqu'à ce nombre, les magasins tiennent en pastilles côte à côte ; au-delà, menu déroulant. */
+const MAX_MAGASINS_EN_PASTILLES = 4
+
 // --- Dates locales (AAAA-MM-JJ) ---
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const dateDuJour = (id: string) => {
@@ -462,13 +465,30 @@ export function SaisieView({
       {/* Barre figée : on voit toujours pour quel magasin on saisit, même en bas de page. */}
       <div className="barre-magasins">
         <span className="barre-magasins-libelle">Magasin</span>
-        <div className="chips" style={{ marginBottom: 0 }}>
-          {magasins.map((m) => (
-            <button key={m.id} className={`chip ${m.id === magasin.id ? 'active' : ''}`} onClick={() => setMagasinId(m.id)}>
-              {m.nom}
-            </button>
-          ))}
-        </div>
+        {magasins.length <= MAX_MAGASINS_EN_PASTILLES ? (
+          <div className="chips" style={{ marginBottom: 0 }}>
+            {magasins.map((m) => (
+              <button key={m.id} className={`chip ${m.id === magasin.id ? 'active' : ''}`} onClick={() => setMagasinId(m.id)}>
+                {m.nom}
+              </button>
+            ))}
+          </div>
+        ) : (
+          /* Un groupe à 5 magasins et plus : un menu déroulant, regroupé par société. */
+          <select className="barre-magasins-select" value={magasin.id} onChange={(e) => setMagasinId(e.target.value)} aria-label="Magasin en cours de saisie">
+            {state.societes.length > 1
+              ? state.societes.map((s) => {
+                  const siens = magasins.filter((m) => m.societeId === s.id)
+                  if (siens.length === 0) return null
+                  return (
+                    <optgroup key={s.id} label={denomination(s)}>
+                      {siens.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+                    </optgroup>
+                  )
+                })
+              : magasins.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
+          </select>
+        )}
       </div>
 
       {(!societe.contrat || societe.contrat.version !== VERSION_CONTRAT) && (

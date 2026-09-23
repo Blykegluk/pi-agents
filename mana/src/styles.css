@@ -1365,4 +1365,5 @@ i.cal-point {
   background: var(--papier);
   border-bottom: 1px solid var(--trait-doux);
 }
+.barre-magasins-select { flex: 1; min-width: 220px; max-width: 420px; padding: 9px 12px; font-weight: 700; font-size: 14px; }
 .barre-magasins-libelle { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vert-fonce); }
