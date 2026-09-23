@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import type { AppState, Justificatif, Saisie } from '../types'
 import { coutEmballes, coutFL } from '../lib/calc'
 import { fmtDate, fmtEUR, fmtNum, fmtPct } from '../lib/format'
+import { pdfBordereau } from '../lib/pdf'
 import { compareWeekIds, currentWeekId, isoWeekOf, mondayOfWeek, weekId, weekLabel } from '../lib/iso'
 import { joursEntre, normaliserEnPVHT, repartirRelevePeriode, TVA_ALIMENTAIRE } from '../lib/releves'
 import { Amount } from '../components/Formula'
@@ -605,7 +606,12 @@ export function SaisieView({
       <ImportBordereaux magasin={magasin} session={session} joursDejaPris={bordereauxMagasin.map((b) => b.jour!).filter(Boolean)} onEnregistrer={enregistrerImport} />
 
       <div className="card">
-        <h3>1. Bordereau du jour</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>1. Bordereau du jour</h3>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void pdfBordereau(magasin, denomination(societe))} title="Télécharger un bordereau d’enlèvement vierge à imprimer et faire signer">
+            ⬇ Bordereau vierge (PDF)
+          </button>
+        </div>
         <p className="muted">
           Un par passage de l’association. C’est la <strong>preuve</strong> en cas de contrôle : photo du bordereau signé
           archivée dans votre compte, colis comptés, fruits &amp; légumes pesés. Il ne vaut rien en euros par lui-même —
