@@ -13,6 +13,7 @@ import { fmtDateHeure } from '../lib/format'
 import { Composer } from '../components/Composer'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { IconMessages } from '../components/Icons'
+import { useGrandEcran } from '../lib/ecran'
 
 /**
  * Messages — le fil de discussion avec l'équipe Mana : mises en relation,
@@ -38,6 +39,8 @@ export function Messages({
   const [fil, setFil] = useState<Message[]>([])
   const [nouvelle, setNouvelle] = useState(false)
   const [message, setMessage] = useState('')
+  // Grand écran : liste des fils à gauche, fil ouvert à droite. Mobile : accordéon, inchangé.
+  const grand = useGrandEcran()
 
   useEffect(() => {
     if (session) mesDemandes().then(setDemandes).catch(() => {})
@@ -93,8 +96,127 @@ export function Messages({
     )
   }
 
+  const contenuFil = (d: Demande) => (
+    <>
+      {fil.map((m) => (
+        <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : 'moi'}`}>
+          <div className="bulle-tete">
+            {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
+          </div>
+          {m.texte}
+        </div>
+      ))}
+      {fil.length === 0 && <p className="muted">Demande transmise — la réponse de Mana arrivera ici.</p>}
+      <Composer placeholder="Votre message à l’équipe Mana…" onEnvoyer={(texte) => repondre(d, texte)} />
+    </>
+  )
+
+  const nouvelleDemande = nouvelle ? (
+    <div className="card">
+      <h3>Nouvelle demande</h3>
+      <Composer placeholder="Décrivez votre question ou votre problème…" onEnvoyer={ouvrirDemande} />
+      <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setNouvelle(false)}>
+        Annuler
+      </button>
+    </div>
+  ) : (
+    <button className="btn btn-primary btn-block" style={{ marginTop: 14 }} onClick={() => setNouvelle(true)}>
+      Écrire à l’équipe Mana
+    </button>
+  )
+
+  if (grand) {
+    const filOuvert = demandes.find((d) => d.id === ouverte)
+    return (
+      <div className="messages">
+        <h2>Messages</h2>
+        <p className="muted" style={{ marginTop: -6, marginBottom: 14 }}>
+          Vos échanges avec l’équipe Mana. Avant d’écrire, la réponse est peut-être déjà dans{' '}
+          <button className="amt" onClick={onOuvrirAide}>
+            les questions fréquentes
+          </button>
+          .
+        </p>
+
+        {message && (
+          <div className="info-banner vert">
+            {message}
+          </div>
+        )}
+
+        <div className="messages-grille">
+          <aside className="messages-col">
+            {demandes.length === 0 && !nouvelle && (
+              <div className="card empty">
+                <span className="ico">
+                  <IconMessages />
+                </span>
+                Aucun échange pour l’instant.
+              </div>
+            )}
+            {demandes.map((d) => {
+              const nb = nonLus.parDemande[d.id] ?? 0
+              const estOuverte = ouverte === d.id
+              return (
+                <button key={d.id} className={`card fil ${estOuverte ? 'ouvert' : ''}`} onClick={() => setOuverte(d.id)}>
+                  <span className="fil-tete">
+                    <span className="fil-sujet">
+                      {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : ''}
+                      {d.sujet}
+                    </span>
+                    {nb > 0 && <span className="pastille">{nb}</span>}
+                  </span>
+                  <span className="fil-etat">
+                    <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
+                    <small className="muted">{fmtDateHeure(d.updated_at)}</small>
+                  </span>
+                </button>
+              )
+            })}
+            {nouvelleDemande}
+          </aside>
+          <section className="card messages-fil">
+            {filOuvert ? (
+              <>
+                <div className="fil-tete" style={{ cursor: 'default' }}>
+                  <span className="fil-sujet">
+                    {filOuvert.type === 'collecte' ? '🤝 ' : filOuvert.type === 'association' ? '🔄 ' : ''}
+                    {filOuvert.sujet}
+                  </span>
+                  <span className="fil-etat">
+                    <span className={LIBELLES_STATUT[filOuvert.statut].classe}>{LIBELLES_STATUT[filOuvert.statut].texte}</span>
+                  </span>
+                </div>
+                <hr className="sep" />
+                <div className="messages-bulles">
+                  {fil.map((m) => (
+                    <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : 'moi'}`}>
+                      <div className="bulle-tete">
+                        {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
+                      </div>
+                      {m.texte}
+                    </div>
+                  ))}
+                  {fil.length === 0 && <p className="muted">Demande transmise — la réponse de Mana arrivera ici.</p>}
+                </div>
+                <Composer placeholder="Votre message à l’équipe Mana…" onEnvoyer={(texte) => repondre(filOuvert, texte)} />
+              </>
+            ) : (
+              <div className="empty" style={{ margin: 'auto' }}>
+                <span className="ico">
+                  <IconMessages />
+                </span>
+                {demandes.length === 0 ? 'Écrivez à l’équipe Mana : la conversation s’affichera ici.' : 'Choisissez un fil à gauche pour le lire.'}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="etroit">
+    <div className="messages">
       <h2>Messages</h2>
       <p className="muted" style={{ marginTop: -6, marginBottom: 14 }}>
         Vos échanges avec l’équipe Mana. Avant d’écrire, la réponse est peut-être déjà dans{' '}
@@ -134,37 +256,12 @@ export function Messages({
                 <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
               </span>
             </button>
-            {estOuverte && (
-              <div style={{ marginTop: 10 }}>
-                {fil.map((m) => (
-                  <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : 'moi'}`}>
-                    <div className="bulle-tete">
-                      {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
-                    </div>
-                    {m.texte}
-                  </div>
-                ))}
-                {fil.length === 0 && <p className="muted">Demande transmise — la réponse de Mana arrivera ici.</p>}
-                <Composer placeholder="Votre message à l’équipe Mana…" onEnvoyer={(texte) => repondre(d, texte)} />
-              </div>
-            )}
+            {estOuverte && <div style={{ marginTop: 10 }}>{contenuFil(d)}</div>}
           </div>
         )
       })}
 
-      {nouvelle ? (
-        <div className="card">
-          <h3>Nouvelle demande</h3>
-          <Composer placeholder="Décrivez votre question ou votre problème…" onEnvoyer={ouvrirDemande} />
-          <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setNouvelle(false)}>
-            Annuler
-          </button>
-        </div>
-      ) : (
-        <button className="btn btn-primary btn-block" style={{ marginTop: 14 }} onClick={() => setNouvelle(true)}>
-          Écrire à l’équipe Mana
-        </button>
-      )}
+      {nouvelleDemande}
     </div>
   )
 }

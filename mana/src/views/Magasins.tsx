@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe } from '../types'
 import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordereau'
 import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
 import { pdfBordereau, pdfContratService } from '../lib/pdf'
-import { Collecte, avancementCollecte } from './Collecte'
+import { Collecte, EnteteCollecte, avancementCollecte } from './Collecte'
+import { useGrandEcran } from '../lib/ecran'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence } from '../lib/annuaire'
@@ -36,11 +37,14 @@ export function MagasinsView({
   onConnexion,
   onOuvrirAide,
   onOuvrirMessages,
+  accesPartages = null,
 }: {
   state: AppState
   session: Session | null
   /** Accès partagé : ni sociétés, ni ajout/suppression — seulement la collecte des magasins ouverts. */
   invite?: boolean
+  /** Carte « Accès partagés » (App.tsx), rendue sous la liste des sociétés. */
+  accesPartages?: ReactNode
   onSaveSociete: (s: Societe) => void
   onDeleteSociete: (id: string) => void
   onSaveMagasin: (m: Magasin) => void
@@ -77,6 +81,11 @@ export function MagasinsView({
     setCollecteOuverte(magasinId)
     setFocusAssociation((f) => ({ ...f, [magasinId]: Date.now() }))
   }
+  // Sur grand écran, la collecte du magasin ouvert vit dans une colonne à droite de la société ;
+  // à défaut d'ouverture explicite, celle du premier magasin de la société affichée.
+  const grand = useGrandEcran()
+  const magasinsAffiches = magasins.filter((m) => !societeActive || m.societeId === societeActive.id)
+  const magasinAside = grand ? magasinsAffiches.find((m) => m.id === collecteOuverte) ?? magasinsAffiches[0] : undefined
 
   // Entrée / sortie d'un formulaire → retour en haut de page
   useEffect(() => {
@@ -114,7 +123,7 @@ export function MagasinsView({
   }
 
   return (
-    <div>
+    <div className="magasins">
       <h2>{invite ? 'Magasins' : 'Sociétés & magasins'}</h2>
       {invite && societes.length === 0 && (
         <div className="card empty">
@@ -171,6 +180,10 @@ export function MagasinsView({
           )}
         </div>
       )}
+      {/* Deux colonnes dès 1 100 px : la société et ses magasins à gauche, la collecte du magasin ouvert à droite.
+          En dessous, `.magasins-col { display: contents }` : rien ne change par rapport au mobile. */}
+      <div className="magasins-grille">
+      <div className="magasins-col">
       {societes.filter((s) => !societeActive || s.id === societeActive.id).map((s) => {
         const sesMagasins = magasins.filter((m) => m.societeId === s.id)
         return (
@@ -254,7 +267,7 @@ export function MagasinsView({
 
             {sesMagasins.map((m) => {
               const av = avancementCollecte(m)
-              const ouverte = collecteOuverte === m.id
+              const ouverte = grand ? magasinAside?.id === m.id : collecteOuverte === m.id
               return (
                 <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -268,7 +281,7 @@ export function MagasinsView({
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => setCollecteOuverte(ouverte ? null : m.id)}>
+                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => setCollecteOuverte(grand ? m.id : ouverte ? null : m.id)}>
                         {ouverte ? '▾ Collecte' : '▸ Collecte'} · {av.faites}/{av.total} étape{av.total > 1 ? 's' : ''}
                       </button>
                       {!invite && (
@@ -295,7 +308,7 @@ export function MagasinsView({
                       )}
                     </div>
                   </div>
-                  {ouverte && (
+                  {ouverte && !grand && (
                     <div className="collecte-integree">
                       <Collecte
                         state={state}
@@ -343,6 +356,30 @@ export function MagasinsView({
           + Ajouter une société
         </button>
       )}
+      {accesPartages}
+      </div>
+      {grand && magasinAside && (
+        <aside className="magasins-col">
+          <div className="card">
+            <EnteteCollecte magasin={magasinAside} titre={`Collecte — ${magasinAside.nom}`} />
+            <div style={{ height: 14 }} />
+            <Collecte
+              key={magasinAside.id}
+              state={state}
+              session={session}
+              magasinIdFixe={magasinAside.id}
+              sansEntete
+              onSaveMagasin={onSaveMagasin}
+              onAllerSaisie={onAllerSaisie}
+              onConnexion={onConnexion}
+              onOuvrirAide={onOuvrirAide}
+              onOuvrirMessages={onOuvrirMessages}
+              focusAssociation={focusAssociation[magasinAside.id]}
+            />
+          </div>
+        </aside>
+      )}
+      </div>
       {contratPour && session && (
         <ContratModal
           societe={contratPour}

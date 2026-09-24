@@ -28,18 +28,7 @@ export function Simulateur({
   const r = simuler(caHT, marge, demarque, donnable, FEE)
   const plafonne = r.excedent > 0
 
-  return (
-    <div>
-      {!compact && (
-        <div className="hero">
-          <h2>La manne cachée de vos invendus</h2>
-          <p className="muted">
-            Vos invendus alimentaires donnent droit à une réduction d’impôt de 60 % de leur coût de revient
-            (article 238 bis du CGI). Estimez ce que votre magasin laisse filer chaque année.
-          </p>
-        </div>
-      )}
-
+  const champs = (
       <div className="card">
         <label className="field">
           <span>Chiffre d’affaires HT annuel</span>
@@ -92,7 +81,9 @@ export function Simulateur({
           <span className="aide">Hypothèse : produits encore consommables (DLC−1, DDM dépassée, fruits &amp; légumes sains).</span>
         </label>
       </div>
+  )
 
+  const resultat = (
       <div className="card accent resultat-hero">
         <span className="muted">Votre magasin peut récupérer</span>
         <Amount
@@ -209,19 +200,42 @@ export function Simulateur({
           </div>
         </div>
       </div>
+  )
 
-      {!compact && (
-        <>
-          <button className="btn btn-ambre btn-block" onClick={onCommencer}>
-            Créer mon magasin — 5 minutes, 0 € d’abonnement
-          </button>
+  // Intégré dans un formulaire (mode compact) : champs puis résultat, à plat.
+  if (compact) {
+    return (
+      <div>
+        {champs}
+        {resultat}
+      </div>
+    )
+  }
 
-          <footer className="legal">
-            0 € fixe : Mana se rémunère uniquement à {SUCCESS_FEE_PCT} % de l’économie d’impôt constatée. Estimation indicative — Mana
-            n’est pas un conseil fiscal ; les montants définitifs sont validés par votre expert-comptable.
-          </footer>
-        </>
-      )}
+  // Page d'accueil : champs à gauche, résultat à droite dès 1 100 px (une colonne en dessous).
+  return (
+    <div className="simulateur-grille">
+      <div>
+        <div className="hero">
+          <h2>La manne cachée de vos invendus</h2>
+          <p className="muted">
+            Vos invendus alimentaires donnent droit à une réduction d’impôt de 60 % de leur coût de revient
+            (article 238 bis du CGI). Estimez ce que votre magasin laisse filer chaque année.
+          </p>
+        </div>
+        {champs}
+      </div>
+      <div>
+        {resultat}
+        <button className="btn btn-ambre btn-block" onClick={onCommencer}>
+          Créer mon magasin — 5 minutes, 0 € d’abonnement
+        </button>
+
+        <footer className="legal">
+          0 € fixe : Mana se rémunère uniquement à {SUCCESS_FEE_PCT} % de l’économie d’impôt constatée. Estimation indicative — Mana
+          n’est pas un conseil fiscal ; les montants définitifs sont validés par votre expert-comptable.
+        </footer>
+      </div>
     </div>
   )
 }

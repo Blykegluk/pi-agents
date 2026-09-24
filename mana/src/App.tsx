@@ -624,12 +624,12 @@ export default function App() {
           </div>
         )}
         {!verrouille && estDemo(state) && !session && (
-          <div className="info-banner" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="info-banner banniere-demo">
             <span>
               <strong>Vous explorez la démonstration</strong> (2 magasins fictifs). Créez votre compte pour démarrer
               avec vos vraies données — la démo disparaît automatiquement.
             </span>
-            <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setReglages(true)}>
+            <button className="btn btn-primary btn-sm" onClick={() => setReglages(true)}>
               Créer mon compte
             </button>
           </div>
@@ -648,9 +648,9 @@ export default function App() {
             onConnexion={() => setReglages(true)}
             onOuvrirAide={() => setAideOuverte(true)}
             onOuvrirMessages={() => setTab('messages')}
+            accesPartages={session && acces === null ? <AccesPartages session={session} magasins={state.magasins} /> : null}
           />
         )}
-        {!verrouille && tab === 'magasins' && session && acces === null && <AccesPartages session={session} magasins={state.magasins} />}
         {!verrouille && tab === 'saisie' && (
           <SaisieView state={stateVisible} exercice={exercice} session={session} onSave={saveSaisie} onSaveReleve={saveReleve} onDelete={deleteSaisie} onAllerCollecte={() => setTab('magasins')} />
         )}
