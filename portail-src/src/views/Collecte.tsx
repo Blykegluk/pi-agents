@@ -15,6 +15,9 @@ import {
 import { creerDemande, mesDemandes, type Demande, compteId } from '../lib/cloud'
 import { LIBELLES_STATUT } from '../components/Aide'
 
+/** Depuis la carte Associations : ce qu'on vient faire à l'étape 2 de la collecte. */
+export type ModeAssociation = 'liste' | 'changement' | 'ajout'
+
 /** Raisons prédéfinies d'une demande de changement d'association : Mana gère la relation. */
 const MOTIFS_CHANGEMENT = [
   'L’association ne vient plus',
@@ -99,6 +102,7 @@ export function Collecte({
   onOuvrirMessages,
   magasinIdFixe,
   focusAssociation,
+  focusMode = 'liste',
   sansEntete = false,
 }: {
   state: AppState
@@ -112,6 +116,8 @@ export function Collecte({
   magasinIdFixe?: string
   /** Change de valeur quand on demande, depuis la fiche magasin, d'aller droit à l'étape Association. */
   focusAssociation?: number
+  /** Ce qu'on veut y faire : voir la liste, ouvrir la demande de changement, ou ajouter une association. */
+  focusMode?: ModeAssociation
   /** La carte d'en-tête (nom, avancement) est rendue par le parent — voir `EnteteCollecte`. */
   sansEntete?: boolean
 }) {
@@ -162,9 +168,16 @@ export function Collecte({
   // et s'il n'y a encore aucune association, on ouvre directement le formulaire d'enregistrement.
   useEffect(() => {
     if (!focusAssociation) return
-    if (magasin && magasin.collecteurs.length === 0) {
+    if (focusMode === 'ajout' || (magasin && magasin.collecteurs.length === 0)) {
       setBrouillon({ ...COLLECTEUR_VIDE })
       setEditionCollecteur(-1)
+    }
+    if (focusMode === 'changement' && magasin && magasin.collecteurs.length > 0) {
+      if (!session) onConnexion()
+      else {
+        setAssoConcernee(magasin.collecteurs.length === 1 ? magasin.collecteurs[0].nom : '')
+        setChangementOuvert(true)
+      }
     }
     window.setTimeout(() => etapeAssociationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
     // eslint-disable-next-line react-hooks/exhaustive-deps
