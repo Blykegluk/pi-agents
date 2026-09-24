@@ -46,8 +46,23 @@ export function compteId(session: Session): string {
 }
 
 /** L'accès partagé reçu par le compte connecté, s'il y en a un. */
-export async function monAcces(): Promise<Acces | null> {
-  const { data, error } = await supabase.from('mana_acces').select('*').order('cree_le', { ascending: true }).limit(1).maybeSingle()
+/**
+ * L'accès partagé dont ce compte bénéficie, s'il y en a un : une ligne dont l'e-mail est le sien,
+ * ouverte par un autre propriétaire. Filtrer sur l'e-mail est indispensable : la politique de
+ * lecture rend aussi visibles les accès que ce compte a lui-même donnés, et sans ce filtre un
+ * propriétaire qui vient d'inviter quelqu'un serait pris pour un invité.
+ */
+export async function monAcces(email: string | undefined, monId: string): Promise<Acces | null> {
+  const adresse = (email ?? '').trim().toLowerCase()
+  if (!adresse) return null
+  const { data, error } = await supabase
+    .from('mana_acces')
+    .select('*')
+    .eq('email', adresse)
+    .neq('proprietaire', monId)
+    .order('cree_le', { ascending: true })
+    .limit(1)
+    .maybeSingle()
   if (error) throw new Error(error.message)
   return (data as Acces | null) ?? null
 }

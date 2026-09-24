@@ -118,7 +118,7 @@ export default function App() {
     }
     let annule = false
     setAcces(undefined)
-    monAcces()
+    monAcces(session.user.email, session.user.id)
       .then((a) => {
         if (annule) return
         definirCompteDelegue(a?.proprietaire ?? null)
