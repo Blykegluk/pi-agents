@@ -974,29 +974,6 @@ hr.sep {
   margin-bottom: 0;
 }
 
-/* Sur grand écran, l'assistant s'étale sur deux colonnes dans une colonne élargie. */
-@media (min-width: 900px) {
-  #root {
-    --colonne: 1040px;
-  }
-
-  /* Les formulaires restent lisibles : un champ de 1 000 px de large n'aide personne. */
-  .etroit {
-    max-width: 760px;
-  }
-
-  .colonnes-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 20px;
-    align-items: start;
-  }
-
-  .reseaux {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
 /* ---------- Notifications & messagerie ---------- */
 .tab-ico {
   position: relative;
@@ -1381,3 +1358,133 @@ i.cal-point {
 }
 .barre-magasins-select { flex: 1; min-width: 220px; max-width: 420px; padding: 9px 12px; font-weight: 700; font-size: 14px; }
 .barre-magasins-libelle { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--vert-fonce); }
+
+/* ==========================================================================
+   Mana — Portail : mise en page PC.
+   À AJOUTER À LA FIN de portail-src/src/styles.css (remplace le bloc
+   « @media (min-width: 900px) » existant, lignes ~« Sur grand écran… »).
+   Le mobile (< 900 px) n'est pas touché.
+   ========================================================================== */
+
+/* ---------- Saisie : conteneur (remplace .etroit dans Saisie.tsx) ---------- */
+.saisie { max-width: 760px; }
+.saisie-grille { display: flex; flex-direction: column; }
+.saisie-grille > * { min-width: 0; }
+.saisie-col { display: contents; }          /* mobile : les cartes gardent l'ordre actuel */
+.saisie-cal { order: -1; }                   /* … calendrier en premier, comme aujourd'hui */
+
+@media (min-width: 900px) {
+  /* Le portail devient une application à barre latérale : en-tête pleine largeur,
+     onglets à gauche, contenu à droite. */
+  #root {
+    --colonne: none;
+    max-width: none;
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "header header" "nav main";
+  }
+  .header { grid-area: header; padding: 10px 28px; }
+  .header .brand span { display: inline; }
+
+  .tabbar {
+    grid-area: nav;
+    position: sticky; top: 65px; bottom: auto; left: auto; right: auto;
+    align-self: start;
+    height: calc(100vh - 65px);
+    display: block;
+    background: var(--papier);
+    border-top: none; border-right: 1px solid var(--trait);
+  }
+  .tabbar-inner {
+    flex-direction: column; gap: 4px;
+    max-width: none; padding: 18px 12px; overflow: visible;
+  }
+  .tabbar button {
+    flex: none; width: 100%;
+    flex-direction: row; justify-content: flex-start; gap: 12px;
+    min-height: 44px; padding: 10px 14px;
+    font-size: 14.5px; font-weight: 600; color: var(--encre-2);
+    border-radius: 10px; text-align: left;
+  }
+  .tabbar button:hover { background: var(--sable); color: var(--vert); }
+  .tabbar button.active {
+    background: var(--carte); color: var(--vert); font-weight: 700;
+    box-shadow: 0 1px 2px rgba(43, 38, 32, 0.06), inset 0 0 0 1px var(--trait);
+  }
+  .tab-ico .pastille { top: -6px; right: -8px; box-shadow: 0 0 0 2px var(--papier); }
+
+  main {
+    grid-area: main;
+    width: 100%; max-width: 1240px; margin: 0 auto;
+    padding: 26px 40px 60px;
+  }
+  h2 { font-size: 26px; }
+  .hero h2 { font-size: 36px; }
+
+  /* Les formulaires restent lisibles : un champ de 1 000 px de large n'aide personne. */
+  .etroit { max-width: 760px; }
+  .colonnes-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+    align-items: start;
+  }
+  .reseaux { grid-template-columns: 1fr 1fr; }
+  /* Deux colonnes d'étapes seulement quand chacune garde ≥ 320 px (titre + bouton « Marquer fait » sur une ligne). */
+  .etapes { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .etapes > .card:first-child, .etapes > .card.pleine { grid-column: 1 / -1; }
+  .etapes.sans-entete > .card:first-child { grid-column: auto; }
+  .messages { max-width: 760px; }
+  .pieces { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  table { min-width: 0; }
+
+  /* Feuilles (formules, réglages) : modale centrée plutôt que tiroir du bas. */
+  .sheet-backdrop { align-items: center; }
+  .sheet { border-radius: 18px; max-width: 560px; padding: 10px 24px 24px; max-height: 88vh; }
+  .sheet-handle { display: none; }
+}
+
+/* ---------- Saisie sur deux colonnes : formulaires à gauche, calendrier + récap à droite ---------- */
+@media (min-width: 1100px) {
+  .saisie { max-width: none; }
+  .saisie-grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 0 22px;
+    align-items: start;
+  }
+  .saisie-col { display: block; min-width: 0; }
+  .saisie-cal { order: 0; }
+}
+
+/* ---------- Autres onglets : grilles PC (≥ 1100 px), une colonne en dessous ---------- */
+.magasins-col, .messages-col { display: contents; }
+@media (min-width: 1100px) {
+  .magasins, .messages, .bilan { max-width: none; }
+  .magasins-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 0 22px; align-items: start; }
+  .bilan-grille    { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);   gap: 0 22px; align-items: start; }
+  .messages-grille { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 0 22px; align-items: start; }
+  .simulateur-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 40px; align-items: start; }
+  .magasins-col, .messages-col { display: block; min-width: 0; }
+  .messages-fil { display: flex; flex-direction: column; min-height: 520px; }
+  .messages-fil .messages-bulles { flex: 1; }
+  .messages-fil .composer { margin-top: auto; }
+  .card.fil.ouvert { border-color: var(--vert); }
+  /* Liste des fils : chaque fil est une carte cliquable (sujet + pastille, statut + date). */
+  .messages-col button.card.fil { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .messages-col button.card.fil:hover { border-color: var(--vert); }
+  .messages-col .fil-tete { cursor: pointer; }
+  .messages-col .fil-etat { width: 100%; justify-content: space-between; }
+  .bulle { max-width: 78%; }
+  .barre-societes select, .barre-magasins-select { flex: none; width: auto; min-width: 320px; max-width: 560px; }
+  .barre-societes-actions { margin-left: auto; }
+}
+
+/* ---------- Bannière « Vous explorez la démonstration » (App.tsx) ---------- */
+.banniere-demo { display: flex; flex-direction: column; gap: 8px; }
+.banniere-demo .btn { align-self: flex-start; }
+@media (min-width: 900px) {
+  .banniere-demo { flex-direction: row; align-items: center; }
+  .banniere-demo .btn { align-self: center; margin-left: auto; flex: none; }
+}

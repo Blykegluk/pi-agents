@@ -12,6 +12,44 @@ import { IconRegistre } from '../components/Icons'
 import { Pieces } from '../components/Pieces'
 import { supprimerFichierBordereau } from '../lib/cloud'
 import { denomination } from '../lib/identite'
+import type { AggSociete } from '../lib/selectors'
+
+/** Partie du registre à rendre seule (mise en page PC du Bilan) ; sans valeur, tout est rendu à la suite. */
+export type PartieRegistre = 'documents' | 'registre' | 'archives' | 'cloture'
+
+/** Export CSV du registre d'une société (même contenu que le bouton « Export CSV »). */
+export function exporterRegistreCSV(agg: AggSociete, state: AppState, exercice: number) {
+  const societe = agg.societe
+  const magasinDe = (id: string) => state.magasins.find((m) => m.id === id)
+  const sep = ';'
+  const head = [
+    'Semaine ISO', 'Jour', 'Type', 'Origine', 'Colis', 'Association', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
+    'Poids F&L (kg)', 'Coût F&L (EUR/kg)', 'Coût F&L (EUR)', 'Base semaine (EUR)', 'Horodatage', 'Justificatifs', 'Alerte 2,5 % CA', 'Note',
+  ].join(sep)
+  const rows = [...agg.saisies]
+    .sort((a, b) => compareWeekIds(a.semaine, b.semaine))
+    .map((s) => {
+      const m = magasinDe(s.magasinId)
+      const num = (n: number) => n.toFixed(2).replace('.', ',')
+      return [
+        s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don',
+        s.origine === 'bordereau' ? 'Bordereau' : s.origine === 'releve' ? 'Relevé' : 'Saisie', String(s.colis ?? ''), s.collecteur ?? '',
+        m?.nom ?? '', denomination(societe),
+        num(s.pvEmballes), String(s.margePctAppliquee).replace('.', ','),
+        num(coutEmballes(s.pvEmballes, s.margePctAppliquee)), String(s.kgFL).replace('.', ','),
+        num(s.coutKgFLApplique), num(coutFL(s.kgFL, s.coutKgFLApplique)), num(baseDeLaSaisie(s)),
+        fmtDateHeure(s.horodatage), String(s.justificatifs.length), agg.saisiesEnAlerte.has(s.id) ? 'OUI' : '',
+        (s.note ?? '').replaceAll(sep, ','),
+      ].join(sep)
+    })
+  const blob = new Blob(['\ufeff' + [head, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `mana-registre-${exercice}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 /** Registre & documents (spec §4.5) + factures mensuelles et clôture d'exercice (complément §1 et §3). */
 export function Registre({
@@ -22,11 +60,17 @@ export function Registre({
   onCloturer,
   onSaveSaisie,
   onDeleteSaisie,
+  partie,
+  actionsDansBarre = false,
 }: {
   state: AppState
   exercice: number
   /** Société choisie dans le Bilan ; à défaut la première. */
   societeId?: string
+  /** Ne rendre qu'une partie (Bilan sur grand écran) ; sinon tout, avec titre et mentions. */
+  partie?: PartieRegistre
+  /** Export CSV, Registre PDF et État annuel sont rendus par le Bilan dans sa barre : ne pas les répéter ici. */
+  actionsDansBarre?: boolean
   onGenererFactures: (societeId: string) => number
   onCloturer: (societeId: string, caReel: number, margeReellePct: number, justificatif: Justificatif | null) => void
   onSaveSaisie: (s: Saisie) => void
@@ -71,35 +115,7 @@ export function Registre({
     caReelNum > 0 && margeReelleNum > 0 && margeReelleNum < 100 ? calculerCloture(agg, caReelNum, margeReelleNum) : null
 
   function exporterCSV() {
-    if (!agg) return
-    const sep = ';'
-    const head = [
-      'Semaine ISO', 'Jour', 'Type', 'Origine', 'Colis', 'Association', 'Magasin', 'Société', 'PV emballés (EUR)', 'Marge appliquée (%)', 'Coût emballés (EUR)',
-      'Poids F&L (kg)', 'Coût F&L (EUR/kg)', 'Coût F&L (EUR)', 'Base semaine (EUR)', 'Horodatage', 'Justificatifs', 'Alerte 2,5 % CA', 'Note',
-    ].join(sep)
-    const rows = [...agg.saisies]
-      .sort((a, b) => compareWeekIds(a.semaine, b.semaine))
-      .map((s) => {
-        const m = magasinDe(s.magasinId)
-        const num = (n: number) => n.toFixed(2).replace('.', ',')
-        return [
-          s.semaine, s.jour ?? '', s.type === 'correction' ? 'Correction' : 'Don',
-          s.origine === 'bordereau' ? 'Bordereau' : s.origine === 'releve' ? 'Relevé' : 'Saisie', String(s.colis ?? ''), s.collecteur ?? '',
-          m?.nom ?? '', denomination(societe),
-          num(s.pvEmballes), String(s.margePctAppliquee).replace('.', ','),
-          num(coutEmballes(s.pvEmballes, s.margePctAppliquee)), String(s.kgFL).replace('.', ','),
-          num(s.coutKgFLApplique), num(coutFL(s.kgFL, s.coutKgFLApplique)), num(baseDeLaSaisie(s)),
-          fmtDateHeure(s.horodatage), String(s.justificatifs.length), agg.saisiesEnAlerte.has(s.id) ? 'OUI' : '',
-          (s.note ?? '').replaceAll(sep, ','),
-        ].join(sep)
-      })
-    const blob = new Blob(['﻿' + [head, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `mana-registre-${exercice}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    if (agg) exporterRegistreCSV(agg, state, exercice)
   }
 
   async function choisirPieceCloture(files: FileList | null) {
@@ -107,10 +123,30 @@ export function Registre({
     if (pj) setPieceCloture(pj)
   }
 
+  const montre = (x: PartieRegistre) => !partie || partie === x
+
+  const carteNoteDeMethode = (
+    <div className="card">
+      <h3>Note de méthode</h3>
+      <p className="muted">
+        Méthode de valorisation (coefficient de marge issu de la liasse, coût moyen F&amp;L et sa source, constance).
+        Datée et versionnée à chaque changement de paramètre.
+      </p>
+      {agg.magasins.map((m) => (
+        <div className="row-actions" key={m.id} style={{ marginBottom: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => pdfNoteDeMethode(societe, m, exercice)}>
+            ⬇ Note de méthode — {m.nom} (v{m.versionsParametres[m.versionsParametres.length - 1]?.version ?? 1})
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
     <div>
-      <h2>Registre &amp; documents — {denomination(societe)}</h2>
+      {!partie && <h2>Registre &amp; documents — {denomination(societe)}</h2>}
 
+      {montre('registre') && (
       <div className="card">
         <h3>Registre des dons — exercice {exercice}</h3>
         <p className="muted">
@@ -228,16 +264,20 @@ export function Registre({
             </table>
           </div>
         )}
-        <div className="row-actions" style={{ marginTop: 12 }}>
-          <button className="btn btn-ghost btn-sm" onClick={exporterCSV} disabled={lignes.length === 0}>
-            ⬇ Export CSV
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => pdfRegistre(agg, exercice)} disabled={lignes.length === 0}>
-            ⬇ Registre PDF
-          </button>
-        </div>
+        {!actionsDansBarre && (
+          <div className="row-actions" style={{ marginTop: 12 }}>
+            <button className="btn btn-ghost btn-sm" onClick={exporterCSV} disabled={lignes.length === 0}>
+              ⬇ Export CSV
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => pdfRegistre(agg, exercice)} disabled={lignes.length === 0}>
+              ⬇ Registre PDF
+            </button>
+          </div>
+        )}
       </div>
+      )}
 
+      {montre('documents') && (
       <div className="card">
         <h3>Factures Mana — commission au succès</h3>
         <p className="muted">
@@ -317,7 +357,9 @@ export function Registre({
         </button>
         {messageFactures && <p className="muted" style={{ marginTop: 8, textAlign: 'center' }}>{messageFactures}</p>}
       </div>
+      )}
 
+      {montre('archives') && (
       <div className="card">
         <h3>Bordereaux archivés</h3>
         <p className="muted">
@@ -391,22 +433,11 @@ export function Registre({
           ))
         })()}
       </div>
+      )}
 
-      <div className="card">
-        <h3>Note de méthode</h3>
-        <p className="muted">
-          Méthode de valorisation (coefficient de marge issu de la liasse, coût moyen F&amp;L et sa source, constance).
-          Datée et versionnée à chaque changement de paramètre.
-        </p>
-        {agg.magasins.map((m) => (
-          <div className="row-actions" key={m.id} style={{ marginBottom: 8 }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => pdfNoteDeMethode(societe, m, exercice)}>
-              ⬇ Note de méthode — {m.nom} (v{m.versionsParametres[m.versionsParametres.length - 1]?.version ?? 1})
-            </button>
-          </div>
-        ))}
-      </div>
+      {!partie && carteNoteDeMethode}
 
+      {montre('documents') && (
       <div className="card">
         <h3>État annuel de valorisation</h3>
         <p className="muted">
@@ -460,11 +491,15 @@ export function Registre({
             <strong>Contrat de service non signé :</strong> l’état annuel et les reçus ne sont émis qu’une fois le contrat signé (onglet Magasins, carte de la société).
           </div>
         )}
-        <button className="btn btn-primary btn-block" disabled={agg.semainesSansReleve.length > 0 || !societe.contrat} style={{ opacity: agg.semainesSansReleve.length > 0 || !societe.contrat ? 0.5 : 1 }} onClick={() => pdfEtatAnnuel(agg, exercice)}>
-          ⬇ État annuel {exercice} — {denomination(societe)}
-        </button>
+        {!actionsDansBarre && (
+          <button className="btn btn-primary btn-block" disabled={agg.semainesSansReleve.length > 0 || !societe.contrat} style={{ opacity: agg.semainesSansReleve.length > 0 || !societe.contrat ? 0.5 : 1 }} onClick={() => pdfEtatAnnuel(agg, exercice)}>
+            ⬇ État annuel {exercice} — {denomination(societe)}
+          </button>
+        )}
       </div>
+      )}
 
+      {montre('documents') && (
       <div className="card">
         <h3>Reçus fiscaux 2041-MEC-SD</h3>
         <p className="muted">
@@ -502,7 +537,11 @@ export function Registre({
           </p>
         )}
       </div>
+      )}
 
+      {partie === 'documents' && carteNoteDeMethode}
+
+      {montre('cloture') && (
       <div className="card">
         <h3>Clôture d’exercice — régularisation</h3>
         {cloture ? (
@@ -570,10 +609,13 @@ export function Registre({
           </div>
         )}
       </div>
+      )}
 
-      <footer className="legal">
-        Mana n’est pas un conseil fiscal ; l’état annuel est destiné à validation par votre expert-comptable.
-      </footer>
+      {!partie && (
+        <footer className="legal">
+          Mana n’est pas un conseil fiscal ; l’état annuel est destiné à validation par votre expert-comptable.
+        </footer>
+      )}
     </div>
   )
 }

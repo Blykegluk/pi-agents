@@ -509,7 +509,7 @@ export function SaisieView({
   }
 
   return (
-    <div className="etroit">
+    <div className="saisie">
       <h2>Saisie</h2>
 
       {/* Barre figée : on voit toujours pour quel magasin on saisit, même en bas de page. */}
@@ -572,36 +572,10 @@ export function SaisieView({
         </div>
       )}
 
-      {/* ============ Calendrier ============ */}
-      <div className="card">
-        <Calendrier
-          mois={moisCal}
-          bordereaux={bordereauxMagasin}
-          releves={relevesMagasin}
-          collecteurs={magasin.collecteurs}
-          jourActif={jour}
-          onChoisirJour={(j) => {
-            setJour(j)
-            setMoisCal(j.slice(0, 7))
-          }}
-          onChangerMois={(d) => setMoisCal(addMois(moisCal, d))}
-          onSignaler={
-            session
-              ? async (texte) => {
-                  await creerDemande(
-                    compteId(session),
-                    session.user.email ?? '',
-                    'support',
-                    `Alerte calendrier à vérifier — ${magasin.nom} (${moisCal})`,
-                    { magasin: magasin.nom, magasinId: magasin.id, mois: moisCal, ecran: 'saisie/calendrier' },
-                    texte,
-                  )
-                }
-              : undefined
-          }
-        />
-      </div>
-
+      {/* Deux colonnes dès 1 100 px : bordereau + relevé à gauche, calendrier + récapitulatif à droite.
+          En dessous, `.saisie-col { display: contents }` et `.saisie-cal { order: -1 }` gardent l'ordre mobile. */}
+      <div className="saisie-grille">
+      <div className="saisie-col">
       {/* ============ 1. Bordereau du jour ============ */}
       <ImportBordereaux magasin={magasin} session={session} joursDejaPris={bordereauxMagasin.map((b) => b.jour!).filter(Boolean)} onEnregistrer={enregistrerImport} />
 
@@ -901,6 +875,38 @@ export function SaisieView({
         ) : null}
       </div>
 
+      </div>
+      <aside className="saisie-col">
+      {/* ============ Calendrier ============ */}
+      <div className="card saisie-cal">
+        <Calendrier
+          mois={moisCal}
+          bordereaux={bordereauxMagasin}
+          releves={relevesMagasin}
+          collecteurs={magasin.collecteurs}
+          jourActif={jour}
+          onChoisirJour={(j) => {
+            setJour(j)
+            setMoisCal(j.slice(0, 7))
+          }}
+          onChangerMois={(d) => setMoisCal(addMois(moisCal, d))}
+          onSignaler={
+            session
+              ? async (texte) => {
+                  await creerDemande(
+                    compteId(session),
+                    session.user.email ?? '',
+                    'support',
+                    `Alerte calendrier à vérifier — ${magasin.nom} (${moisCal})`,
+                    { magasin: magasin.nom, magasinId: magasin.id, mois: moisCal, ecran: 'saisie/calendrier' },
+                    texte,
+                  )
+                }
+              : undefined
+          }
+        />
+      </div>
+
       {/* ============ 3. Récapitulatif de la semaine ============ */}
       <div className="card accent">
         <h3>{weekLabel(semaineRecap)}</h3>
@@ -1018,6 +1024,8 @@ export function SaisieView({
             ))}
           </div>
         )}
+      </div>
+      </aside>
       </div>
     </div>
   )

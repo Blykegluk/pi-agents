@@ -58,6 +58,37 @@ const PICTOS: Record<string, ReactNode> = {
 }
 
 
+/**
+ * En-tête d'une collecte : nom du magasin (ou titre fourni), avancement, message d'état.
+ * Rendu par `Collecte` en tête des étapes, ou par la fiche magasin (colonne PC) au-dessus.
+ */
+export function EnteteCollecte({ magasin, titre }: { magasin: Magasin; titre?: string }) {
+  const nbFaites = avancementCollecte(magasin).faites
+  const toutFait = nbFaites === ETAPES.length
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+        <h3 style={{ margin: 0 }}>{titre ?? magasin.nom}</h3>
+        <span className="muted">{nbFaites}/{ETAPES.length} étapes</span>
+      </div>
+      <div className="progress">
+        <div style={{ width: `${(nbFaites / ETAPES.length) * 100}%` }} />
+      </div>
+      {toutFait ? (
+        <div className="info-banner vert" style={{ marginTop: 12, marginBottom: 0 }}>
+          <strong>Votre collecte est en place.</strong> Il ne reste qu’à saisir vos pertes chaque{' '}
+          {magasin.frequenceSaisie === 'quotidienne' ? 'jour' : 'semaine'} — Mana s’occupe du reste.
+        </div>
+      ) : (
+        <p className="muted" style={{ margin: '10px 0 0' }}>
+          Pas encore de collecte en place ? Suivez les étapes dans l’ordre : on vous accompagne jusqu’à la première
+          collecte réussie.
+        </p>
+      )}
+    </>
+  )
+}
+
 export function Collecte({
   state,
   session,
@@ -68,6 +99,7 @@ export function Collecte({
   onOuvrirMessages,
   magasinIdFixe,
   focusAssociation,
+  sansEntete = false,
 }: {
   state: AppState
   session: Session | null
@@ -80,6 +112,8 @@ export function Collecte({
   magasinIdFixe?: string
   /** Change de valeur quand on demande, depuis la fiche magasin, d'aller droit à l'étape Association. */
   focusAssociation?: number
+  /** La carte d'en-tête (nom, avancement) est rendue par le parent — voir `EnteteCollecte`. */
+  sansEntete?: boolean
 }) {
   const [magasinChoisi, setMagasinId] = useState(state.magasins[0]?.id ?? '')
   const magasinId = magasinIdFixe ?? magasinChoisi
@@ -199,9 +233,6 @@ export function Collecte({
     if (id === 'collecteurs') return magasin.collecteurs.length > 0 || mp.faites.includes(id)
     return mp.faites.includes(id)
   }
-  const nbFaites = ETAPES.filter((e) => estFaite(e.id)).length
-  const toutFait = nbFaites === ETAPES.length
-
   function basculer(id: string) {
     if (!magasin) return
     const faites = mp.faites.includes(id) ? mp.faites.filter((f) => f !== id) : [...mp.faites, id]
@@ -282,27 +313,12 @@ export function Collecte({
         </div>
       )}
 
-      <div className="etapes">
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>{magasin.nom}</h3>
-          <span className="muted">{nbFaites}/{ETAPES.length} étapes</span>
+      <div className={`etapes ${sansEntete ? 'sans-entete' : ''}`}>
+      {!sansEntete && (
+        <div className="card">
+          <EnteteCollecte magasin={magasin} />
         </div>
-        <div className="progress">
-          <div style={{ width: `${(nbFaites / ETAPES.length) * 100}%` }} />
-        </div>
-        {toutFait ? (
-          <div className="info-banner vert" style={{ marginTop: 12, marginBottom: 0 }}>
-            <strong>Votre collecte est en place.</strong> Il ne reste qu’à saisir vos pertes chaque{' '}
-            {magasin.frequenceSaisie === 'quotidienne' ? 'jour' : 'semaine'} — Mana s’occupe du reste.
-          </div>
-        ) : (
-          <p className="muted" style={{ margin: '10px 0 0' }}>
-            Pas encore de collecte en place ? Suivez les étapes dans l’ordre : on vous accompagne jusqu’à la première
-            collecte réussie.
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Étape 1 — estimer les invendus */}
       <div className={`card ${estFaite('gisement') ? 'faite' : ''}`}>
