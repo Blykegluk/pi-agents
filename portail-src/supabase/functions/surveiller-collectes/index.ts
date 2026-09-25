@@ -70,7 +70,8 @@ async function enfiler(sb: SupabaseClient, compte: Compte, params: { magasinId: 
 
 —
 Ce message est aussi dans votre espace Mana, onglet Messages : ${URL_PORTAIL}`
-  const repondreA = params.repondre && DOMAINE ? `suivi+${params.demandeId}@${DOMAINE}` : null
+  // Un message de suivi se répond : l'adresse de réponse renvoie dans le fil du dossier.
+  const repondreA = (params.repondre ?? params.genre === 'suivi') && DOMAINE ? `suivi+${params.demandeId}@${DOMAINE}` : null
   await sb.from('mana_courriels').insert(
     destinataires.map((d) => ({ user_id: compte.userId, demande_id: params.demandeId, destinataire: d, objet: params.objet, corps: params.corps + pied, genre: params.genre, repondre_a: repondreA })),
   )
