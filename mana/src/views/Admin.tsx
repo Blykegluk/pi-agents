@@ -21,6 +21,7 @@ import {
   type NonLus,
 } from '../lib/cloud'
 import { Composer } from '../components/Composer'
+import { Reseau } from '../components/Reseau'
 import { ActionsAssociation } from '../components/ActionsAssociation'
 import { aggParSociete } from '../lib/selectors'
 import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
@@ -294,6 +295,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
                         </span>
                       </div>
                     )}
+                    <Reseau state={c.etat} compact />
                   </div>
                 ) : (
                   <p className="muted">État illisible.</p>

@@ -6,6 +6,7 @@ import type { AppState, Magasin, Saisie } from '../src/types.ts'
 import { calendrierPassages, heureFinCreneau, instantParis, joursDepuisTexte, limitePassage, rythmeCollecteur } from '../src/lib/passages.ts'
 import { calculerSignaux } from '../src/lib/signaux.ts'
 import { listeJours } from '../src/lib/suivi.ts'
+import { aFaire, santeReseau } from '../src/lib/reseau.ts'
 
 let echecs = 0
 function ok(nom: string, cond: boolean, detail = '') {
@@ -169,6 +170,16 @@ ok('collecte démarrée le 12 septembre : pas de relevé d’août attendu', !ca
 const signauxOct = calculerSignaux(etat, new Date('2026-10-12T06:00:00.000Z'))
 ok('le 12 octobre : relevé de septembre en retard', signauxOct.some((s) => s.type === 'releve_en_retard' && s.magasinId === 'lb'))
 ok('pas de signal plafond (base très en dessous)', !types.some((t) => t.startsWith('plafond')))
+
+console.log('— Réseau —')
+const sante = santeReseau(etat, new Date('2026-09-25T06:00:00.000Z'))
+egal('magasins triés : les deux en alerte d’abord, le nouveau (info) en dernier', sante.magasins.map((m) => m.magasin.nom), ['Ornano', 'Léon Blum', 'Nouveau'])
+const lb = sante.magasins.find((m) => m.magasin.nom === 'Léon Blum')!
+egal('Léon Blum, semaine 39 (21→27) : 0 fait, 3 manqués, 1 à saisir (24), 2 à venir (25, 26)', lb.semaine, { attendus: 6, faits: 0, enAttente: 1, manques: 3, aVenir: 2 })
+egal('Léon Blum : série 3 · dernier bordereau 19/09', [lb.serie?.manques, lb.dernierBordereau], [3, '2026-09-19'])
+egal('totaux : 2 en collecte sur 3, 2 en alerte', [sante.totaux.enCollecte, sante.totaux.magasins, sante.totaux.enAlerte], [2, 3, 2])
+const todo = aFaire(etat, new Date('2026-09-25T06:00:00.000Z')).find((x) => x.magasin.nom === 'Léon Blum')!
+egal('à faire le 25/09 : passage prévu aujourd’hui, bordereau du 24 à saisir, 21-23 sans bordereau', [todo.aujourdHui.length, todo.aSaisir, todo.sansBordereau[0]?.dates], [1, ['2026-09-24'], ['2026-09-21', '2026-09-22', '2026-09-23']])
 
 console.log(echecs === 0 ? '\nTout est conforme.' : `\n${echecs} écart(s).`)
 process.exit(echecs === 0 ? 0 : 1)

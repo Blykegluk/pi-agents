@@ -8,6 +8,7 @@ import { Consolide, Dashboard } from './Dashboard'
 import { Registre, exporterRegistreCSV } from './Registre'
 import { pdfEtatAnnuel, pdfRegistre } from '../lib/pdf'
 import { useGrandEcran } from '../lib/ecran'
+import { Reseau } from '../components/Reseau'
 
 /**
  * Bilan = « où en suis-je ». En tête, le consolidé du groupe (quand il y a
@@ -80,6 +81,8 @@ export function Bilan({
       <div className="bilan">
         <h2>Bilan — {exercice}</h2>
 
+        <Reseau state={state} />
+
         {aggs.length > 1 && <Consolide aggs={aggs} exercice={exercice} />}
 
         <div className="barre-societes">
@@ -127,6 +130,8 @@ export function Bilan({
   return (
     <div className="bilan">
       <h2>Bilan — {exercice}</h2>
+
+      <Reseau state={state} />
 
       {aggs.length > 1 && <Consolide aggs={aggs} exercice={exercice} />}
 

@@ -1596,3 +1596,39 @@ button.cal-case:hover { filter: brightness(0.92); }
 }
 .cal-legende .clic::before { display: none; }
 .cal-legende .clic { font-style: italic; }
+
+/* ---------- Réseau (santé des collectes) ---------- */
+.reseau-tuiles { margin-bottom: 12px; grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 700px) { .reseau-tuiles { grid-template-columns: repeat(2, 1fr); } }
+.reseau-table { font-size: 12.5px; }
+.reseau-table th { white-space: nowrap; }
+.reseau-table td { vertical-align: top; }
+.reseau-table tr.niveau-alerte td:first-child { box-shadow: inset 3px 0 0 var(--rouge); }
+.reseau-table tr.niveau-attention td:first-child { box-shadow: inset 3px 0 0 var(--ambre); }
+.reseau.compact { padding-top: 8px; padding-bottom: 8px; margin-top: 8px; background: var(--papier, #f7f3e8); }
+button.lien {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--vert);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---------- Aujourd'hui (responsable de magasin) ---------- */
+.ma-semaine-liste { list-style: none; margin: 4px 0 0; padding: 0; }
+.ma-semaine-liste li { padding: 4px 0; font-size: 13.5px; }
+.pastille-jour {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  background: #ddd5c0;
+}
+.pastille-jour.prevu { background: #fff; box-shadow: inset 0 0 0 1px var(--vert); }
+.pastille-jour.attente { background: var(--ambre-pale); box-shadow: inset 0 0 0 1px var(--ambre); }
+.pastille-jour.manque { background: var(--rouge); }
