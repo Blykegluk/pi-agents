@@ -1505,102 +1505,19 @@ i.cal-point {
   .banniere-demo .btn { align-self: center; margin-left: auto; flex: none; }
 }
 
-/* ---------- Calendrier des passages (carte Associations) ---------- */
-.calendrier-passages {
-  margin-top: 8px;
-}
-.calendrier-passages .cal-grille {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(30px, 1fr));
-  gap: 4px;
-  align-items: stretch;
-  font-size: 11px;
-  max-width: 420px;
-}
-.calendrier-passages .cal-grille.avec-compte {
-  grid-template-columns: repeat(7, minmax(30px, 1fr)) auto;
-}
-.calendrier-passages .cal-entete {
-  text-align: center;
-  opacity: 0.6;
-  font-weight: 600;
-  padding-bottom: 2px;
-}
-/* Une case = un jour, avec son numéro ; même boîte pour le <span> (lecture) et le <button> (réponse). */
-.calendrier-passages .cal-case {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  height: 30px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: #f1ece0;
-  color: var(--encre-3);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.calendrier-passages .cal-case.mois { font-size: 10px; letter-spacing: -0.2px; }
-.calendrier-passages .cal-case.fait { background: #2f7a55; color: #fff; }
-.calendrier-passages .cal-case.fait.decale { background: #6aa884; color: #fff; }
-.calendrier-passages .cal-case.fait.hors { background: #2f7a55; color: #fff; opacity: 0.55; }
-.calendrier-passages .cal-case.fait.sansdon { background: #e3ebe3; color: var(--vert-fonce); box-shadow: inset 0 0 0 1px #6aa884; }
-.calendrier-passages .cal-case.manque { background: var(--rouge); color: #fff; cursor: pointer; }
-.calendrier-passages .cal-case.manque.confirme { background: #b23a2c; color: #fff; }
-.calendrier-passages .cal-case.en_attente { background: var(--ambre-pale); color: var(--ambre-texte); box-shadow: inset 0 0 0 1px var(--ambre); cursor: pointer; }
-.calendrier-passages .cal-case.a_venir { background: #fff; color: var(--encre-3); box-shadow: inset 0 0 0 1px #ddd5c0; }
-.calendrier-passages .cal-case.declare { background: #b9cbbd; color: var(--vert-fonce); }
-.calendrier-passages .cal-case.ferme { background: #eee9dc; color: var(--encre-3); text-decoration: line-through; }
-.calendrier-passages .cal-case.vide { opacity: 0.55; }
-.calendrier-passages .cal-case.aujourdhui { outline: 2px solid var(--vert); outline-offset: 1px; }
-.calendrier-passages .cal-case.actif { outline: 2px solid var(--encre); outline-offset: 1px; }
-.calendrier-passages button.cal-case:hover { filter: brightness(1.08); }
-.cal-compte {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-.cal-pastille {
-  font-size: 10.5px;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 1px 7px;
-  background: #f1ece0;
-}
-.cal-pastille.fait { background: #e3ebe3; color: var(--vert-fonce); }
-.cal-pastille.manque { background: #f6ded4; color: var(--rouge); }
-.cal-pastille.en_attente { background: var(--ambre-pale); color: var(--ambre-texte); }
-.cal-legende {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 11px;
-  opacity: 0.8;
-  margin-top: 6px;
-}
-.cal-legende span::before {
-  content: '';
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  margin-right: 4px;
-  vertical-align: -1px;
-  background: #f1ece0;
-}
-.cal-legende .fait::before { background: #2f7a55; }
-.cal-legende .manque::before { background: var(--rouge); }
-.cal-legende .en_attente::before { background: var(--ambre-pale); box-shadow: inset 0 0 0 1px var(--ambre); }
-.cal-legende .a_venir::before { background: #fff; box-shadow: inset 0 0 0 1px #ddd5c0; }
-
+/* ---------- Calendrier des passages (carte Associations) : même format que celui de Saisie ---------- */
+.calendrier-passages { max-width: 460px; margin: 10px auto 0; }
+.calendrier-passages .cal-resume { margin: 0 0 6px; text-align: center; font-size: 13px; }
+.calendrier-passages .cal-case.fixe { cursor: default; }
+.calendrier-passages button.cal-case:hover { border-color: var(--rouge); }
+.cal-point.manque, i.cal-point.manque { background: var(--rouge); }
+.cal-point.manque.confirme { background: #8f2f22; }
+.cal-point.attente, i.cal-point.attente { background: var(--ambre); }
+.cal-point.prevu, i.cal-point.prevu { background: transparent; box-shadow: inset 0 0 0 2px var(--vert); }
+.cal-point.sansdon { background: #9fc3ad; }
+.cal-point.declare { background: #b9cbbd; }
+.cal-point.hors { opacity: 0.5; }
+.cal-reponse { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--papier); border: 1px solid var(--trait-doux); font-size: 13.5px; }
 /* ---------- Console : signaux ---------- */
 .signal-ligne {
   display: flex;
@@ -1613,19 +1530,6 @@ i.cal-point {
 .signal-ligne .corps { flex: 1; min-width: 0; }
 .signal-ligne .corps small { display: block; opacity: 0.75; margin-top: 2px; }
 .signal-ligne.traite, .signal-ligne.ignore { opacity: 0.6; }
-
-/* Calendrier : réponses du magasin */
-.calendrier-passages button.cal-case { cursor: pointer; }
-.cal-reponse {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--papier, #f7f3e8);
-  border: 1px solid var(--trait-doux);
-  font-size: 13px;
-}
-.cal-legende .clic::before { display: none; }
-.cal-legende .clic { font-style: italic; }
 
 /* ---------- Réseau (santé des collectes) ---------- */
 .reseau-tuiles { margin-bottom: 12px; grid-template-columns: repeat(4, 1fr); }
@@ -1733,7 +1637,6 @@ button.lien {
 
 /* ---------- Magasins : une seule colonne pleine largeur ---------- */
 .magasins-pile > .card { width: 100%; }
-.magasins-pile .calendrier-passages .cal-grille { max-width: 560px; }
 
 /* ---------- Associations d'un magasin ---------- */
 .hub-magasin { border-top: 1px solid var(--trait-doux); padding-top: 12px; margin-top: 12px; }
