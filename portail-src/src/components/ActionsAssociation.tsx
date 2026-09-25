@@ -49,6 +49,33 @@ export function brouillonJustification(d: Demande, adminEmail: string): Brouillo
   }
 }
 
+/** Mail de relance à l'association d'un fil de suivi : des passages prévus sans enlèvement. */
+export function brouillonRelance(d: Demande, adminEmail: string): Brouillon {
+  const c = d.contenu
+  const magasin = texte(c.magasin)
+  const societe = texte(c.societe)
+  const asso = texte(c.association_concernee)
+  const rythme = texte(c.rythme_convenu)
+  const adresse = texte(c.adresse_magasin)
+  const dates = Array.isArray(c.dates) ? (c.dates as string[]) : []
+  const jours = dates.map((j) => { const [, m, dd] = j.split('-').map(Number); return `${dd} ${['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][m - 1]}` })
+  const liste = jours.length > 1 ? `${jours.slice(0, -1).join(', ')} et ${jours[jours.length - 1]}` : jours.join('')
+  const dans7j = new Date(Date.now() + 7 * 86400_000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+  const corps =
+    `Bonjour,\n\n` +
+    `Mana accompagne ${societe ? `la société ${societe} et ` : ''}le magasin ${magasin}${adresse ? ` (${adresse})` : ''} pour le don de ses invendus alimentaires à ${asso && asso !== 'aucune en particulier' ? asso : 'votre association'}.\n\n` +
+    `Nos relevés n’indiquent aucun enlèvement ${jours.length > 1 ? 'les' : 'le'} ${liste}${rythme ? `, alors que le rythme convenu est : ${rythme}` : ''}. ` +
+    `S’agit-il d’un empêchement ponctuel ou d’un changement dans vos tournées ? Le magasin prépare et pèse les produits pour chaque passage ; si un autre rythme vous convient mieux, dites-le-nous et nous l’ajusterons avec lui.\n\n` +
+    `Pour mémoire, chaque passage est documenté par un bordereau signé des deux côtés : c’est ce qui permet au magasin d’établir le reçu fiscal en fin d’année et de maintenir les dons dans la durée.\n\n` +
+    `Merci de nous répondre d’ici le ${dans7j}. Sans nouvelles, nous devrons proposer au magasin une autre association pour ne pas perdre les denrées.` +
+    signature(adminEmail)
+  return {
+    a: texte(c.association_email),
+    objet: `Collecte des invendus de ${magasin} : passages ${jours.length > 1 ? 'des' : 'du'} ${liste}`,
+    corps,
+  }
+}
+
 /** Mail de prise de contact avec une association trouvée. */
 export function brouillonProspection(d: Demande, a: AssociationTrouvee, adminEmail: string): Brouillon {
   const c = d.contenu
@@ -177,7 +204,12 @@ export function ActionsAssociation({ demande, adminEmail, onConsigner, onProposi
     <div style={{ marginTop: 10, borderTop: '1px solid var(--trait-doux)', paddingTop: 10 }}>
       <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>Actions Mana</div>
       <div className="row-actions">
-        {aUneAsso && (
+        {aUneAsso && demande.type === 'suivi' && (
+          <button className="btn btn-primary btn-sm" onClick={() => setBrouillon({ titre: `Relance de ${texte(c.association_concernee)}`, b: brouillonRelance(demande, adminEmail) })}>
+            ✉ Préparer la relance de l’association
+          </button>
+        )}
+        {aUneAsso && demande.type !== 'suivi' && (
           <button className="btn btn-ghost btn-sm" onClick={() => setBrouillon({ titre: `Demande de justification à ${texte(c.association_concernee)}`, b: brouillonJustification(demande, adminEmail) })}>
             ✉ Préparer la demande de justification à l’association
           </button>

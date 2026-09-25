@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe } from './types'
+import type { AppState, Facture, Justificatif, Magasin, Saisie, Societe, ReponsePassage } from './types'
 import { buildDemoState, exerciceCourant } from './lib/demo'
 import { clearState, etatVide, exportJSON, importJSON, loadState, saveState, setMajLocale, getSyncLocale, setSyncLocale, sauvegarder, lireSauvegarde, effacerSauvegarde, etatEstVide, resumeEtat, getCompteLie, setCompteLie, purgerAppareil, getAttentePush, setAttentePush, uid } from './lib/storage'
 import { chargerEtatDistant, dateEtatDistant, compterNonLus, connexion, connexionGoogle, deconnexion, estAdmin, inscription, pousserEtatDistant, supabase, type NonLus, monAcces, definirCompteDelegue, compteId, type Acces, type EtatDistant } from './lib/cloud'
@@ -149,6 +149,7 @@ export default function App() {
       societes: state.societes.filter((so) => so.id === magasin.societeId),
       magasins: [magasin],
       saisies: state.saisies.filter((sa) => sa.magasinId === magasin.id),
+      reponsesPassages: (state.reponsesPassages ?? []).filter((r) => r.magasinId === magasin.id),
       factures: state.factures.filter((f) => f.societeId === magasin.societeId),
       clotures: state.clotures.filter((c) => c.societeId === magasin.societeId),
     }
@@ -402,6 +403,17 @@ export default function App() {
     }))
   }
 
+  /** Le magasin dit ce qui s'est passé sur un passage sans bordereau ; une réponse par passage et par association. */
+  function reponsePassage(r: Omit<ReponsePassage, 'id' | 'le' | 'par'>) {
+    setState((s) => ({
+      ...s,
+      reponsesPassages: [
+        ...(s.reponsesPassages ?? []).filter((x) => !(x.magasinId === r.magasinId && x.date === r.date && x.collecteur === r.collecteur)),
+        { ...r, id: crypto.randomUUID(), le: new Date().toISOString(), par: session?.user.email ?? undefined },
+      ],
+    }))
+  }
+
   function deleteMagasin(id: string) {
     setState((s) => ({
       ...s,
@@ -644,6 +656,7 @@ export default function App() {
             onDeleteSociete={deleteSociete}
             onSaveMagasin={saveMagasin}
             onDeleteMagasin={deleteMagasin}
+            onReponsePassage={reponsePassage}
             onAllerSaisie={() => setTab('saisie')}
             onConnexion={() => setReglages(true)}
             onOuvrirAide={() => setAideOuverte(true)}

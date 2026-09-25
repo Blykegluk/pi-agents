@@ -15,6 +15,7 @@
  */
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { calculerSignaux, type NiveauSignal, type SignalCalcule } from './lib/signaux.ts'
+import { contenuSuivi, estEscalade, meriteUnFil, messageCloture, messageEscalade, messageOuverture, sujetSuivi } from './lib/suivi.ts'
 import type { AppState } from './types.ts'
 
 const enTetes = {
@@ -30,6 +31,36 @@ interface LigneSignal {
   cle: string
   niveau: NiveauSignal
   statut: 'ouvert' | 'traite' | 'ignore' | 'resolu'
+  demande_id: string | null
+  detail: Record<string, unknown>
+}
+
+interface Compte {
+  userId: string
+  email: string | null
+  etat: AppState
+}
+
+/** Ouvre le fil de suivi avec le magasin (demande « suivi » + premier message Mana) et l'accroche au signal. */
+async function ouvrirFil(sb: SupabaseClient, compte: Compte, signalId: string, s: SignalCalcule, maintenant: string): Promise<string> {
+  const { data: d, error } = await sb
+    .from('mana_demandes')
+    .insert({ user_id: compte.userId, email: compte.email, type: 'suivi', sujet: sujetSuivi(compte.etat, s), contenu: contenuSuivi(compte.etat, s), statut: 'en_cours', lu_mana_le: maintenant })
+    .select('id')
+    .single()
+  if (error) throw new Error(`fil de suivi : ${error.message}`)
+  const { error: eMsg } = await sb.from('mana_messages').insert({ demande_id: d.id, user_id: compte.userId, auteur: 'mana', texte: messageOuverture(s) })
+  if (eMsg) throw new Error(`message d'ouverture : ${eMsg.message}`)
+  await sb.from('mana_signaux').update({ demande_id: d.id }).eq('id', signalId)
+  return d.id
+}
+
+async function ecrireDansFil(sb: SupabaseClient, compte: Compte, demandeId: string, texte: string, statut?: 'en_cours' | 'traitee') {
+  const { error } = await sb.from('mana_messages').insert({ demande_id: demandeId, user_id: compte.userId, auteur: 'mana', texte })
+  if (error) throw new Error(`message de suivi : ${error.message}`)
+  const maj: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (statut) maj.statut = statut
+  await sb.from('mana_demandes').update(maj).eq('id', demandeId)
 }
 
 /** Rôle porté par un JWT (payload en base64url), sans en vérifier la signature : la passerelle l'a fait. */
@@ -56,18 +87,22 @@ function interpreter(data: unknown): AppState | null {
     saisies: Array.isArray(p.saisies) ? p.saisies : [],
     factures: Array.isArray(p.factures) ? p.factures : [],
     clotures: Array.isArray(p.clotures) ? p.clotures : [],
+    reponsesPassages: Array.isArray(p.reponsesPassages) ? p.reponsesPassages : [],
   }
 }
 
-async function synchroniser(sb: SupabaseClient, userId: string, calcules: SignalCalcule[], maintenant: string) {
-  const { data: vivants, error } = await sb.from('mana_signaux').select('id, cle, niveau, statut').eq('user_id', userId).is('resolu_le', null)
+async function synchroniser(sb: SupabaseClient, compte: Compte, calcules: SignalCalcule[], maintenant: string) {
+  const { data: vivants, error } = await sb.from('mana_signaux').select('id, cle, niveau, statut, demande_id, detail').eq('user_id', compte.userId).is('resolu_le', null)
   if (error) throw new Error(error.message)
   const parCle = new Map<string, LigneSignal>((vivants ?? []).map((v) => [v.cle, v as LigneSignal]))
   let nouveaux = 0
   let resolus = 0
+  let fils = 0
 
   for (const s of calcules) {
     const existant = parCle.get(s.cle)
+    // Le dossier retient jusqu'où le magasin a été prévenu, pour ne pas le redire chaque nuit.
+    const etapePrevenue = (existant?.detail?.etapePrevenue as string | undefined) ?? undefined
     const colonnes = {
       type: s.type,
       niveau: s.niveau,
@@ -75,9 +110,11 @@ async function synchroniser(sb: SupabaseClient, userId: string, calcules: Signal
       magasin_id: s.magasinId ?? null,
       collecteur: s.collecteur ?? null,
       titre: s.titre,
-      detail: s.detail,
+      detail: { ...s.detail, ...(etapePrevenue ? { etapePrevenue } : {}) },
       mis_a_jour_le: maintenant,
     }
+    let id: string
+    let demandeId = existant?.demande_id ?? null
     if (existant) {
       parCle.delete(s.cle)
       // Un signal déjà traité ou ignoré qui s'aggrave repasse « ouvert » : il mérite un nouveau regard.
@@ -85,19 +122,40 @@ async function synchroniser(sb: SupabaseClient, userId: string, calcules: Signal
       const statut = aggrave && existant.statut !== 'ouvert' ? 'ouvert' : existant.statut
       const { error: e } = await sb.from('mana_signaux').update({ ...colonnes, statut }).eq('id', existant.id)
       if (e) throw new Error(e.message)
+      id = existant.id
     } else {
-      const { error: e } = await sb.from('mana_signaux').insert({ user_id: userId, cle: s.cle, ...colonnes, ouvert_le: maintenant })
+      const { data: ins, error: e } = await sb.from('mana_signaux').insert({ user_id: compte.userId, cle: s.cle, ...colonnes, ouvert_le: maintenant }).select('id').single()
       if (e) throw new Error(e.message)
+      id = ins.id
       nouveaux++
     }
+
+    // Fil de suivi avec le magasin : ouvert à 2 passages manqués, escaladé à 3.
+    if (meriteUnFil(s)) {
+      let prevenue = etapePrevenue
+      if (!demandeId) {
+        demandeId = await ouvrirFil(sb, compte, id, s, maintenant)
+        // Ouvert directement au niveau d'alerte : le message d'ouverture dit déjà que Mana prend la main.
+        prevenue = estEscalade(s) ? 'escalade' : 'ouverture'
+        fils++
+      }
+      if (estEscalade(s) && prevenue !== 'escalade') {
+        await ecrireDansFil(sb, compte, demandeId, messageEscalade(s), 'en_cours')
+        prevenue = 'escalade'
+      }
+      if (prevenue !== etapePrevenue) {
+        await sb.from('mana_signaux').update({ detail: { ...s.detail, etapePrevenue: prevenue } }).eq('id', id)
+      }
+    }
   }
-  // Ce qui n'est plus calculé est résolu de lui-même.
+  // Ce qui n'est plus calculé est résolu de lui-même ; le fil, s'il existe, est refermé avec un mot.
   for (const reste of parCle.values()) {
     const { error: e } = await sb.from('mana_signaux').update({ statut: 'resolu', resolu_le: maintenant, mis_a_jour_le: maintenant }).eq('id', reste.id)
     if (e) throw new Error(e.message)
+    if (reste.demande_id) await ecrireDansFil(sb, compte, reste.demande_id, messageCloture(), 'traitee')
     resolus++
   }
-  return { nouveaux, resolus, ouverts: calcules.length }
+  return { nouveaux, resolus, fils, ouverts: calcules.length }
 }
 
 Deno.serve(async (req: Request) => {
@@ -134,7 +192,7 @@ Deno.serve(async (req: Request) => {
   if (eEtats) return Response.json({ erreur: eEtats.message }, { status: 500, headers: enTetes })
 
   const erreurs: { compte: string; erreur: string }[] = []
-  const comptes: { email: string | null; ouverts: number; nouveaux: number; resolus: number; signaux: { niveau: string; titre: string }[] }[] = []
+  const comptes: { email: string | null; ouverts: number; nouveaux: number; resolus: number; fils: number; signaux: { niveau: string; titre: string }[] }[] = []
   let totalOuverts = 0
   let totalNouveaux = 0
   let totalResolus = 0
@@ -147,7 +205,7 @@ Deno.serve(async (req: Request) => {
         continue
       }
       const calcules = calculerSignaux(etat, maintenantDate)
-      const r = await synchroniser(sb, ligne.user_id, calcules, maintenant)
+      const r = await synchroniser(sb, { userId: ligne.user_id, email: ligne.email, etat }, calcules, maintenant)
       totalOuverts += r.ouverts
       totalNouveaux += r.nouveaux
       totalResolus += r.resolus

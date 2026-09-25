@@ -267,6 +267,24 @@ export interface Cloture {
   factureId?: string
 }
 
+/**
+ * Ce que le magasin dit d'un passage attendu resté sans bordereau : l'association
+ * est venue sans rien emporter, n'est pas venue, le bordereau reste à saisir, ou le
+ * magasin était fermé. Le moteur de surveillance en tient compte.
+ */
+export interface ReponsePassage {
+  id: string
+  magasinId: string
+  collecteur: string
+  /** Jour du passage attendu (AAAA-MM-JJ). */
+  date: string
+  reponse: 'venu_sans_don' | 'pas_venu' | 'bordereau_a_saisir' | 'ferme'
+  commentaire?: string
+  /** Horodatage de la réponse. */
+  le: string
+  par?: string
+}
+
 export interface AppState {
   schema: 2
   societes: Societe[]
@@ -274,4 +292,6 @@ export interface AppState {
   saisies: Saisie[]
   factures: Facture[]
   clotures: Cloture[]
+  /** Réponses du magasin sur les passages sans bordereau (absent sur les anciens états). */
+  reponsesPassages?: ReponsePassage[]
 }
