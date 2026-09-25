@@ -42,7 +42,7 @@ export function AccesPartages({ session, magasins, societes = [] }: { session: S
       setAcces((l) => [...l, nouvel])
       setEmail('')
       setLibelle('')
-      setMessage(`Accès ouvert à ${adresse}. Envoyez-lui le lien du site : elle ou il crée son compte avec cette adresse et retrouve directement vos données.`)
+      setMessage(`Accès ouvert à ${adresse}. Envoyez-lui le lien du site.`)
     } catch (e) {
       setMessage((e as Error).message)
     } finally {
@@ -71,9 +71,7 @@ export function AccesPartages({ session, magasins, societes = [] }: { session: S
     <div className="card">
       <h3>Accès partagés</h3>
       <p className="muted" style={{ margin: '0 0 10px' }}>
-        Ouvrez vos données à un responsable de magasin (son magasin), à un dirigeant ou un DAF (une société, ou tout le compte).
-        La personne crée son propre compte Mana avec l’adresse indiquée et arrive directement sur vos données. Elle voit
-        seulement Saisie, Magasins (la collecte, sans les sociétés), Bilan et Messages — jamais ces réglages.
+        Un magasin, une société ou tout le compte. La personne se connecte avec cette adresse ; elle voit Saisie, Magasins, Bilan et Messages, jamais ces réglages.
       </p>
 
       {acces.length > 0 && (

@@ -182,6 +182,23 @@ export async function messagesDe(demandeId: string): Promise<Message[]> {
   return (data ?? []) as Message[]
 }
 
+/**
+ * Qui a écrit en dernier dans chaque dossier : c'est ce qui dit, côté client, si Mana a répondu
+ * (le statut « en cours » reste le même avant et après une réponse).
+ */
+export async function derniersMessages(demandeIds: string[]): Promise<Record<string, { auteur: Message['auteur']; le: string }>> {
+  if (demandeIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from('mana_messages')
+    .select('demande_id, auteur, created_at')
+    .in('demande_id', demandeIds)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  const out: Record<string, { auteur: Message['auteur']; le: string }> = {}
+  for (const m of data ?? []) if (!out[m.demande_id]) out[m.demande_id] = { auteur: m.auteur as Message['auteur'], le: m.created_at }
+  return out
+}
+
 export async function envoyerMessage(demandeId: string, proprietaireId: string, auteur: 'client' | 'mana', texte: string): Promise<void> {
   const { error } = await supabase
     .from('mana_messages')

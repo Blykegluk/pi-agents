@@ -136,7 +136,7 @@ export function EditeurMail({
   return (
     <div className="card" style={{ background: 'var(--papier)', marginTop: 10 }}>
       <h3>{titre}</h3>
-      <p className="muted">Relisez et modifiez librement. « Ouvrir et envoyer » ouvre le mail prêt dans votre messagerie ; vous l’envoyez de là, puis Mana le consigne dans le fil.</p>
+      <p className="muted">Relisez, puis ouvrez-le dans votre messagerie.</p>
       <label className="field">
         <span>À</span>
         <input type="email" value={b.a} onChange={(e) => setB({ ...b, a: e.target.value })} placeholder="adresse@association.org" />
@@ -194,7 +194,7 @@ export function EditeurMail({
       {erreurStyle && <p className="muted" style={{ color: 'var(--rouge)', marginTop: 6 }}>{erreurStyle}</p>}
       {etat === 'ouvert' && (
         <div className="info-banner" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ flex: 1, minWidth: 220 }}>Le mail est ouvert dans votre messagerie. Une fois envoyé, consignez-le ici : il apparaîtra dans le fil de la demande et le client le verra.</span>
+          <span style={{ flex: 1, minWidth: 220 }}>Envoyé ? Consignez-le pour le garder au dossier.</span>
           <button className="btn btn-primary btn-sm" onClick={async () => { await onEnvoye(b, initial); setEtat('consigne') }}>Mail envoyé, consigner</button>
         </div>
       )}
@@ -305,7 +305,7 @@ export function ActionsAssociation({ demande, adminEmail, onConsigner, onProposi
       {chercherOuvert && (
         <div className="card" style={{ background: 'var(--papier)', marginTop: 10 }}>
           <h3>Trouver une nouvelle association</h3>
-          <p className="muted">Claude cherche sur le web les structures d’aide alimentaire autour du magasin : banques alimentaires, Restos du Cœur, Secours populaire, Secours catholique, Croix-Rouge, épiceries solidaires, CCAS. Comptez une à deux minutes.</p>
+          <p className="muted">Recherche sur le web autour du magasin. Une à deux minutes.</p>
           <label className="field">
             <span>Adresse du magasin</span>
             <input type="text" value={adresse} onChange={(e) => setAdresse(e.target.value)} placeholder="Rue, code postal, ville" />

@@ -106,14 +106,15 @@ export function CalendrierPassages({
     <div className="calendrier-passages">
       {cal.series.map((s) => (
         <p className="muted" key={s.collecteur} style={{ margin: '4px 0' }}>
-          <strong style={{ color: 'inherit' }}>{s.collecteur}</strong> · Mana comprend : {s.rythme.libelle}.{' '}
+          {cal.series.length > 1 && <><strong style={{ color: 'inherit' }}>{s.collecteur}</strong> · </>}
+          {s.rythme.libelle.charAt(0).toUpperCase() + s.rythme.libelle.slice(1)} ·{' '}
           {s.rythme.source === 'inconnu'
-            ? 'Précisez les jours et le créneau pour que Mana surveille les passages.'
+            ? 'précisez les jours de passage pour activer le suivi.'
             : s.manques > 0
-              ? `${s.manques} passage${s.manques > 1 ? 's' : ''} manqué${s.manques > 1 ? 's' : ''} d'affilée (${s.dates.slice(-3).map(fmtCourt).join(', ')})${s.confirmes ? `, dont ${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} par le magasin` : ''}.`
+              ? `${s.manques} passage${s.manques > 1 ? 's' : ''} manqué${s.manques > 1 ? 's' : ''} d'affilée`
               : s.dernierFait
-                ? `Dernier bordereau le ${fmtCourt(s.dernierFait)}.`
-                : 'Aucun bordereau sur les huit dernières semaines.'}
+                ? `dernier bordereau le ${fmtCourt(s.dernierFait)}`
+                : 'aucun bordereau depuis 8 semaines'}
         </p>
       ))}
       <div className={`cal-grille${parPeriode.size > 0 ? ' avec-compte' : ''}`} aria-label="Calendrier des passages des huit dernières semaines">
@@ -156,7 +157,7 @@ export function CalendrierPassages({
         <div className="cal-reponse">
           <div>
             <strong>{fmtLong(ouvert.date)} · {ouvert.collecteur}</strong>
-            <span className="muted"> — compté comme manqué. L’association est venue ?{ouvertReponse ? ` (réponse actuelle : ${LIBELLE_REPONSE[ouvertReponse.reponse]})` : ''}</span>
+            <span className="muted"> · {ouvertReponse ? LIBELLE_REPONSE[ouvertReponse.reponse] : 'compté comme manqué'}</span>
           </div>
           <div className="row-actions" style={{ marginTop: 6 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => repondre('bordereau_a_saisir')}>Venue, bordereau à saisir</button>
@@ -165,9 +166,6 @@ export function CalendrierPassages({
             <button className="btn btn-ghost btn-sm" onClick={() => repondre('ferme')}>Magasin fermé</button>
             <button className="btn btn-ghost btn-sm" onClick={() => setOuvert(null)}>Annuler</button>
           </div>
-          <p className="muted" style={{ margin: '6px 0 0' }}>
-            Sans réponse, le passage reste manqué et Mana relance l’association. « Bordereau à saisir » vous laisse trois jours.
-          </p>
         </div>
       )}
       <div className="cal-legende">

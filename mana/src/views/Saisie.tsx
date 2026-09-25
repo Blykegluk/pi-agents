@@ -547,8 +547,8 @@ export function SaisieView({
       {(!societe.contrat || societe.contrat.version !== VERSION_CONTRAT) && (
         <div className="info-banner alerte" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ flex: 1, minWidth: 220 }}>
-            <strong>{societe.contrat ? 'Nouvelle version du contrat à signer' : 'Contrat de service non signé'} pour {denomination(societe)}.</strong>{' '}
-            Vous pouvez saisir, mais aucune facture ni document de fin d’année ne sera émis sans contrat.
+            <strong>{societe.contrat ? 'Nouvelle version du contrat à signer' : 'Contrat à signer'} pour {denomination(societe)}.</strong>{' '}
+            Sans lui, pas de reçu ni de document de fin d’année.
           </span>
           <button className="btn btn-primary btn-sm" onClick={onAllerCollecte}>Signer dans Magasins</button>
         </div>
@@ -556,22 +556,20 @@ export function SaisieView({
 
       {magasin.collecteurs.length === 0 && (
         <div className="info-banner">
-          <strong>Pas encore de collecte en place ?</strong> Suivez l’assistant : association, calendrier, tri, pesée.{' '}
+          <strong>Collecte pas encore en place.</strong>{' '}
           <button className="btn btn-ambre btn-sm" style={{ marginTop: 8, display: 'flex' }} onClick={onAllerCollecte}>
-            Organiser ma collecte
+            Terminer la mise en place
           </button>
         </div>
       )}
       {agg?.plafondAtteint && (
         <div className="info-banner vert">
-          <strong>Plafond fiscal atteint — vos prochains dons ne sont plus facturés.</strong> Continuez à documenter vos
-          dons (conformité et impact) : le compteur repart au 1<sup>er</sup> jour de l’exercice suivant.
+          <strong>Plafond fiscal atteint :</strong> les prochains dons ne sont plus facturés. Continuez à les saisir.
         </div>
       )}
       {agg?.alerteCA && !agg.plafondAtteint && (
         <div className="info-banner alerte">
-          Volume de dons inhabituel par rapport au CA déclaré (plus de 2,5 % du CA) — un justificatif complémentaire
-          sera demandé. Les semaines concernées sont marquées au registre.
+          Dons supérieurs à 2,5 % du CA : un justificatif complémentaire sera demandé.
         </div>
       )}
 
@@ -589,11 +587,7 @@ export function SaisieView({
             ⬇ Bordereau vierge (PDF)
           </button>
         </div>
-        <p className="muted">
-          Un par passage de l’association. C’est la <strong>preuve</strong> en cas de contrôle : photo du bordereau signé
-          archivée dans votre compte, colis comptés, fruits &amp; légumes pesés. Il ne vaut rien en euros par lui-même —
-          la valeur vient du relevé de démarque, en dessous.
-        </p>
+        <p className="muted">Un par passage : c’est la preuve du don. La valeur en euros vient du relevé, plus bas.</p>
 
         <div className="semaine-nav">
           <button className="btn btn-ghost" onClick={() => { const j = addJours(jour, -1); setJour(j); setMoisCal(j.slice(0, 7)) }} aria-label="Jour précédent">‹</button>
@@ -716,11 +710,7 @@ export function SaisieView({
       {/* ============ 2. Relevé de démarque ============ */}
       <div className="card">
         <h3>2. Relevé de démarque « don »</h3>
-        <p className="muted">
-          Le montant lu dans l’export de votre back-office (motif « don »), sur la période que vous voulez : une
-          semaine, un mois, ou deux dates libres. <strong>Le relevé fait foi</strong> ; les bordereaux servent
-          seulement à le répartir entre les semaines{plusieursCollecteurs ? ' et entre vos associations' : ''}.
-        </p>
+        <p className="muted">Le montant « don » de votre back-office, sur une semaine, un mois ou des dates libres. C’est lui qui fixe la valeur des dons.</p>
 
         <label
           className={`zone-depot ${survolReleve ? 'survol' : ''} ${session && !lectureEnCours ? '' : 'inactive'}`}
@@ -741,7 +731,7 @@ export function SaisieView({
           ) : (
             <>
               <strong>Glissez ici l’export de démarque « don », ou cliquez</strong>
-              <span className="muted">Excel, CSV, PDF, photo ou capture d’écran · Mana remplit la période et le montant, vous confirmez HT/TTC et prix de vente/d’achat.</span>
+              <span className="muted">Excel, CSV, PDF ou photo · Mana remplit la période et le montant</span>
             </>
           )}
         </label>
@@ -872,8 +862,7 @@ export function SaisieView({
           </p>
         ) : releveExistant.length > 0 ? (
           <p className="muted" style={{ textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
-            Cette période a déjà son relevé, enregistré le {fmtDate(releveExistant[0].horodatage.slice(0, 10))}. Rien à faire, sauf si vous corrigez
-            une valeur : « Mettre à jour » remplace alors l’ancien relevé.
+            Relevé déjà enregistré le {fmtDate(releveExistant[0].horodatage.slice(0, 10))}. « Mettre à jour » le remplace.
           </p>
         ) : null}
       </div>
@@ -939,8 +928,7 @@ export function SaisieView({
         </div>
         {relevesDeLaSemaine.length === 0 && bordereauxDeLaSemaine.length > 0 && (
           <p className="muted" style={{ marginTop: 10, marginBottom: 0, color: 'var(--papier)', opacity: 0.85 }}>
-            Bordereaux enregistrés, mais pas encore de relevé couvrant cette semaine : la valeur des produits emballés
-            est à 0 € tant que le montant n’est pas saisi.
+            Pas encore de relevé pour cette semaine : les emballés comptent 0 € en attendant.
           </p>
         )}
       </div>
@@ -948,9 +936,6 @@ export function SaisieView({
       {(bordereauxDeLaSemaine.length > 0 || relevesDeLaSemaine.length > 0) && (
         <div className="card">
           <h3>Ce qui compose cette semaine</h3>
-          <p className="muted" style={{ margin: '2px 0 8px' }}>
-            Les bordereaux et le relevé pris en compte dans la base ci-dessus. « Ouvrir » recharge un bordereau dans le formulaire pour le relire ou le compléter.
-          </p>
           {bordereauxDeLaSemaine.map((s) => (
             <div className="facture-ligne" key={s.id}>
               <div className="infos">
@@ -990,11 +975,7 @@ export function SaisieView({
         )}
         {modeCorrection && (
           <>
-            <div className="info-banner">
-              Une correction retire de la base des produits refusés par l’association après enregistrement (chaîne du froid, date dépassée…).
-              Montants <strong>en négatif</strong> (ex. −120 € / −8 kg), sur une <strong>semaine passée</strong>, avec le
-              justificatif du refus joint. Le cumul, le plafond et la prochaine facture se recalculent.
-            </div>
+            <div className="info-banner">Montants <strong>en négatif</strong> (ex. −120 € ou −8 kg), avec le justificatif du refus.</div>
             <div className="colonnes-2">
               <label className="field">
                 <span>Produits emballés (prix de vente HT)</span>

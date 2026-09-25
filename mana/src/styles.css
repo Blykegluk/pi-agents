@@ -1734,3 +1734,22 @@ button.lien {
 /* ---------- Magasins : une seule colonne pleine largeur ---------- */
 .magasins-pile > .card { width: 100%; }
 .magasins-pile .calendrier-passages .cal-grille { max-width: 560px; }
+
+/* ---------- Associations d'un magasin ---------- */
+.hub-magasin { border-top: 1px solid var(--trait-doux); padding-top: 12px; margin-top: 12px; }
+.hub-magasin:first-of-type { border-top: 0; padding-top: 0; }
+.hub-magasin-tete { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.hub-magasin-tete strong { font-size: 15px; }
+.asso-ligne { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--trait-doux); flex-wrap: wrap; }
+.asso-ligne .infos { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+.asso-ligne .infos small { color: var(--encre-3); font-size: 12.5px; }
+.asso-ligne-actions { display: flex; gap: 6px; flex: none; }
+.asso-statut { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; border-radius: 10px; background: var(--ambre-pale); color: var(--ambre-texte); font-size: 13.5px; }
+.asso-statut.repondu { background: #e3ebe3; color: var(--vert-fonce); }
+.asso-statut .lien { flex: none; font-weight: 700; }
+.asso-form { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--papier); border: 1px solid var(--trait-doux); }
+.asso-form h4 { margin: 0 0 8px; font-size: 14.5px; }
+.asso-form textarea { width: 100%; font-family: inherit; }
+.guide-equipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.guide-equipe h4 { margin: 0 0 6px; font-size: 14.5px; }
+.guide-liste { margin: 0; padding-left: 18px; font-size: 13.5px; line-height: 1.55; }

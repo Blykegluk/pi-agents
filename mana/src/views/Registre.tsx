@@ -129,8 +129,7 @@ export function Registre({
     <div className="card">
       <h3>Note de méthode</h3>
       <p className="muted">
-        Méthode de valorisation (coefficient de marge issu de la liasse, coût moyen F&amp;L et sa source, constance).
-        Datée et versionnée à chaque changement de paramètre.
+        Comment la valeur des dons est calculée, versionnée à chaque changement.
       </p>
       {agg.magasins.map((m) => (
         <div className="row-actions" key={m.id} style={{ marginBottom: 8 }}>
@@ -150,12 +149,11 @@ export function Registre({
       <div className="card">
         <h3>Registre des dons — exercice {exercice}</h3>
         <p className="muted">
-          Tableau chronologique horodaté : chaque ligne fige les montants saisis et les coefficients en vigueur.
-          Cumul : <strong>{fmtEUR(agg.baseBrute, 2)}</strong> de base fiscale.
+          Toutes les saisies, horodatées. Base cumulée : <strong>{fmtEUR(agg.baseBrute, 2)}</strong>.
         </p>
         {agg.saisiesEnAlerte.size > 0 && (
           <div className="info-banner alerte">
-            Les lignes surlignées dépassent 2,5 % du CA déclaré en cumul — un justificatif complémentaire sera demandé.
+            Lignes surlignées : au-delà de 2,5 % du CA, justificatif demandé.
           </div>
         )}
         {lignes.length === 0 ? (
@@ -281,17 +279,13 @@ export function Registre({
       <div className="card">
         <h3>Factures Mana — commission au succès</h3>
         <p className="muted">
-          Une facture par mois, émise automatiquement le 1<sup>er</sup> du mois suivant dès que le contrat est signé :{' '}
-          {(societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base des dons documentés du mois, soit 30 % de la
-          réduction d’impôt qu’ils génèrent (TVA 20 %, règlement à 30 jours par prélèvement SEPA ou virement). Rien à faire
-          de votre côté : les factures apparaissent ici, téléchargeables en PDF, et la facturation s’arrête d’elle-même au
-          plafond de la société. Une régularisation intervient à la clôture, sur la liasse définitive.
+          Une facture le 1<sup>er</sup> de chaque mois : {(societe.successFeePct * 0.6).toLocaleString('fr-FR')} % de la base du mois écoulé. Elle s’arrête au plafond.
         </p>
         {!societe.contrat && (
-          <div className="info-banner alerte">Contrat de service non signé : aucune facture n’est émise tant qu’il ne l’est pas (onglet Magasins).</div>
+          <div className="info-banner alerte">Contrat à signer (onglet Magasins) : pas de facture avant.</div>
         )}
         {agg.plafondAtteint && (
-          <div className="info-banner vert">Plafond fiscal atteint — vos prochains dons ne sont plus facturés.</div>
+          <div className="info-banner vert">Plafond atteint : les prochains dons ne sont plus facturés.</div>
         )}
         {(() => {
           const lignes = lignesFacturationSociete(agg)
@@ -363,9 +357,7 @@ export function Registre({
       <div className="card">
         <h3>Bordereaux archivés</h3>
         <p className="muted">
-          Les pièces justificatives, mois par mois — tous les magasins de la société. Ouvrez une vignette pour vérifier
-          le bordereau en grand ; déplacez-le s’il a été enregistré sur le mauvais magasin ; supprimez-le s’il est en
-          double (le fichier archivé est effacé avec).
+          Les photos, mois par mois. Ouvrez-en une pour la vérifier, la déplacer ou la supprimer.
         </p>
         {(() => {
           const bordereaux = state.saisies
@@ -441,9 +433,7 @@ export function Registre({
       <div className="card">
         <h3>État annuel de valorisation</h3>
         <p className="muted">
-          Récapitulatif prêt pour l’expert-comptable : base, plafond, réduction, reçus 2041-MEC-SD attendus, report
-          2069-RCI, déclaration au-delà de 10 000 € de dons — et rappel de l’obligation contractuelle de fournir la
-          liasse sous 60 jours après dépôt.
+          Le récapitulatif pour votre expert-comptable.
         </p>
         <div className="detail-lignes" style={{ marginBottom: 12 }}>
           <div className="ligne">
@@ -475,20 +465,18 @@ export function Registre({
           <div className="info-banner" style={{ marginBottom: 12 }}>
             <strong>Stock d’excédents reportables au 31/12/{exercice} :</strong>{' '}
             {agg.reports.soldesFin.map((r) => `${fmtEUR(r.solde, 2)} (origine ${r.origine}, imputable jusqu’en ${r.expire})`).join(' · ')}.
-            Il ne figure sur aucun reçu : c’est l’état annuel qui le suit d’une année sur l’autre, pour l’imprimé 2069-RCI.
+
           </div>
         )}
         {agg.semainesSansReleve.length > 0 && (
           <div className="info-banner alerte" style={{ marginBottom: 10 }}>
-            <strong>État annuel et reçus bloqués : relevé de démarque manquant.</strong>{' '}
-            {agg.semainesSansReleve.length} semaine{agg.semainesSansReleve.length > 1 ? 's ont' : ' a'} des bordereaux sans relevé :{' '}
-            {agg.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine} (${x.nbBordereaux} bordereau${x.nbBordereaux > 1 ? 'x' : ''})`).join(', ')}.
-            Un état annuel sans la valeur de ces dons serait faux, et la commission Mana avec. Ajoutez les relevés dans Saisie.
+            <strong>Bloqué : relevé manquant</strong> pour{' '}
+            {agg.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine}`).join(', ')}. Ajoutez-le dans Saisie.
           </div>
         )}
         {!societe.contrat && (
           <div className="info-banner alerte" style={{ marginBottom: 10 }}>
-            <strong>Contrat de service non signé :</strong> l’état annuel et les reçus ne sont émis qu’une fois le contrat signé (onglet Magasins, carte de la société).
+            <strong>Contrat à signer</strong> (onglet Magasins) avant l’état annuel et les reçus.
           </div>
         )}
         {!actionsDansBarre && (
@@ -503,9 +491,7 @@ export function Registre({
       <div className="card">
         <h3>Reçus fiscaux 2041-MEC-SD</h3>
         <p className="muted">
-          Un reçu par association, pour la valeur totale qu’elle a reçue — c’est elle qui le délivre, Mana le
-          préremplit (donateur lu au registre national, montant en chiffres et en toutes lettres, période, annexe
-          mensuelle). Un seul reçu par exercice et par association, même avec un enlèvement par jour.
+          Un reçu par association et par an, prérempli par Mana. L’association le signe.
         </p>
         {(() => {
           const parCollecteur = new Map<string, number>()
@@ -532,8 +518,7 @@ export function Registre({
         })()}
         {agg.magasins.some((m) => m.collecteurs.length >= 2) && agg.saisies.some((s) => !s.collecteur) && (
           <p className="muted" style={{ color: 'var(--ambre-texte)', margin: '4px 0 0' }}>
-            Certaines saisies n’indiquent pas quelle association a enlevé les denrées : précisez-le dans la saisie
-            concernée pour que chaque reçu porte le bon montant.
+            Certaines saisies n’indiquent pas l’association : précisez-la pour que chaque reçu soit juste.
           </p>
         )}
       </div>
@@ -554,8 +539,7 @@ export function Registre({
         ) : (
           <div>
             <p className="muted">
-              À réception de la liasse définitive : l’app recalcule le plafond et la marge réels de l’exercice, compare
-              aux montants facturés et génère une facture complémentaire ou un avoir, avec le détail du calcul.
+              Avec la liasse définitive, Mana recalcule l’exercice et émet un complément ou un avoir.
             </p>
             <label className="field">
               <span>CA HT réel de l’exercice (liasse définitive)</span>

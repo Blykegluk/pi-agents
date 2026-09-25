@@ -13,7 +13,7 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Quels produits ai-je le droit de donner ?',
     reponse:
-      'Tout produit encore consommable : DLC du jour, de demain ou d’après-demain (la date est incluse — un produit à DLC du jour se donne le matin, l’association le distribue dans la journée), DDM dépassée (« à consommer de préférence avant »), fruits et légumes moches mais sains, pain de la veille, emballages abîmés mais intacts. Jamais : DLC dépassée, produit entamé ou déconditionné, chaîne du froid rompue, alcool. L’affiche à imprimer est dans l’onglet Collecte, étape 4.',
+      'Tout produit encore consommable : DLC du jour, de demain ou d’après-demain (la date est incluse — un produit à DLC du jour se donne le matin, l’association le distribue dans la journée), DDM dépassée (« à consommer de préférence avant »), fruits et légumes moches mais sains, pain de la veille, emballages abîmés mais intacts. Jamais : DLC dépassée, produit entamé ou déconditionné, chaîne du froid rompue, alcool. L’affiche à imprimer est dans Magasins, bouton « Guide de l’équipe ».',
     motsCles: 'dlc ddm date tri donner produits interdits alcool frais',
   },
   {
@@ -25,7 +25,7 @@ export const FAQ: EntreeFAQ[] = [
   {
     question: 'Comment se passe la mise en relation avec une association ?',
     reponse:
-      'Dans l’onglet Collecte, définissez votre volume d’invendus, la fréquence et la plage horaire de ramassage souhaitées, puis envoyez votre demande de mise en relation : l’équipe Mana vous met en contact avec la ou les associations adaptées de votre secteur et vous suit jusqu’à la première collecte. Vous pouvez aussi contacter directement une association de l’annuaire — vous gardez toujours la relation en direct.',
+      'Dans Magasins, carte Associations, cliquez « Mana m’en trouve une » : indiquez le rythme, le créneau et vos invendus. L’équipe Mana vous met en contact avec une association de votre secteur et vous suit jusqu’à la première collecte.',
     motsCles: 'association collecteur mise en relation banque alimentaire restos coeur trouver contact',
   },
   {
