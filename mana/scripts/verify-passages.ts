@@ -7,6 +7,7 @@ import { calendrierPassages, heureFinCreneau, instantParis, joursDepuisTexte, li
 import { calculerSignaux } from '../src/lib/signaux.ts'
 import { listeJours } from '../src/lib/suivi.ts'
 import { aFaire, santeReseau } from '../src/lib/reseau.ts'
+import { messageRappels, rappelsDuJour } from '../src/lib/rappels.ts'
 
 let echecs = 0
 function ok(nom: string, cond: boolean, detail = '') {
@@ -180,6 +181,17 @@ egal('Léon Blum : série 3 · dernier bordereau 19/09', [lb.serie?.manques, lb.
 egal('totaux : 2 en collecte sur 3, 2 en alerte', [sante.totaux.enCollecte, sante.totaux.magasins, sante.totaux.enAlerte], [2, 3, 2])
 const todo = aFaire(etat, new Date('2026-09-25T06:00:00.000Z')).find((x) => x.magasin.nom === 'Léon Blum')!
 egal('à faire le 25/09 : passage prévu aujourd’hui, bordereau du 24 à saisir, 21-23 sans bordereau', [todo.aujourdHui.length, todo.aSaisir, todo.sansBordereau[0]?.dates], [1, ['2026-09-24'], ['2026-09-21', '2026-09-22', '2026-09-23']])
+
+console.log('— Rappels du matin —')
+const rappels = rappelsDuJour(etat, new Date('2026-09-25T03:10:00.000Z'))
+egal('le 25 à 5 h : un rappel « bordereau d’hier » pour Léon Blum et Ornano, pas pour le nouveau', rappels.map((r) => [r.magasin.nom, r.rappels.map((x) => x.type)]), [['Léon Blum', ['bordereau']], ['Ornano', ['bordereau']]])
+ok('clé stable du rappel', rappels[0].rappels[0].cle === 'bordereau:lb:2026-09-24:le panier du lien')
+ok('texte : jeudi 24 septembre cité', rappels[0].rappels[0].texte.includes('jeudi 24 septembre'))
+const etatRepondu: AppState = { ...etat, reponsesPassages: [{ id: 'x', magasinId: 'lb', collecteur: 'Le panier du lien', date: '2026-09-24', reponse: 'venu_sans_don', le: '2026-09-24T21:00:00.000Z' }] }
+ok('le magasin a répondu pour hier : plus de rappel', !rappelsDuJour(etatRepondu, new Date('2026-09-25T03:10:00.000Z')).some((r) => r.magasin.nom === 'Léon Blum'))
+ok('dimanche 27 (pas de passage le samedi 26 ? si : Léon Blum lundi-samedi) → rappel du samedi', rappelsDuJour(etat, new Date('2026-09-27T03:10:00.000Z')).some((r) => r.magasin.nom === 'Léon Blum'))
+ok('lundi 28 : aucun passage prévu le dimanche 27 chez Léon Blum, pas de rappel', !rappelsDuJour(etat, new Date('2026-09-28T03:10:00.000Z')).some((r) => r.magasin.nom === 'Léon Blum'))
+ok('message multi-rappels en puces', messageRappels([{ cle: 'a', type: 'bordereau', magasinId: 'lb', texte: 'A.' }, { cle: 'b', type: 'releve', magasinId: 'lb', texte: 'B.' }]).includes('• A.'))
 
 console.log(echecs === 0 ? '\nTout est conforme.' : `\n${echecs} écart(s).`)
 process.exit(echecs === 0 ? 0 : 1)

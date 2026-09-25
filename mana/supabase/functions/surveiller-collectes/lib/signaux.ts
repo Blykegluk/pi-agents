@@ -96,7 +96,7 @@ function signalPassages(m: Magasin, s: SerieManquee): SignalCalcule {
 }
 
 /** Dernier mois civil échu (Paris), 'AAAA-MM', si l'on est après le JOUR_RELEVE. */
-function moisAttendu(maintenant: Date): string | null {
+export function moisAttendu(maintenant: Date): string | null {
   const jour = jourParis(maintenant)
   const [y, m, d] = jour.split('-').map(Number)
   if (d < JOUR_RELEVE) return null
@@ -105,7 +105,7 @@ function moisAttendu(maintenant: Date): string | null {
 }
 
 /** Le relevé couvre-t-il ce mois ? (mois déclaré, période libre, ou semaine dont le jeudi tombe dans le mois) */
-function releveCouvre(s: Saisie, mois: string): boolean {
+export function releveCouvre(s: Saisie, mois: string): boolean {
   if (s.releveMois) return s.releveMois === mois
   if (s.releveDu && s.releveAu) return s.releveDu.slice(0, 7) <= mois && s.releveAu.slice(0, 7) >= mois
   const lundi = mondayOfWeek(s.semaine)

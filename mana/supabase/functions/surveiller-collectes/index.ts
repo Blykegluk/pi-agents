@@ -16,6 +16,7 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { calculerSignaux, type NiveauSignal, type SignalCalcule } from './lib/signaux.ts'
 import { contenuSuivi, estEscalade, meriteUnFil, messageCloture, messageEscalade, messageOuverture, sujetSuivi } from './lib/suivi.ts'
+import { messageRappels, rappelsDuJour, sujetRappels } from './lib/rappels.ts'
 import type { AppState } from './types.ts'
 
 const enTetes = {
@@ -158,6 +159,43 @@ async function synchroniser(sb: SupabaseClient, compte: Compte, calcules: Signal
   return { nouveaux, resolus, fils, ouverts: calcules.length }
 }
 
+/**
+ * Rappels du matin au responsable : bordereau d'hier non saisi, relevé du mois. Un fil
+ * « Rappels — magasin » par magasin (demande de type suivi), un message par jour au plus,
+ * et jamais deux fois le même rappel (table mana_rappels).
+ */
+async function rappeler(sb: SupabaseClient, compte: Compte, maintenant: string): Promise<number> {
+  const parMagasin = rappelsDuJour(compte.etat, new Date(maintenant))
+  if (parMagasin.length === 0) return 0
+  const { data: deja, error } = await sb.from('mana_rappels').select('cle').eq('user_id', compte.userId)
+  if (error) throw new Error(`rappels : ${error.message}`)
+  const envoyes = new Set((deja ?? []).map((r) => r.cle))
+  let n = 0
+  for (const { magasin, rappels } of parMagasin) {
+    const nouveaux = rappels.filter((r) => !envoyes.has(r.cle))
+    if (nouveaux.length === 0) continue
+    // Le fil « Rappels » du magasin, créé au premier rappel.
+    const { data: fils } = await sb.from('mana_demandes').select('id').eq('user_id', compte.userId).eq('type', 'suivi').contains('contenu', { rappels: true, magasin_id: magasin.id }).limit(1)
+    let demandeId = fils?.[0]?.id as string | undefined
+    if (!demandeId) {
+      const { data: d, error: e } = await sb
+        .from('mana_demandes')
+        .insert({ user_id: compte.userId, email: compte.email, type: 'suivi', sujet: sujetRappels(magasin), contenu: { rappels: true, magasin_id: magasin.id, magasin: magasin.nom }, statut: 'en_cours', lu_mana_le: maintenant })
+        .select('id')
+        .single()
+      if (e) throw new Error(`fil de rappels : ${e.message}`)
+      demandeId = d.id
+    }
+    const { error: eMsg } = await sb.from('mana_messages').insert({ demande_id: demandeId, user_id: compte.userId, auteur: 'mana', texte: messageRappels(nouveaux) })
+    if (eMsg) throw new Error(`message de rappel : ${eMsg.message}`)
+    await sb.from('mana_demandes').update({ updated_at: maintenant, statut: 'en_cours' }).eq('id', demandeId)
+    const { error: eR } = await sb.from('mana_rappels').insert(nouveaux.map((r) => ({ user_id: compte.userId, magasin_id: magasin.id, cle: r.cle, type: r.type, demande_id: demandeId })))
+    if (eR) throw new Error(`journal des rappels : ${eR.message}`)
+    n += nouveaux.length
+  }
+  return n
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: enTetes })
   if (req.method !== 'POST') return new Response('Méthode non autorisée', { status: 405, headers: enTetes })
@@ -192,10 +230,11 @@ Deno.serve(async (req: Request) => {
   if (eEtats) return Response.json({ erreur: eEtats.message }, { status: 500, headers: enTetes })
 
   const erreurs: { compte: string; erreur: string }[] = []
-  const comptes: { email: string | null; ouverts: number; nouveaux: number; resolus: number; fils: number; signaux: { niveau: string; titre: string }[] }[] = []
+  const comptes: { email: string | null; ouverts: number; nouveaux: number; resolus: number; fils: number; rappels: number; signaux: { niveau: string; titre: string }[] }[] = []
   let totalOuverts = 0
   let totalNouveaux = 0
   let totalResolus = 0
+  let totalRappels = 0
 
   for (const ligne of etats ?? []) {
     try {
@@ -205,11 +244,14 @@ Deno.serve(async (req: Request) => {
         continue
       }
       const calcules = calculerSignaux(etat, maintenantDate)
-      const r = await synchroniser(sb, { userId: ligne.user_id, email: ligne.email, etat }, calcules, maintenant)
+      const compte = { userId: ligne.user_id, email: ligne.email, etat }
+      const r = await synchroniser(sb, compte, calcules, maintenant)
+      const rappels = await rappeler(sb, compte, maintenant)
       totalOuverts += r.ouverts
       totalNouveaux += r.nouveaux
       totalResolus += r.resolus
-      comptes.push({ email: ligne.email, ...r, signaux: calcules.map((s) => ({ niveau: s.niveau, titre: s.titre })) })
+      totalRappels += rappels
+      comptes.push({ email: ligne.email, ...r, rappels, signaux: calcules.map((s) => ({ niveau: s.niveau, titre: s.titre })) })
     } catch (e) {
       erreurs.push({ compte: ligne.email ?? ligne.user_id, erreur: (e as Error).message })
     }
@@ -217,8 +259,8 @@ Deno.serve(async (req: Request) => {
 
   await sb
     .from('mana_surveillances')
-    .update({ terminee_le: new Date().toISOString(), comptes: comptes.length, signaux_ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, erreurs })
+    .update({ terminee_le: new Date().toISOString(), comptes: comptes.length, signaux_ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels, erreurs })
     .eq('id', run.id)
 
-  return Response.json({ id: run.id, declencheur, comptes, totaux: { ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus }, erreurs }, { headers: enTetes })
+  return Response.json({ id: run.id, declencheur, comptes, totaux: { ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels }, erreurs }, { headers: enTetes })
 })
