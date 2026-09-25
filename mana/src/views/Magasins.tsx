@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe, Saisie } from '../types'
+import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe, Saisie, ReponsePassage } from '../types'
 import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordereau'
 import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
@@ -35,6 +35,7 @@ export function MagasinsView({
   onDeleteSociete,
   onSaveMagasin,
   onDeleteMagasin,
+  onReponsePassage,
   onAllerSaisie,
   onConnexion,
   onOuvrirAide,
@@ -51,6 +52,8 @@ export function MagasinsView({
   onDeleteSociete: (id: string) => void
   onSaveMagasin: (m: Magasin) => void
   onDeleteMagasin: (id: string) => void
+  /** Réponse du magasin sur un passage sans bordereau (calendrier de la carte Associations). */
+  onReponsePassage?: (r: Omit<ReponsePassage, 'id' | 'le' | 'par'>) => void
   onAllerSaisie: () => void
   onConnexion: () => void
   onOuvrirAide: () => void
@@ -96,6 +99,8 @@ export function MagasinsView({
     <HubAssociations
       magasins={magasinsAffiches}
       saisies={state.saisies}
+      reponses={state.reponsesPassages ?? []}
+      onReponse={onReponsePassage}
       onGerer={(id) => ouvrirAssociations(id, 'liste')}
       onChanger={(id) => ouvrirAssociations(id, 'changement')}
       onAjouter={(id) => ouvrirAssociations(id, 'ajout')}
@@ -430,6 +435,8 @@ export function MagasinsView({
 function HubAssociations({
   magasins,
   saisies,
+  reponses,
+  onReponse,
   onGerer,
   onChanger,
   onAjouter,
@@ -437,6 +444,8 @@ function HubAssociations({
 }: {
   magasins: Magasin[]
   saisies: Saisie[]
+  reponses: ReponsePassage[]
+  onReponse?: (r: Omit<ReponsePassage, 'id' | 'le' | 'par'>) => void
   onGerer: (magasinId: string) => void
   onChanger: (magasinId: string) => void
   onAjouter: (magasinId: string) => void
@@ -476,7 +485,7 @@ function HubAssociations({
                 </div>
               ))
             )}
-            {m.collecteurs.length > 0 && <CalendrierPassages magasin={m} saisies={saisies} />}
+            {m.collecteurs.length > 0 && <CalendrierPassages magasin={m} saisies={saisies} reponses={reponses} onReponse={onReponse} />}
             <div className="row-actions" style={{ marginTop: 8 }}>
               {m.collecteurs.length > 0 && (
                 <>

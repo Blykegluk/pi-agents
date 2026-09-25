@@ -122,8 +122,8 @@ export interface Demande {
   id: string
   user_id: string
   email: string | null
-  /** collecte = mise en relation initiale ; association = changement ou problème avec une association en place ; support = autre. */
-  type: 'collecte' | 'support' | 'association'
+  /** collecte = mise en relation initiale ; association = changement ou problème avec une association en place ; support = autre ; suivi = fil ouvert par Mana (surveillance des collectes). */
+  type: 'collecte' | 'support' | 'association' | 'suivi'
   sujet: string
   contenu: Record<string, unknown>
   statut: 'nouvelle' | 'en_cours' | 'traitee'
@@ -318,6 +318,8 @@ export interface Signal {
   traite_le: string | null
   traite_par: string | null
   note: string | null
+  /** Fil de suivi ouvert avec le magasin pour ce signal (demande de type « suivi »). */
+  demande_id: string | null
 }
 
 /** Signaux vivants (non résolus) : les miens, ceux des comptes où je suis invité, ou tous pour Mana (RLS). */

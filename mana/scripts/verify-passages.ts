@@ -5,6 +5,7 @@
 import type { AppState, Magasin, Saisie } from '../src/types.ts'
 import { calendrierPassages, heureFinCreneau, instantParis, joursDepuisTexte, limitePassage, rythmeCollecteur } from '../src/lib/passages.ts'
 import { calculerSignaux } from '../src/lib/signaux.ts'
+import { listeJours } from '../src/lib/suivi.ts'
 
 let echecs = 0
 function ok(nom: string, cond: boolean, detail = '') {
@@ -114,6 +115,25 @@ egal('série = 1 manqué', cal4.series[0].manques, 1)
 const semaineDeclaree: Saisie = { ...saisie('lb', '2026-09-15'), id: 'sem', jour: undefined, origine: undefined, semaine: '2026-W38' }
 const cal5 = calendrierPassages(leonBlum, [semaineDeclaree], { du: '2026-09-14', au: '2026-09-20', maintenant: new Date('2026-09-25T06:00:00.000Z') })
 ok('semaine déclarée sans jour → tous les passages « déclarés à la semaine »', cal5.passages.every((p) => p.statut === 'declare_semaine'))
+
+console.log('— Réponses du magasin —')
+const rep = (date: string, reponse: 'venu_sans_don' | 'pas_venu' | 'bordereau_a_saisir' | 'ferme', le = '2026-09-24T08:00:00.000Z') => ({ id: 'r' + date + reponse, magasinId: 'lb', collecteur: 'Le panier du lien', date, reponse, le })
+const opts = { du: '2026-09-14', au: '2026-09-27', maintenant: new Date('2026-09-25T06:00:00.000Z') }
+const calF = calendrierPassages(leonBlum, bordereaux, { ...opts, reponses: [rep('2026-09-21', 'ferme')] })
+ok('« fermé » le 21 : plus attendu, série 22-23 = 2', !calF.passages.some((p) => p.date === '2026-09-21') && calF.series[0].manques === 2)
+const calV = calendrierPassages(leonBlum, bordereaux, { ...opts, reponses: [rep('2026-09-22', 'venu_sans_don')] })
+egal('« venu sans don » le 22 : fait, la série repart (23 seul)', [calV.passages.find((p) => p.date === '2026-09-22')?.statut, calV.series[0].manques], ['fait', 1])
+const calP = calendrierPassages(leonBlum, bordereaux, { ...opts, reponses: [rep('2026-09-24', 'pas_venu')] })
+egal('« pas venu » le 24 : manqué tout de suite, 1 confirmé, série 4', [calP.passages.find((p) => p.date === '2026-09-24')?.statut, calP.series[0].confirmes, calP.series[0].manques], ['manque', 1, 4])
+const calS = calendrierPassages(leonBlum, bordereaux, { ...opts, reponses: [rep('2026-09-22', 'bordereau_a_saisir', '2026-09-24T08:00:00.000Z')] })
+egal('« bordereau à saisir » (il y a 22 h) : en attente', calS.passages.find((p) => p.date === '2026-09-22')?.statut, 'en_attente')
+const calS2 = calendrierPassages(leonBlum, bordereaux, { ...opts, reponses: [rep('2026-09-22', 'bordereau_a_saisir', '2026-09-21T08:00:00.000Z')] })
+egal('« bordereau à saisir » (il y a 4 jours) : de nouveau manqué', calS2.passages.find((p) => p.date === '2026-09-22')?.statut, 'manque')
+
+console.log('— Formulation des dates —')
+egal('même mois', listeJours(['2026-09-21', '2026-09-22', '2026-09-23']), '21, 22 et 23 septembre')
+egal('deux mois', listeJours(['2026-09-30', '2026-10-01']), '30 septembre et 1er octobre')
+egal('un seul jour', listeJours(['2026-10-01']), '1er octobre')
 
 console.log('— Signaux —')
 const etat: AppState = {

@@ -163,7 +163,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
                 <div style={{ minWidth: 0 }}>
                   <strong style={{ fontSize: 14.5 }}>
-                    {d.type === 'collecte' ? 'Mise en relation' : d.type === 'association' ? 'Association : changement ou problème' : 'Support'} — {d.sujet}
+                    {d.type === 'collecte' ? 'Mise en relation' : d.type === 'association' ? 'Association : changement ou problème' : d.type === 'suivi' ? 'Suivi de collecte (ouvert par Mana)' : 'Support'} — {d.sujet}
                   </strong>
                   <div className="muted">{d.email ?? d.user_id} · {fmtDateHeure(d.created_at)}</div>
                 </div>
@@ -186,7 +186,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
                 </div>
               )}
 
-              {(d.type === 'association' || d.type === 'collecte') && d.statut !== 'traitee' && (
+              {(d.type === 'association' || d.type === 'collecte' || d.type === 'suivi') && d.statut !== 'traitee' && (
                 <ActionsAssociation
                   demande={d}
                   adminEmail={session.user.email ?? ''}
@@ -239,6 +239,10 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           enCours={surveillanceEnCours}
           onLancer={surveillerMaintenant}
           onStatut={changerStatutSignal}
+          onOuvrirFil={(id) => {
+            setOnglet('demandes')
+            setOuverte(id)
+          }}
         />
       )}
 
@@ -337,6 +341,7 @@ function SignauxAdmin({
   enCours,
   onLancer,
   onStatut,
+  onOuvrirFil,
 }: {
   signaux: Signal[]
   clients: ClientAdmin[]
@@ -344,6 +349,7 @@ function SignauxAdmin({
   enCours: boolean
   onLancer: () => void
   onStatut: (s: Signal, statut: 'ouvert' | 'traite' | 'ignore') => void
+  onOuvrirFil: (demandeId: string) => void
 }) {
   const emailDe = new Map(clients.map((c) => [c.user_id, c.email ?? c.user_id]))
   const nomMagasin = (s: Signal) => {
@@ -373,8 +379,9 @@ function SignauxAdmin({
           </button>
         </div>
         <p className="muted" style={{ margin: '8px 0 0' }}>
-          Règles : un passage attendu sans bordereau 24 h après son créneau est manqué ; 1 manqué = à vérifier avec le magasin, 2 = relancer l’association,
-          3 d’affilée = alerte et remplacement à proposer. Relevé du mois précédent attendu le 10. Plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît.
+          Règles : un passage attendu sans bordereau 24 h après son créneau est manqué ; 1 manqué = case rouge chez le magasin, 2 = un fil de suivi s’ouvre
+          avec le magasin (bouton « Dossier » : relance de l’association et recherche de remplacement prêtes à valider), 3 d’affilée = alerte, le magasin est prévenu que Mana prend la main.
+          Relevé du mois précédent attendu le 10. Plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît, et son fil se referme.
         </p>
         {surveillance?.erreurs.map((e, i) => (
           <div className="info-banner alerte" key={i} style={{ marginTop: 8 }}>{e.compte} : {e.erreur}</div>
@@ -400,6 +407,9 @@ function SignauxAdmin({
                 </small>
               </div>
               <div className="row-actions" style={{ flex: 'none', marginTop: 0 }}>
+                {s.demande_id && (
+                  <button className="btn btn-primary btn-sm" onClick={() => onOuvrirFil(s.demande_id!)}>Dossier</button>
+                )}
                 {s.statut === 'ouvert' ? (
                   <>
                     <button className="btn btn-ghost btn-sm" onClick={() => onStatut(s, 'traite')}>Traité</button>

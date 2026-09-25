@@ -161,7 +161,7 @@ export function Messages({
                 <button key={d.id} className={`card fil ${estOuverte ? 'ouvert' : ''}`} onClick={() => setOuverte(d.id)}>
                   <span className="fil-tete">
                     <span className="fil-sujet">
-                      {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : ''}
+                      {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : d.type === 'suivi' ? '📋 ' : ''}
                       {d.sujet}
                     </span>
                     {nb > 0 && <span className="pastille">{nb}</span>}
@@ -180,7 +180,7 @@ export function Messages({
               <>
                 <div className="fil-tete" style={{ cursor: 'default' }}>
                   <span className="fil-sujet">
-                    {filOuvert.type === 'collecte' ? '🤝 ' : filOuvert.type === 'association' ? '🔄 ' : ''}
+                    {filOuvert.type === 'collecte' ? '🤝 ' : filOuvert.type === 'association' ? '🔄 ' : filOuvert.type === 'suivi' ? '📋 ' : ''}
                     {filOuvert.sujet}
                   </span>
                   <span className="fil-etat">
@@ -248,7 +248,7 @@ export function Messages({
           <div className={`card fil ${estOuverte ? 'ouvert' : ''}`} key={d.id}>
             <button className="fil-tete" onClick={() => setOuverte(estOuverte ? null : d.id)}>
               <span className="fil-sujet">
-                {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : ''}
+                {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : d.type === 'suivi' ? '📋 ' : ''}
                 {d.sujet}
               </span>
               <span className="fil-etat">

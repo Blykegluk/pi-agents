@@ -42,6 +42,8 @@ export interface SignalCalcule {
 
 /** Passages manqués d'affilée à partir duquel Mana est alerté (validé : 3). */
 export const SEUIL_ALERTE_PASSAGES = 3
+/** Passages manqués d'affilée à partir duquel un fil de suivi s'ouvre avec le magasin (relance de l'association). */
+export const SEUIL_DOSSIER = 2
 /** Jours sans bordereau avant signal, quand le rythme n'est pas exploitable (validé : 7). */
 export const SILENCE_JOURS = 7
 /** Part du plafond à partir de laquelle on prévient (80 %). */
@@ -80,9 +82,10 @@ function signalPassages(m: Magasin, s: SerieManquee): SignalCalcule {
     titre:
       n === 1
         ? `Passage du ${fmtJour(s.dates[0])} sans bordereau · ${s.collecteur}`
-        : `${n} passages sans bordereau d'affilée · ${s.collecteur}`,
+        : `${n} passages sans bordereau d'affilée${s.confirmes ? ` (${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} par le magasin)` : ''} · ${s.collecteur}`,
     detail: {
       manques: n,
+      confirmes: s.confirmes,
       dates: s.dates,
       dernierBordereau: s.dernierFait,
       rythme: s.rythme.libelle,
@@ -177,7 +180,7 @@ function signauxMagasin(etat: AppState, m: Magasin, maintenant: Date): SignalCal
   // Passages : uniquement quand la collecte a démarré (au moins un bordereau).
   if (m.collecteurs.length > 0 && bordereaux.length > 0) {
     const fenetre = fenetreSemaines(SEMAINES_EXAMINEES, maintenant)
-    const cal = calendrierPassages(m, saisies, { ...fenetre, maintenant })
+    const cal = calendrierPassages(m, saisies, { ...fenetre, maintenant, reponses: etat.reponsesPassages })
     const rythmes: Rythme[] = []
     for (const serie of cal.series) {
       rythmes.push(serie.rythme)

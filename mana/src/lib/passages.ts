@@ -10,10 +10,12 @@
  * fonction Supabase `surveiller-collectes` (copie déposée par
  * `scripts/preparer-surveillance.sh`).
  */
-import type { Collecteur, Magasin, Saisie } from '../types.ts'
+import type { Collecteur, Magasin, ReponsePassage, Saisie } from '../types.ts'
 
 /** Délai après la fin du créneau avant de déclarer un passage manqué (validé : 24 h). */
 export const TOLERANCE_HEURES = 24
+/** Quand le magasin dit « bordereau à saisir », on lui laisse ce délai avant de recompter le passage comme manqué. */
+export const DELAI_SAISIE_ANNONCEE_HEURES = 72
 /** Jours ISO : 1 = lundi … 7 = dimanche. */
 export const NOMS_JOURS = ['', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'] as const
 const ABREVIATIONS = ['', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'] as const
@@ -48,6 +50,8 @@ export interface PassageAttendu {
   decale?: boolean
   /** Rythme au compte : ce qui était attendu et ce qui a été fait sur la période. */
   periode?: { du: string; au: string; attendus: number; faits: number }
+  /** Ce que le magasin a répondu pour ce passage, s'il l'a fait. */
+  reponse?: ReponsePassage['reponse']
 }
 
 export interface SerieManquee {
@@ -56,6 +60,8 @@ export interface SerieManquee {
   manques: number
   /** Dates des passages manqués de la série. */
   dates: string[]
+  /** Parmi eux, ceux que le magasin a confirmés (« pas venu »). */
+  confirmes: number
   /** Dernier bordereau de cette association (AAAA-MM-JJ), s'il y en a un. */
   dernierFait: string | null
   rythme: Rythme
@@ -283,10 +289,13 @@ function bordereauPour(s: Saisie, nomCollecteur: string): boolean {
 export function calendrierPassages(
   magasin: Pick<Magasin, 'id' | 'collecteurs'>,
   saisies: Saisie[],
-  options: { du: string; au: string; maintenant?: Date },
+  options: { du: string; au: string; maintenant?: Date; reponses?: ReponsePassage[] },
 ): Calendrier {
   const maintenant = options.maintenant ?? new Date()
   const { du, au } = options
+  const reponses = (options.reponses ?? []).filter((r) => r.magasinId === magasin.id)
+  const reponsePour = (collecteur: string, date: string) =>
+    reponses.find((r) => r.date === date && r.collecteur.trim().toLowerCase() === collecteur.trim().toLowerCase())
   const propres = saisies.filter((s) => s.magasinId === magasin.id)
   const tousBordereaux = propres.filter(estBordereau)
   // La surveillance commence au premier bordereau du magasin : avant, la collecte n'avait pas démarré.
@@ -318,7 +327,10 @@ export function calendrierPassages(
       for (let j = du; j <= au; j = decalerJour(j, 1)) {
         if (!rythme.jours.includes(jourISO(j))) continue
         if (debutCollecte === null || j < debutCollecte) continue
-        attendus.push({ date: j, collecteur: c.nom, statut: 'a_venir' })
+        const r = reponsePour(c.nom, j)
+        // Magasin fermé ce jour-là : aucun passage n'était à attendre.
+        if (r?.reponse === 'ferme') continue
+        attendus.push({ date: j, collecteur: c.nom, statut: 'a_venir', reponse: r?.reponse })
       }
       // 1) rattachement exact
       for (const p of attendus) {
@@ -347,6 +359,22 @@ export function calendrierPassages(
           p.statut = 'declare_semaine'
           continue
         }
+        // La parole du magasin prime sur l'horloge.
+        if (p.reponse === 'venu_sans_don') {
+          p.statut = 'fait'
+          continue
+        }
+        if (p.reponse === 'pas_venu') {
+          p.statut = 'manque'
+          continue
+        }
+        if (p.reponse === 'bordereau_a_saisir') {
+          const r = reponsePour(c.nom, p.date)!
+          if (maintenant.getTime() < new Date(r.le).getTime() + DELAI_SAISIE_ANNONCEE_HEURES * 3_600_000) {
+            p.statut = 'en_attente'
+            continue
+          }
+        }
         const finCreneau = instantParis(p.date, heureFinCreneau(c))
         if (maintenant < finCreneau) p.statut = 'a_venir'
         else if (maintenant < limitePassage(c, p.date)) p.statut = 'en_attente'
@@ -360,7 +388,8 @@ export function calendrierPassages(
         if (debutCollecte === null || fin < debutCollecte) continue
         const dedans = miens.filter((x) => x.jour! >= debut && x.jour! <= fin && !pris.has(x.id))
         dedans.forEach((x) => pris.add(x.id))
-        const faits = dedans.length
+        const venusSansDon = reponses.filter((r) => r.reponse === 'venu_sans_don' && r.date >= debut && r.date <= fin && r.collecteur.trim().toLowerCase() === c.nom.trim().toLowerCase()).length
+        const faits = dedans.length + venusSansDon
         const p: PassageAttendu = {
           date: fin,
           collecteur: c.nom,
@@ -380,19 +409,22 @@ export function calendrierPassages(
 
     // Série de passages manqués, en partant du plus récent évalué.
     let manques = 0
+    let confirmes = 0
     const dates: string[] = []
     for (const p of attendus) {
       if (p.statut === 'fait' || p.statut === 'declare_semaine') {
         manques = 0
+        confirmes = 0
         dates.length = 0
       } else if (p.statut === 'manque') {
         const n = p.periode ? p.periode.attendus - p.periode.faits : 1
         manques += n
+        if (p.reponse === 'pas_venu') confirmes++
         dates.push(p.date)
       }
     }
     passages.push(...attendus)
-    series.push({ collecteur: c.nom, manques, dates, dernierFait, rythme })
+    series.push({ collecteur: c.nom, manques, confirmes, dates, dernierFait, rythme })
   }
 
   passages.sort((a, b) => a.date.localeCompare(b.date) || a.collecteur.localeCompare(b.collecteur))
