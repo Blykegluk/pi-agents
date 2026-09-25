@@ -1706,3 +1706,27 @@ button.lien {
   .dossier-resume > div > span:not(.muted) { display: block; margin-bottom: 5px; }
   .afaire-ligne { flex-wrap: wrap; }
 }
+
+/* ---------- Console : réponse préparée ---------- */
+.reponse-preparee {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--papier);
+  border: 1px solid var(--trait-doux);
+}
+.reponse-preparee-tete { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.reponse-preparee-client {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--vert);
+  background: #e3ebe3;
+  border-radius: 0 8px 8px 0;
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  max-height: 7.5em;
+  overflow: auto;
+}
+.reponse-preparee-raison { margin: 0 0 8px; font-size: 13px; color: var(--ambre-texte); }
+.reponse-preparee textarea { width: 100%; font-family: inherit; line-height: 1.45; font-size: 14px; }
+.reponse-preparee-consigne { width: 100%; margin-top: 8px; font-size: 13px; }
