@@ -52,7 +52,7 @@ export function Consolide({ aggs, exercice }: { aggs: AggSociete[]; exercice: nu
           <strong>{fmtEUR(totalReduction - totalCommissions, 2)}</strong>
         </div>
         <div className="ligne">
-          <span>Résultat net pour la société, après impôt (IS à 25 %)</span>
+          <span>Résultat net pour le groupe, après impôt (IS à 25 %)</span>
           <Amount titre="Résultat net du groupe, après impôt" lignes={[...aggs.map((a) => `${denomination(a.societe)} : ${fmtEUR(a.resultat.avantageReel, 2)}`), `= ${fmtEUR(totalAvantage, 2)}`, 'Le plafond s’apprécie société par société ; la mère impute les réductions des filiales en intégration fiscale.']}>
             <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(totalAvantage, 2)}</strong>
           </Amount>

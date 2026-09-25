@@ -597,7 +597,7 @@ export async function pdfResumeGroupe(aggs: AggSociete[], exercice: number) {
   doc.setFont('InstrumentSans', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(120, 113, 100)
-  doc.text(t(`* Résultat net pour la société après impôt (IS à 25 %), par rapport à la destruction : (60 % − 25 %) × base retenue − 75 % × commission Mana. Jeter est déductible, donner est réintégré ; la commission est une charge déductible. PME au taux réduit de 15 % : résultat net plus élevé.`), 14, y, { maxWidth: W - 28 })
+  doc.text(t(`* Résultat net après impôt (IS à 25 %), par rapport à la destruction : pour chaque société sur sa ligne, pour le groupe sur la ligne Total. Calcul : (60 % − 25 %) × base retenue − 75 % × commission Mana. Jeter est déductible, donner est réintégré ; la commission est une charge déductible. PME au taux réduit de 15 % : résultat net plus élevé.`), 14, y, { maxWidth: W - 28 })
   y += 10
   doc.text(t(`Impact du groupe : ${fmtNum(tot.kg, 0)} kg détournés de la poubelle, ${fmtNum(tot.repas, 0)} repas, ${fmtNum(tot.co2, 0)} kg de CO₂ évités. En intégration fiscale, la société mère impute la réduction de chaque filiale sur l’IS du groupe (article 223 O du CGI).`), 14, y, { maxWidth: W - 28 })
   doc.setTextColor(43, 38, 32)
