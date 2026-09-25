@@ -8,6 +8,7 @@ import { calculerSignaux } from '../src/lib/signaux.ts'
 import { listeJours } from '../src/lib/suivi.ts'
 import { aFaire, santeReseau } from '../src/lib/reseau.ts'
 import { messageRappels, rappelsDuJour } from '../src/lib/rappels.ts'
+import { signauxResolution } from '../src/lib/resolution.ts'
 
 let echecs = 0
 function ok(nom: string, cond: boolean, detail = '') {
@@ -192,6 +193,25 @@ ok('le magasin a répondu pour hier : plus de rappel', !rappelsDuJour(etatRepond
 ok('dimanche 27 (pas de passage le samedi 26 ? si : Léon Blum lundi-samedi) → rappel du samedi', rappelsDuJour(etat, new Date('2026-09-27T03:10:00.000Z')).some((r) => r.magasin.nom === 'Léon Blum'))
 ok('lundi 28 : aucun passage prévu le dimanche 27 chez Léon Blum, pas de rappel', !rappelsDuJour(etat, new Date('2026-09-28T03:10:00.000Z')).some((r) => r.magasin.nom === 'Léon Blum'))
 ok('message multi-rappels en puces', messageRappels([{ cle: 'a', type: 'bordereau', magasinId: 'lb', texte: 'A.' }, { cle: 'b', type: 'releve', magasinId: 'lb', texte: 'B.' }]).includes('• A.'))
+
+console.log('— Boucle de résolution —')
+const actifs = new Set(['passages_manques:lb:le panier du lien'])
+const base = { id: 'd1', contenu: { signal_cle: 'passages_manques:lb:le panier du lien', association_concernee: 'Le panier du lien', propositions: [{ nom: 'Banque Alimentaire', email: 'ba@x.fr' }, { nom: 'Restos', email: 'r@x.fr' }] } }
+const le25 = new Date('2026-09-25T03:10:00.000Z')
+ok('sans relance envoyée : rien', signauxResolution(etat, [base], actifs, le25).length === 0)
+const relance3j = { ...base, contenu: { ...base.contenu, relances: [{ le: '2026-09-22T10:00:00.000Z', a: 'asso@x.fr' }] } }
+ok('relance il y a 3 jours : rien encore', signauxResolution(etat, [relance3j], actifs, le25).length === 0)
+const relance8j = { ...base, contenu: { ...base.contenu, relances: [{ le: '2026-09-17T10:00:00.000Z', a: 'asso@x.fr' }] } }
+const s1 = signauxResolution(etat, [relance8j], actifs, le25)
+egal('relance il y a 8 jours : alerte, prochaine = remplaçante n° 1', [s1[0]?.type, s1[0]?.niveau, s1[0]?.detail.prochaine], ['relance_sans_reponse', 'alerte', 'Contacter la remplaçante n° 1 : Banque Alimentaire'])
+ok('signal de passages résolu → plus de boucle', signauxResolution(etat, [relance8j], new Set(), le25).length === 0)
+const repondu = { ...relance8j, contenu: { ...relance8j.contenu, reponse_association_le: '2026-09-20T10:00:00.000Z' } }
+ok('association a répondu : rien', signauxResolution(etat, [repondu], actifs, le25).length === 0)
+const contact8j = { ...relance8j, contenu: { ...relance8j.contenu, contacts: [{ le: '2026-09-16T10:00:00.000Z', nom: 'Banque Alimentaire', a: 'ba@x.fr' }] } }
+const s2 = signauxResolution(etat, [contact8j], actifs, le25)
+egal('remplaçante n° 1 sans réponse 9 jours : passer à la n° 2', [s2.length, s2[0]?.type, s2[0]?.detail.prochaine], [1, 'remplacement_sans_reponse', 'Contacter la remplaçante n° 2 : Restos'])
+const retenue = { ...contact8j, contenu: { ...contact8j.contenu, retenue: { nom: 'Banque Alimentaire' } } }
+ok('remplaçante retenue : boucle terminée', signauxResolution(etat, [retenue], actifs, le25).length === 0)
 
 console.log(echecs === 0 ? '\nTout est conforme.' : `\n${echecs} écart(s).`)
 process.exit(echecs === 0 ? 0 : 1)

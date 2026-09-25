@@ -13,6 +13,13 @@ import {
   majStatutSignal,
   derniereSurveillance,
   lancerSurveillance,
+  enregistrerRedaction,
+  listerRedactions,
+  lireParametre,
+  ecrireParametre,
+  redigerAvecStyle,
+  deduireRegles,
+  type Redaction,
   type Signal,
   type Surveillance,
   type ClientAdmin,
@@ -22,7 +29,7 @@ import {
 } from '../lib/cloud'
 import { Composer } from '../components/Composer'
 import { Reseau } from '../components/Reseau'
-import { ActionsAssociation } from '../components/ActionsAssociation'
+import { ActionsAssociation, type EnvoiConsigne } from '../components/ActionsAssociation'
 import { aggParSociete } from '../lib/selectors'
 import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
 import { LIBELLES_STATUT } from '../components/Aide'
@@ -38,7 +45,7 @@ import { pdfConventionIntraGroupe } from '../lib/pdf'
 export function Admin({ session, nonLus, onLu, societes = [] }: { session: Session; nonLus: NonLus; onLu: () => void
   societes?: Societe[]
 }) {
-  const [onglet, setOnglet] = useState<'demandes' | 'signaux' | 'clients'>('demandes')
+  const [onglet, setOnglet] = useState<'demandes' | 'signaux' | 'clients' | 'style'>('demandes')
   const [signaux, setSignaux] = useState<Signal[]>([])
   const [surveillance, setSurveillance] = useState<Surveillance | null>(null)
   const [surveillanceEnCours, setSurveillanceEnCours] = useState(false)
@@ -105,10 +112,20 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
     }
   }
 
-  async function repondre(d: Demande, texte: string) {
+  async function repondre(d: Demande, texte: string, envoi?: EnvoiConsigne) {
     if (!texte.trim()) return
     await envoyerMessage(d.id, d.user_id, 'mana', texte)
     if (d.statut === 'nouvelle') await majStatutDemande(d.id, 'en_cours')
+    if (envoi) {
+      // Le style s'apprend de ce qui est parti ; la boucle de résolution, de ce qui a été envoyé à qui et quand.
+      await enregistrerRedaction(envoi.genre, { a: envoi.propose.a, objet: envoi.propose.objet, corps: envoi.propose.corps }, envoi.brouillon, d.id).catch(() => {})
+      const le = new Date().toISOString()
+      const entree = { le, a: envoi.brouillon.a, nom: envoi.association?.nom, objet: envoi.brouillon.objet }
+      const contenu = { ...d.contenu }
+      if (envoi.genre === 'prospection') contenu.contacts = [...((contenu.contacts as unknown[]) ?? []), entree]
+      else contenu.relances = [...((contenu.relances as unknown[]) ?? []), entree]
+      await majContenuDemande(d.id, contenu)
+    }
     setFil(await messagesDe(d.id))
     setDemandes(await mesDemandes())
     onLu()
@@ -151,6 +168,9 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
         <button className={`chip ${onglet === 'signaux' ? 'active' : ''}`} onClick={() => setOnglet('signaux')}>
           Signaux{aTraiter > 0 ? ` (${aTraiter}${alertes > 0 ? `, ${alertes} alerte${alertes > 1 ? 's' : ''}` : ''})` : ''}
         </button>
+        <button className={`chip ${onglet === 'style' ? 'active' : ''}`} onClick={() => setOnglet('style')}>
+          Style
+        </button>
         <button className={`chip ${onglet === 'clients' ? 'active' : ''}`} onClick={() => setOnglet('clients')}>
           Clients ({clients.length})
         </button>
@@ -191,7 +211,13 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
                 <ActionsAssociation
                   demande={d}
                   adminEmail={session.user.email ?? ''}
-                  onConsigner={(texte) => repondre(d, texte)}
+                  onConsigner={(texte, envoi) => repondre(d, texte, envoi)}
+                  onStyliser={(genre, b) => redigerAvecStyle(genre, b)}
+                  onMajContenu={async (contenu) => {
+                    await majContenuDemande(d.id, contenu)
+                    setDemandes(await mesDemandes())
+                  }}
+                  onMessageClient={(texte) => repondre(d, texte)}
                   onPropositions={async (associations, remarque) => {
                     await majContenuDemande(d.id, { ...d.contenu, propositions: associations, propositions_remarque: remarque })
                     setDemandes(await mesDemandes())
@@ -246,6 +272,8 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           }}
         />
       )}
+
+      {onglet === 'style' && <StyleAdmin />}
 
       {onglet === 'clients' && (
         <div>
@@ -425,6 +453,116 @@ function SignauxAdmin({
           ))}
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Deux textes côte à côte : ce que Mana proposait, ce qui est parti. */
+function Comparaison({ r }: { r: Redaction }) {
+  const [ouvert, setOuvert] = useState(false)
+  const identique = r.propose_corps.trim() === r.envoye_corps.trim() && r.propose_objet.trim() === r.envoye_objet.trim()
+  return (
+    <div style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 8, marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span>
+          <strong>{r.genre}</strong> · {fmtDateHeure(r.cree_le)} · {r.admin_email}
+          {identique ? <span className="badge vert" style={{ marginLeft: 8 }}>envoyé tel quel</span> : <span className="badge" style={{ marginLeft: 8 }}>corrigé</span>}
+        </span>
+        <button className="btn btn-ghost btn-sm" onClick={() => setOuvert(!ouvert)}>{ouvert ? 'Replier' : 'Comparer'}</button>
+      </div>
+      {ouvert && (
+        <div className="style-comparaison">
+          <div>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 4 }}>Proposé par Mana</div>
+            <div className="muted" style={{ marginBottom: 4 }}>Objet : {r.propose_objet}</div>
+            <pre>{r.propose_corps}</pre>
+          </div>
+          <div>
+            <div className="muted" style={{ fontWeight: 700, marginBottom: 4 }}>Envoyé</div>
+            <div className="muted" style={{ marginBottom: 4 }}>Objet : {r.envoye_objet}</div>
+            <pre>{r.envoye_corps}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Onglet Style : les règles de rédaction de l'équipe (appliquées par « Appliquer mon style »
+ * dans l'éditeur de mail) et l'historique proposé → envoyé dont elles se déduisent.
+ */
+function StyleAdmin() {
+  const [regles, setRegles] = useState('')
+  const [enregistre, setEnregistre] = useState<'repos' | 'en_cours' | 'fait'>('repos')
+  const [redactions, setRedactions] = useState<Redaction[]>([])
+  const [deduction, setDeduction] = useState<'repos' | 'en_cours' | 'erreur'>('repos')
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => {
+    lireParametre<{ regles?: string }>('style').then((p) => setRegles(p?.regles ?? '')).catch((e) => setErreur((e as Error).message))
+    listerRedactions(20).then(setRedactions).catch((e) => setErreur((e as Error).message))
+  }, [])
+
+  const corriges = redactions.filter((r) => r.propose_corps.trim() !== r.envoye_corps.trim() || r.propose_objet.trim() !== r.envoye_objet.trim()).length
+
+  return (
+    <div>
+      <div className="card">
+        <h3>Règles de style</h3>
+        <p className="muted" style={{ margin: '2px 0 8px' }}>
+          Ce que « ✨ Appliquer mon style » suit quand il réécrit un mail, avec vos cinq dernières corrections du même genre en exemple.
+          Écrivez-les vous-même, ou déduisez-les de vos corrections et relisez.
+        </p>
+        <textarea rows={10} value={regles} onChange={(e) => setRegles(e.target.value)} placeholder={'• Tutoyer les associations que nous connaissons déjà\n• Deux paragraphes maximum\n• Toujours proposer un créneau d’appel…'} style={{ width: '100%', fontFamily: 'inherit', lineHeight: 1.45 }} />
+        <div className="row-actions" style={{ marginTop: 8 }}>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={enregistre === 'en_cours'}
+            onClick={async () => {
+              setEnregistre('en_cours')
+              try {
+                await ecrireParametre('style', { regles })
+                setEnregistre('fait')
+                window.setTimeout(() => setEnregistre('repos'), 2000)
+              } catch (e) {
+                setErreur((e as Error).message)
+                setEnregistre('repos')
+              }
+            }}
+          >
+            {enregistre === 'fait' ? '✓ Enregistré' : 'Enregistrer les règles'}
+          </button>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={deduction === 'en_cours' || corriges === 0}
+            title={corriges === 0 ? 'Aucune correction enregistrée pour l’instant : envoyez d’abord quelques mails en les retouchant.' : undefined}
+            onClick={async () => {
+              setDeduction('en_cours')
+              setErreur('')
+              try {
+                const r = await deduireRegles()
+                setRegles((actuel) => (actuel.trim() ? `${actuel.trim()}\n\n— Déduit de mes corrections —\n${r}` : r))
+                setDeduction('repos')
+              } catch (e) {
+                setErreur((e as Error).message)
+                setDeduction('erreur')
+              }
+            }}
+          >
+            {deduction === 'en_cours' ? 'Analyse…' : 'Déduire les règles de mes corrections'}
+          </button>
+        </div>
+        {erreur && <p className="muted" style={{ color: 'var(--rouge)', marginTop: 8 }}>{erreur}</p>}
+      </div>
+      <div className="card">
+        <h3>Mes corrections ({redactions.length}{corriges ? `, dont ${corriges} retouché${corriges > 1 ? 's' : ''}` : ''})</h3>
+        <p className="muted" style={{ margin: '2px 0 0' }}>Chaque mail consigné depuis un dossier : la proposition de Mana à gauche, ce que vous avez envoyé à droite.</p>
+        {redactions.length === 0 && <p className="muted" style={{ marginTop: 8 }}>Rien pour l’instant.</p>}
+        {redactions.map((r) => (
+          <Comparaison key={r.id} r={r} />
+        ))}
+      </div>
     </div>
   )
 }

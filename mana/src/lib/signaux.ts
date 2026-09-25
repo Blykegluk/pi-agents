@@ -27,6 +27,8 @@ export type TypeSignal =
   | 'plafond_atteint'
   | 'contrat_non_signe'
   | 'mise_en_place_incomplete'
+  | 'relance_sans_reponse'
+  | 'remplacement_sans_reponse'
 
 export interface SignalCalcule {
   /** Clé stable : un même signal est mis à jour d'une nuit à l'autre, pas dupliqué. */
@@ -263,6 +265,8 @@ export const ACTIONS_SIGNAL: Record<TypeSignal, string> = {
   plafond_atteint: 'Informer le dirigeant ; les dons continuent, la réduction est reportée sur les exercices suivants.',
   contrat_non_signe: 'Faire signer le contrat Mana avant toute facturation.',
   mise_en_place_incomplete: 'Proposer un appel de 15 minutes pour finir la mise en place.',
+  relance_sans_reponse: 'Sept jours sans réponse : contacter la première association de remplacement (mail prêt dans le dossier).',
+  remplacement_sans_reponse: 'Sept jours sans réponse : passer à la remplaçante suivante (mail prêt dans le dossier).',
 }
 
 export { rythmeCollecteur }

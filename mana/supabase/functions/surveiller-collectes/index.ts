@@ -17,6 +17,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { calculerSignaux, type NiveauSignal, type SignalCalcule } from './lib/signaux.ts'
 import { contenuSuivi, estEscalade, meriteUnFil, messageCloture, messageEscalade, messageOuverture, sujetSuivi } from './lib/suivi.ts'
 import { messageRappels, rappelsDuJour, sujetRappels } from './lib/rappels.ts'
+import { signauxResolution, type Dossier } from './lib/resolution.ts'
 import type { AppState } from './types.ts'
 
 const enTetes = {
@@ -148,12 +149,16 @@ async function synchroniser(sb: SupabaseClient, compte: Compte, calcules: Signal
         await sb.from('mana_signaux').update({ detail: { ...s.detail, etapePrevenue: prevenue } }).eq('id', id)
       }
     }
+    // Les signaux de résolution pointent vers le fil du dossier : on l'accroche pour le bouton « Dossier ».
+    if (!demandeId && typeof s.detail.demandeId === 'string') {
+      await sb.from('mana_signaux').update({ demande_id: s.detail.demandeId }).eq('id', id)
+    }
   }
   // Ce qui n'est plus calculé est résolu de lui-même ; le fil, s'il existe, est refermé avec un mot.
   for (const reste of parCle.values()) {
     const { error: e } = await sb.from('mana_signaux').update({ statut: 'resolu', resolu_le: maintenant, mis_a_jour_le: maintenant }).eq('id', reste.id)
     if (e) throw new Error(e.message)
-    if (reste.demande_id) await ecrireDansFil(sb, compte, reste.demande_id, messageCloture(), 'traitee')
+    if (reste.demande_id && reste.cle.startsWith('passages_manques:')) await ecrireDansFil(sb, compte, reste.demande_id, messageCloture(), 'traitee')
     resolus++
   }
   return { nouveaux, resolus, fils, ouverts: calcules.length }
@@ -244,6 +249,10 @@ Deno.serve(async (req: Request) => {
         continue
       }
       const calcules = calculerSignaux(etat, maintenantDate)
+      // Boucle de résolution : ce que la console a consigné dans les fils de suivi (relances, contacts).
+      const { data: fils } = await sb.from('mana_demandes').select('id, contenu').eq('user_id', ligne.user_id).eq('type', 'suivi')
+      const dossiers = ((fils ?? []) as Dossier[]).filter((f) => f.contenu && typeof f.contenu.signal_cle === 'string')
+      calcules.push(...signauxResolution(etat, dossiers, new Set(calcules.map((s) => s.cle)), maintenantDate))
       const compte = { userId: ligne.user_id, email: ligne.email, etat }
       const r = await synchroniser(sb, compte, calcules, maintenant)
       const rappels = await rappeler(sb, compte, maintenant)
