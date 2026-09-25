@@ -381,6 +381,94 @@ export async function lancerSurveillance(): Promise<{ totaux: { ouverts: number;
   return { totaux: data.totaux, erreurs: data.erreurs ?? [] }
 }
 
+// ---------- Apprentissage du style (console) ----------
+
+export interface Brouillon {
+  a: string
+  objet: string
+  corps: string
+}
+
+export interface Redaction {
+  id: string
+  admin_email: string
+  genre: string
+  demande_id: string | null
+  propose_objet: string
+  propose_corps: string
+  envoye_objet: string
+  envoye_corps: string
+  cree_le: string
+}
+
+/** Garde la version proposée par Mana et la version envoyée : c'est de là que le style s'apprend. */
+export async function enregistrerRedaction(genre: string, propose: Brouillon, envoye: Brouillon, demandeId?: string): Promise<void> {
+  const { data: u } = await supabase.auth.getUser()
+  const { error } = await supabase.from('mana_redactions').insert({
+    admin_email: u.user?.email ?? '',
+    genre,
+    demande_id: demandeId ?? null,
+    propose_objet: propose.objet,
+    propose_corps: propose.corps,
+    envoye_objet: envoye.objet,
+    envoye_corps: envoye.corps,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function listerRedactions(limite = 20, genre?: string): Promise<Redaction[]> {
+  let q = supabase.from('mana_redactions').select('*').order('cree_le', { ascending: false }).limit(limite)
+  if (genre) q = q.eq('genre', genre)
+  const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Redaction[]
+}
+
+export async function lireParametre<T = unknown>(cle: string): Promise<T | null> {
+  const { data, error } = await supabase.from('mana_parametres').select('valeur').eq('cle', cle).maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data?.valeur as T | undefined) ?? null
+}
+
+export async function ecrireParametre(cle: string, valeur: unknown): Promise<void> {
+  const { data: u } = await supabase.auth.getUser()
+  const { error } = await supabase.from('mana_parametres').upsert({ cle, valeur, maj_le: new Date().toISOString(), maj_par: u.user?.email ?? null })
+  if (error) throw new Error(error.message)
+}
+
+async function invoquerRedaction<T>(corps: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke<T & { erreur?: string }>('rediger-mail', { body: corps })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data || data.erreur) throw new Error(data?.erreur ?? 'Rédaction impossible.')
+  return data
+}
+
+/** Réécrit un brouillon dans le style de l'équipe : règles enregistrées + cinq dernières corrections du même genre. */
+export async function redigerAvecStyle(genre: string, brouillon: Brouillon): Promise<Brouillon> {
+  const [regles, exemples] = await Promise.all([lireParametre<{ regles?: string }>('style'), listerRedactions(5, genre)])
+  const r = await invoquerRedaction<{ objet: string; corps: string }>({
+    mode: 'reecrire',
+    genre,
+    brouillon: { objet: brouillon.objet, corps: brouillon.corps },
+    regles: regles?.regles ?? '',
+    exemples: exemples.map((e) => ({ propose: { objet: e.propose_objet, corps: e.propose_corps }, envoye: { objet: e.envoye_objet, corps: e.envoye_corps } })),
+  })
+  return { a: brouillon.a, objet: r.objet, corps: r.corps }
+}
+
+/** Déduit des règles de style des dernières corrections (à relire et enregistrer par l'équipe). */
+export async function deduireRegles(): Promise<string> {
+  const exemples = await listerRedactions(12)
+  const r = await invoquerRedaction<{ regles: string }>({
+    mode: 'regles',
+    exemples: exemples.map((e) => ({ propose: { objet: e.propose_objet, corps: e.propose_corps }, envoye: { objet: e.envoye_objet, corps: e.envoye_corps } })),
+  })
+  return r.regles
+}
+
 export async function connexion(email: string, motDePasse: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse })
   if (!error) return null

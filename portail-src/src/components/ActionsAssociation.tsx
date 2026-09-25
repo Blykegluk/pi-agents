@@ -12,10 +12,17 @@ import { LIBELLES_ELIGIBILITE } from './CollecteurForm'
  * et l'envoi est consigné dans le fil de la demande.
  */
 
-export interface Brouillon {
-  a: string
-  objet: string
-  corps: string
+export type { Brouillon } from '../lib/cloud'
+import type { Brouillon } from '../lib/cloud'
+
+export type GenreMail = 'relance' | 'justification' | 'prospection'
+
+/** Ce que la console consigne quand un mail part : quoi, à qui, et ce que Mana avait proposé. */
+export interface EnvoiConsigne {
+  genre: GenreMail
+  brouillon: Brouillon
+  propose: Brouillon
+  association?: { nom: string; email?: string }
 }
 
 const texte = (v: unknown) => (v === undefined || v === null ? '' : String(v))
@@ -106,10 +113,25 @@ function mailto(b: Brouillon): string {
 }
 
 /** Éditeur de brouillon : on relit, on corrige, puis on ouvre dans la messagerie et on consigne l'envoi. */
-export function EditeurMail({ initial, titre, onEnvoye, onFermer }: { initial: Brouillon; titre: string; onEnvoye: (b: Brouillon) => Promise<void>; onFermer: () => void }) {
+export function EditeurMail({
+  initial,
+  titre,
+  onEnvoye,
+  onFermer,
+  onStyliser,
+}: {
+  initial: Brouillon
+  titre: string
+  onEnvoye: (b: Brouillon, propose: Brouillon) => Promise<void>
+  onFermer: () => void
+  /** Réécrit le brouillon dans le style de l'équipe (règles + corrections passées). */
+  onStyliser?: (b: Brouillon) => Promise<Brouillon>
+}) {
   const [b, setB] = useState<Brouillon>(initial)
   const [etat, setEtat] = useState<'edition' | 'ouvert' | 'consigne'>('edition')
   const [copie, setCopie] = useState(false)
+  const [style, setStyle] = useState<'repos' | 'en_cours' | 'fait' | 'erreur'>('repos')
+  const [erreurStyle, setErreurStyle] = useState('')
   const valide = /^\S+@\S+\.\S+$/.test(b.a.trim()) && b.objet.trim() && b.corps.trim()
   return (
     <div className="card" style={{ background: 'var(--papier)', marginTop: 10 }}>
@@ -147,12 +169,33 @@ export function EditeurMail({ initial, titre, onEnvoye, onFermer }: { initial: B
         >
           {copie ? 'Copié' : 'Copier'}
         </button>
+        {onStyliser && (
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={style === 'en_cours'}
+            title="Réécrit le mail selon vos règles de style et vos dernières corrections (onglet Style)"
+            onClick={async () => {
+              setStyle('en_cours')
+              setErreurStyle('')
+              try {
+                setB(await onStyliser(b))
+                setStyle('fait')
+              } catch (e) {
+                setErreurStyle((e as Error).message)
+                setStyle('erreur')
+              }
+            }}
+          >
+            {style === 'en_cours' ? 'Réécriture…' : style === 'fait' ? '✓ Mon style appliqué' : '✨ Appliquer mon style'}
+          </button>
+        )}
         <button className="btn btn-ghost btn-sm" onClick={onFermer}>Fermer</button>
       </div>
+      {erreurStyle && <p className="muted" style={{ color: 'var(--rouge)', marginTop: 6 }}>{erreurStyle}</p>}
       {etat === 'ouvert' && (
         <div className="info-banner" style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ flex: 1, minWidth: 220 }}>Le mail est ouvert dans votre messagerie. Une fois envoyé, consignez-le ici : il apparaîtra dans le fil de la demande et le client le verra.</span>
-          <button className="btn btn-primary btn-sm" onClick={async () => { await onEnvoye(b); setEtat('consigne') }}>Mail envoyé, consigner</button>
+          <button className="btn btn-primary btn-sm" onClick={async () => { await onEnvoye(b, initial); setEtat('consigne') }}>Mail envoyé, consigner</button>
         </div>
       )}
       {etat === 'consigne' && <p className="muted" style={{ marginTop: 8, color: 'var(--vert)' }}>Envoi consigné dans le fil.</p>}
@@ -160,16 +203,25 @@ export function EditeurMail({ initial, titre, onEnvoye, onFermer }: { initial: B
   )
 }
 
-export function ActionsAssociation({ demande, adminEmail, onConsigner, onPropositions }: {
+export function ActionsAssociation({ demande, adminEmail, onConsigner, onPropositions, onStyliser, onMajContenu, onMessageClient }: {
   demande: Demande
   adminEmail: string
-  /** Consigne un mail envoyé dans le fil (message Mana) et passe la demande en cours. */
-  onConsigner: (texte: string) => Promise<void>
+  /** Consigne un mail envoyé dans le fil (message Mana) et passe la demande en cours ; `envoi` décrit ce qui est parti. */
+  onConsigner: (texte: string, envoi?: EnvoiConsigne) => Promise<void>
   /** Mémorise les associations trouvées dans la demande, pour les retrouver à la prochaine ouverture. */
   onPropositions: (associations: AssociationTrouvee[], remarque: string) => Promise<void>
+  onStyliser?: (genre: GenreMail, b: Brouillon) => Promise<Brouillon>
+  /** Complète le contenu du fil (réponse reçue, association retenue…). */
+  onMajContenu?: (contenu: Record<string, unknown>) => Promise<void>
+  /** Écrit un message Mana au client dans le fil, sans le marquer comme mail. */
+  onMessageClient?: (texte: string) => Promise<void>
 }) {
   const c = demande.contenu
-  const [brouillon, setBrouillon] = useState<{ titre: string; b: Brouillon } | null>(null)
+  const [brouillon, setBrouillon] = useState<{ titre: string; genre: GenreMail; association?: { nom: string; email?: string }; b: Brouillon } | null>(null)
+  const relances = Array.isArray(c.relances) ? (c.relances as { le: string; a?: string }[]) : []
+  const contacts = Array.isArray(c.contacts) ? (c.contacts as { le: string; nom?: string; a?: string }[]) : []
+  const retenue = c.retenue as { nom: string; email?: string } | undefined
+  const fmtLe = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   const [adresse, setAdresse] = useState(texte(c.adresse_magasin) || texte(c.ville))
   const [recherche, setRecherche] = useState(false)
   const [erreur, setErreur] = useState('')
@@ -205,13 +257,24 @@ export function ActionsAssociation({ demande, adminEmail, onConsigner, onProposi
       <div style={{ fontWeight: 700, fontSize: 13.5, marginBottom: 6 }}>Actions Mana</div>
       <div className="row-actions">
         {aUneAsso && demande.type === 'suivi' && (
-          <button className="btn btn-primary btn-sm" onClick={() => setBrouillon({ titre: `Relance de ${texte(c.association_concernee)}`, b: brouillonRelance(demande, adminEmail) })}>
-            ✉ Préparer la relance de l’association
+          <button className="btn btn-primary btn-sm" onClick={() => setBrouillon({ titre: `Relance de ${texte(c.association_concernee)}`, genre: 'relance', association: { nom: texte(c.association_concernee), email: texte(c.association_email) }, b: brouillonRelance(demande, adminEmail) })}>
+            ✉ {relances.length ? 'Relancer à nouveau' : 'Préparer la relance de l’association'}
           </button>
         )}
         {aUneAsso && demande.type !== 'suivi' && (
-          <button className="btn btn-ghost btn-sm" onClick={() => setBrouillon({ titre: `Demande de justification à ${texte(c.association_concernee)}`, b: brouillonJustification(demande, adminEmail) })}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setBrouillon({ titre: `Demande de justification à ${texte(c.association_concernee)}`, genre: 'justification', association: { nom: texte(c.association_concernee), email: texte(c.association_email) }, b: brouillonJustification(demande, adminEmail) })}>
             ✉ Préparer la demande de justification à l’association
+          </button>
+        )}
+        {demande.type === 'suivi' && onMajContenu && relances.length > 0 && !c.reponse_association_le && (
+          <button
+            className="btn btn-ghost btn-sm"
+            onClick={async () => {
+              await onMajContenu({ ...c, reponse_association_le: new Date().toISOString() })
+              await onMessageClient?.(`${texte(c.association_concernee)} nous a répondu : la collecte devrait reprendre. Nous restons attentifs aux prochains passages.`)
+            }}
+          >
+            ✓ L’association a répondu
           </button>
         )}
         <button className="btn btn-ghost btn-sm" onClick={() => setChercherOuvert(true)}>
@@ -219,13 +282,23 @@ export function ActionsAssociation({ demande, adminEmail, onConsigner, onProposi
         </button>
       </div>
 
+      {demande.type === 'suivi' && (relances.length > 0 || contacts.length > 0 || !!retenue || typeof c.reponse_association_le === 'string') && (
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>
+          {relances.length > 0 && <>Relance{relances.length > 1 ? 's' : ''} envoyée{relances.length > 1 ? 's' : ''} : {relances.map((r) => fmtLe(r.le)).join(', ')}. </>}
+          {typeof c.reponse_association_le === 'string' && <>Réponse de l’association le {fmtLe(c.reponse_association_le)}. </>}
+          {contacts.length > 0 && <>Remplaçantes contactées : {contacts.map((x, i) => `n° ${i + 1} ${x.nom ?? x.a ?? ''} (${fmtLe(x.le)})`).join(', ')}. </>}
+          {retenue && <><strong>Association retenue : {retenue.nom}.</strong></>}
+        </p>
+      )}
+
       {brouillon && (
         <EditeurMail
           key={brouillon.titre}
           titre={brouillon.titre}
           initial={brouillon.b}
           onFermer={() => setBrouillon(null)}
-          onEnvoye={async (b) => onConsigner(`✉ Mail envoyé à ${b.a} — « ${b.objet} »\n\n${b.corps}`)}
+          onStyliser={onStyliser ? (b) => onStyliser(brouillon.genre, b) : undefined}
+          onEnvoye={async (b, propose) => onConsigner(`✉ Mail envoyé à ${b.a} — « ${b.objet} »\n\n${b.corps}`, { genre: brouillon.genre, brouillon: b, propose, association: brouillon.association })}
         />
       )}
 
@@ -254,10 +327,25 @@ export function ActionsAssociation({ demande, adminEmail, onConsigner, onProposi
                 {a.note && <small>{a.note}</small>}
                 {(a.site || a.source) && <small><a href={a.site || a.source} target="_blank" rel="noreferrer">{a.site || a.source}</a></small>}
               </div>
-              <div style={{ flex: 'none' }}>
-                <button className="btn btn-ghost btn-sm" onClick={() => setBrouillon({ titre: `Prise de contact : ${a.nom}`, b: brouillonProspection(demande, a, adminEmail) })}>
-                  ✉ Préparer un mail
+              <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setBrouillon({ titre: `Prise de contact : ${a.nom}`, genre: 'prospection', association: { nom: a.nom, email: a.email }, b: brouillonProspection(demande, a, adminEmail) })}>
+                  ✉ {contacts.some((x) => x.nom === a.nom) ? 'Relancer' : 'Préparer un mail'}
                 </button>
+                {demande.type === 'suivi' && onMajContenu && !retenue && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    title="Cette association reprend la collecte : le magasin est prévenu, la boucle de résolution s’arrête"
+                    onClick={async () => {
+                      await onMajContenu({ ...c, retenue: { nom: a.nom, email: a.email, telephone: a.telephone, le: new Date().toISOString() } })
+                      await onMessageClient?.(
+                        `Bonne nouvelle : ${a.nom} accepte de collecter vos invendus${a.telephone || a.email ? ` (${[a.telephone, a.email].filter(Boolean).join(' · ')})` : ''}. ` +
+                          `Ajoutez-la dans Magasins › Associations avec ses jours et son créneau de passage : la surveillance suivra ses passages dès le premier bordereau.`,
+                      )
+                    }}
+                  >
+                    ✓ Retenir
+                  </button>
+                )}
               </div>
             </div>
           ))}
