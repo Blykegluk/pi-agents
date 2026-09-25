@@ -37,15 +37,77 @@ import { exerciceCourant } from '../lib/demo'
 import { ACTIONS_SIGNAL, LIBELLES_NIVEAU, type TypeSignal } from '../lib/signaux'
 
 /**
- * Console administrateur Mana : demandes entrantes (mise en relation, support)
- * avec fil de discussion, et suivi d'activité de chaque client.
+ * Console administrateur Mana. Quatre entrées : ce qu'il y a à faire aujourd'hui,
+ * les dossiers (un par demande ou fil de suivi, lisibles d'un coup d'œil), les
+ * signaux de la surveillance nocturne, les clients ; plus le style de rédaction
+ * et les documents de l'éditeur.
  */
 import { pdfConventionIntraGroupe } from '../lib/pdf'
+
+type Onglet = 'afaire' | 'dossiers' | 'signaux' | 'clients' | 'style' | 'documents'
+
+const GENRE_DEMANDE: Record<Demande['type'], string> = { suivi: 'Suivi de collecte', collecte: 'Mise en relation', association: 'Association', support: 'Question' }
+const genreDemande = (d: Demande) => (d.type === 'suivi' && d.contenu.rappels ? 'Rappels au magasin' : GENRE_DEMANDE[d.type])
+const ETAPES: Record<string, string> = { verifier_magasin: 'Vérifier avec le magasin', relance_association: 'Relancer l’association', remplacement: 'Trouver une association de remplacement' }
+/** Champs d'une demande qui méritent d'être lus, dans cet ordre, avec leur libellé. */
+const CHAMPS: [string, string][] = [
+  ['motif', 'Motif'],
+  ['association_concernee', 'Association concernée'],
+  ['association_contact', 'Contact'],
+  ['association_email', 'E-mail'],
+  ['rythme_convenu', 'Rythme convenu'],
+  ['frequence_souhaitee', 'Rythme souhaité'],
+  ['plage_horaire', 'Créneau'],
+  ['invendus_estimes', 'Invendus estimés'],
+  ['volume_par_passage', 'Volume par passage'],
+  ['ville', 'Ville'],
+  ['adresse_magasin', 'Adresse du magasin'],
+  ['associations_en_place', 'Associations en place'],
+  ['mois', 'Mois'],
+  ['ecran', 'Écran'],
+]
+const texteDe = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' ? String(v) : '')
+
+/** Le dossier en clair : magasin, société, association, motif, étape — sans les clés techniques. */
+function ResumeDossier({ d }: { d: Demande }) {
+  const c = d.contenu
+  if (d.type === 'suivi' && c.rappels) {
+    return <p className="muted" style={{ margin: '6px 0 0' }}>Rappels automatiques envoyés au magasin (bordereau de la veille, relevé du mois). Rien à faire côté Mana, sauf si le magasin répond.</p>
+  }
+  const lignes: [string, string][] = []
+  if (d.type === 'suivi') {
+    const etape = ETAPES[texteDe(c.etape)]
+    if (etape) lignes.push(['Étape', etape])
+    const asso = texteDe(c.association_concernee)
+    const contact = [texteDe(c.association_contact), texteDe(c.association_email) || 'pas d’e-mail enregistré'].filter(Boolean).join(' · ')
+    if (asso) lignes.push(['Association', `${asso} — ${contact}`])
+    for (const cle of ['motif', 'rythme_convenu', 'adresse_magasin'] as const) {
+      const v = texteDe(c[cle])
+      if (v) lignes.push([CHAMPS.find(([k]) => k === cle)![1], v])
+    }
+  } else {
+    for (const [cle, libelle] of CHAMPS) {
+      const v = texteDe(c[cle])
+      if (v) lignes.push([libelle, v])
+    }
+  }
+  if (lignes.length === 0) return null
+  return (
+    <div className="dossier-resume">
+      {lignes.map(([l, v]) => (
+        <div key={l}>
+          <span className="muted">{l}</span>
+          <span className={v.includes('pas d’e-mail') ? 'ambre' : undefined}>{v}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 export function Admin({ session, nonLus, onLu, societes = [] }: { session: Session; nonLus: NonLus; onLu: () => void
   societes?: Societe[]
 }) {
-  const [onglet, setOnglet] = useState<'demandes' | 'signaux' | 'clients' | 'style'>('demandes')
+  const [onglet, setOnglet] = useState<Onglet>('afaire')
   const [signaux, setSignaux] = useState<Signal[]>([])
   const [surveillance, setSurveillance] = useState<Surveillance | null>(null)
   const [surveillanceEnCours, setSurveillanceEnCours] = useState(false)
@@ -54,6 +116,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
   const [ouverte, setOuverte] = useState<string | null>(null)
   const [fil, setFil] = useState<Message[]>([])
   const [erreur, setErreur] = useState('')
+  const [filtreDossiers, setFiltreDossiers] = useState<'actifs' | 'termines'>('actifs')
   const exercice = exerciceCourant()
 
   async function recharger() {
@@ -80,17 +143,46 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Ouvrir un fil éteint sa pastille côté Mana.
+  // Ouvrir un fil éteint sa pastille côté Mana, et amène le dossier à l'écran.
   useEffect(() => {
     if (!ouverte) return
     messagesDe(ouverte).then(setFil).catch(() => setFil([]))
     marquerLu(ouverte, 'mana').then(onLu).catch(() => {})
+    window.setTimeout(() => document.getElementById(`dossier-${ouverte}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ouverte])
 
-  const nouvelles = useMemo(() => demandes.filter((d) => d.statut === 'nouvelle').length, [demandes])
+  const nonLu = (d: Demande) => nonLus.parDemande[d.id] ?? 0
   const alertes = useMemo(() => signaux.filter((s) => s.statut === 'ouvert' && s.niveau === 'alerte').length, [signaux])
   const aTraiter = useMemo(() => signaux.filter((s) => s.statut === 'ouvert').length, [signaux])
+
+  /** À faire : une ligne par chose qui attend Mana, la plus pressante d'abord, un seul bouton. */
+  const aFaire = useMemo(() => {
+    type Ligne = { cle: string; rang: number; badge: { texte: string; classe: string }; texte: string; demandeId?: string; signal?: boolean }
+    const lignes: Ligne[] = []
+    const parDemande = new Map(demandes.map((d) => [d.id, d]))
+    const nomDossier = (d: Demande) => `${genreDemande(d)} · ${texteDe(d.contenu.magasin) || d.sujet}${texteDe(d.contenu.association_concernee) ? ` (${texteDe(d.contenu.association_concernee)})` : ''}`
+    for (const d of demandes) {
+      if (d.statut === 'traitee') continue
+      const nb = nonLu(d)
+      if (d.statut === 'nouvelle') lignes.push({ cle: `n:${d.id}`, rang: 0, badge: { texte: 'Nouveau', classe: 'badge alerte' }, texte: `Nouvelle demande — ${nomDossier(d)}`, demandeId: d.id })
+      else if (nb > 0) lignes.push({ cle: `m:${d.id}`, rang: 1, badge: { texte: `${nb} non lu${nb > 1 ? 's' : ''}`, classe: 'badge' }, texte: `${nb > 1 ? 'Messages reçus' : 'Message reçu'} — ${nomDossier(d)}`, demandeId: d.id })
+    }
+    for (const s of signaux) {
+      if (s.statut !== 'ouvert') continue
+      const d = s.demande_id ? parDemande.get(s.demande_id) : undefined
+      if (d && d.statut === 'traitee') continue
+      lignes.push({
+        cle: `s:${s.id}`,
+        rang: s.niveau === 'alerte' ? 0.5 : s.niveau === 'attention' ? 2 : 3,
+        badge: LIBELLES_NIVEAU[s.niveau],
+        texte: `${s.titre}${d ? '' : ' — ' + (ACTIONS_SIGNAL[s.type as TypeSignal] ?? '')}`,
+        demandeId: d?.id,
+        signal: !d,
+      })
+    }
+    return lignes.sort((a, b) => a.rang - b.rang)
+  }, [demandes, signaux, nonLus])
 
   async function changerStatutSignal(s: Signal, statut: 'ouvert' | 'traite' | 'ignore') {
     await majStatutSignal(s.id, statut)
@@ -136,16 +228,179 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
     setDemandes(await mesDemandes())
   }
 
+  function ouvrirDossier(id: string) {
+    const d = demandes.find((x) => x.id === id)
+    setFiltreDossiers(d?.statut === 'traitee' ? 'termines' : 'actifs')
+    setOnglet('dossiers')
+    setOuverte(id)
+  }
+
+  const dossiersVisibles = demandes
+    .filter((d) => (filtreDossiers === 'actifs' ? d.statut !== 'traitee' : d.statut === 'traitee'))
+    .sort((a, b) => (nonLu(b) > 0 ? 1 : 0) - (nonLu(a) > 0 ? 1 : 0) || b.updated_at.localeCompare(a.updated_at))
+  const nbActifs = demandes.filter((d) => d.statut !== 'traitee').length
+  const nbTermines = demandes.length - nbActifs
+
+  const carteDossier = (d: Demande) => {
+    const c = d.contenu
+    const magasin = texteDe(c.magasin)
+    const societe = texteDe(c.societe)
+    const asso = texteDe(c.association_concernee)
+    const nb = nonLu(d)
+    const filOuvert = ouverte === d.id
+    const clientsMultiples = new Set(demandes.map((x) => x.user_id)).size > 1
+    return (
+      <div className={`card dossier${d.statut === 'traitee' ? ' termine' : ''}`} key={d.id} id={`dossier-${d.id}`}>
+        <div className="dossier-tete">
+          <div style={{ minWidth: 0 }}>
+            <span className="fil-genre">{genreDemande(d)}</span>
+            <strong style={{ fontSize: 15 }}>
+              {magasin ? `${magasin}${societe ? ` · ${societe}` : ''}${asso && asso !== 'aucune en particulier' ? ` — ${asso}` : ''}` : d.sujet}
+            </strong>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              {magasin && d.type !== 'suivi' ? `${d.sujet} · ` : ''}
+              {clientsMultiples ? `${d.email ?? d.user_id} · ` : ''}ouvert le {fmtDateHeure(d.created_at)}
+              {d.updated_at.slice(0, 16) !== d.created_at.slice(0, 16) ? ` · activité ${fmtDateHeure(d.updated_at)}` : ''}
+            </div>
+          </div>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+            {nb > 0 && <span className="pastille">{nb}</span>}
+            <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
+          </span>
+        </div>
+
+        <ResumeDossier d={d} />
+
+        {(d.type === 'association' || d.type === 'collecte' || (d.type === 'suivi' && !c.rappels)) && d.statut !== 'traitee' && (
+          <ActionsAssociation
+            demande={d}
+            adminEmail={session.user.email ?? ''}
+            onConsigner={(texte, envoi) => repondre(d, texte, envoi)}
+            onStyliser={(genre, b) => redigerAvecStyle(genre, b)}
+            onMajContenu={async (contenu) => {
+              await majContenuDemande(d.id, contenu)
+              setDemandes(await mesDemandes())
+            }}
+            onMessageClient={(texte) => repondre(d, texte)}
+            onPropositions={async (associations, remarque) => {
+              await majContenuDemande(d.id, { ...d.contenu, propositions: associations, propositions_remarque: remarque })
+              setDemandes(await mesDemandes())
+            }}
+          />
+        )}
+
+        <div className="row-actions" style={{ marginTop: 10 }}>
+          <button className={`btn btn-sm ${nb > 0 && !filOuvert ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOuverte(filOuvert ? null : d.id)}>
+            {filOuvert ? 'Replier le fil' : nb > 0 ? `Lire les ${nb > 1 ? `${nb} messages` : 'message'}` : 'Fil avec le client'}
+          </button>
+          {d.statut === 'traitee' ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => changerStatut(d, 'en_cours')}>Rouvrir</button>
+          ) : (
+            <button className="btn btn-ghost btn-sm" onClick={() => changerStatut(d, 'traitee')}>✓ Clore le dossier</button>
+          )}
+        </div>
+
+        {filOuvert && (
+          <div className="dossier-fil">
+            {fil.map((m) => (
+              <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : m.auteur === 'association' ? 'association' : 'moi'}`} style={{ maxWidth: '100%' }}>
+                <div className="bulle-tete">
+                  {m.auteur === 'mana' ? 'Mana' : m.auteur === 'association' ? 'Association (e-mail reçu)' : 'Client'} · {fmtDateHeure(m.created_at)}
+                </div>
+                {m.texte}
+              </div>
+            ))}
+            {fil.length === 0 && <p className="muted">Aucun message pour l’instant.</p>}
+            <Composer placeholder="Votre message au client…" onEnvoyer={(texte) => repondre(d, texte)} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       <h2>Console Mana</h2>
       <p className="muted" style={{ marginTop: -6 }}>
         Connecté en administrateur ({session.user.email}).{' '}
         <button className="amt" onClick={recharger}>Actualiser</button>
+        {surveillance && (
+          <> · Surveillance : dernier passage {fmtDateHeure(surveillance.commencee_le)}{surveillance.erreurs.length ? <span style={{ color: 'var(--rouge)' }}> · {surveillance.erreurs.length} erreur(s)</span> : ''}</>
+        )}
       </p>
       {erreur && <div className="info-banner alerte">{erreur}</div>}
 
-      {societes.length > 0 && (
+      <div className="chips">
+        <button className={`chip ${onglet === 'afaire' ? 'active' : ''}`} onClick={() => setOnglet('afaire')}>
+          À faire{aFaire.length > 0 ? ` (${aFaire.length})` : ''}
+        </button>
+        <button className={`chip ${onglet === 'dossiers' ? 'active' : ''}`} onClick={() => setOnglet('dossiers')}>
+          Dossiers{nbActifs > 0 ? ` (${nbActifs})` : ''}
+        </button>
+        <button className={`chip ${onglet === 'signaux' ? 'active' : ''}`} onClick={() => setOnglet('signaux')}>
+          Signaux{aTraiter > 0 ? ` (${aTraiter}${alertes > 0 ? `, ${alertes} alerte${alertes > 1 ? 's' : ''}` : ''})` : ''}
+        </button>
+        <button className={`chip ${onglet === 'clients' ? 'active' : ''}`} onClick={() => setOnglet('clients')}>
+          Clients ({clients.length})
+        </button>
+        <button className={`chip ${onglet === 'style' ? 'active' : ''}`} onClick={() => setOnglet('style')}>
+          Style
+        </button>
+        {societes.length > 0 && (
+          <button className={`chip ${onglet === 'documents' ? 'active' : ''}`} onClick={() => setOnglet('documents')}>
+            Documents
+          </button>
+        )}
+      </div>
+
+      {onglet === 'afaire' && (
+        <div className="card">
+          <h3>À faire aujourd’hui{aFaire.length > 0 ? ` (${aFaire.length})` : ''}</h3>
+          {aFaire.length === 0 ? (
+            <p className="muted" style={{ margin: '4px 0 0' }}>Rien en attente : aucune nouvelle demande, aucun message non lu, aucun signal ouvert.</p>
+          ) : (
+            <p className="muted" style={{ margin: '2px 0 6px' }}>Du plus pressant au moins pressant. Chaque ligne s’ouvre sur son dossier, avec les mails prêts à relire.</p>
+          )}
+          {aFaire.map((l) => (
+            <div className="afaire-ligne" key={l.cle}>
+              <span className={l.badge.classe} style={{ flex: 'none' }}>{l.badge.texte}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{l.texte}</span>
+              {l.demandeId ? (
+                <button className="btn btn-primary btn-sm" onClick={() => ouvrirDossier(l.demandeId!)}>Ouvrir le dossier</button>
+              ) : (
+                <button className="btn btn-ghost btn-sm" onClick={() => setOnglet('signaux')}>Voir le signal</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {onglet === 'dossiers' && (
+        <div>
+          <div className="chips" style={{ marginTop: 0 }}>
+            <button className={`chip ${filtreDossiers === 'actifs' ? 'active' : ''}`} onClick={() => setFiltreDossiers('actifs')}>En cours ({nbActifs})</button>
+            <button className={`chip ${filtreDossiers === 'termines' ? 'active' : ''}`} onClick={() => setFiltreDossiers('termines')}>Clos ({nbTermines})</button>
+          </div>
+          {dossiersVisibles.length === 0 && <div className="card empty">{filtreDossiers === 'actifs' ? 'Aucun dossier en cours.' : 'Aucun dossier clos.'}</div>}
+          {dossiersVisibles.map(carteDossier)}
+        </div>
+      )}
+
+      {onglet === 'signaux' && (
+        <SignauxAdmin
+          signaux={signaux}
+          clients={clients}
+          surveillance={surveillance}
+          enCours={surveillanceEnCours}
+          onLancer={surveillerMaintenant}
+          onStatut={changerStatutSignal}
+          onOuvrirFil={ouvrirDossier}
+        />
+      )}
+
+      {onglet === 'style' && <StyleAdmin />}
+
+      {onglet === 'documents' && societes.length > 0 && (
         <div className="card">
           <h3>Documents LAB (éditeur de Mana)</h3>
           <p className="muted" style={{ margin: '0 0 8px' }}>
@@ -160,120 +415,6 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           </div>
         </div>
       )}
-
-      <div className="chips">
-        <button className={`chip ${onglet === 'demandes' ? 'active' : ''}`} onClick={() => setOnglet('demandes')}>
-          Demandes{nonLus.total > 0 ? ` (${nonLus.total} non lu${nonLus.total > 1 ? 's' : ''})` : nouvelles > 0 ? ` (${nouvelles} nouvelle${nouvelles > 1 ? 's' : ''})` : ''}
-        </button>
-        <button className={`chip ${onglet === 'signaux' ? 'active' : ''}`} onClick={() => setOnglet('signaux')}>
-          Signaux{aTraiter > 0 ? ` (${aTraiter}${alertes > 0 ? `, ${alertes} alerte${alertes > 1 ? 's' : ''}` : ''})` : ''}
-        </button>
-        <button className={`chip ${onglet === 'style' ? 'active' : ''}`} onClick={() => setOnglet('style')}>
-          Style
-        </button>
-        <button className={`chip ${onglet === 'clients' ? 'active' : ''}`} onClick={() => setOnglet('clients')}>
-          Clients ({clients.length})
-        </button>
-      </div>
-
-      {onglet === 'demandes' && (
-        <div>
-          {demandes.length === 0 && <div className="card empty">Aucune demande pour l’instant.</div>}
-          {demandes.map((d) => (
-            <div className="card" key={d.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
-                <div style={{ minWidth: 0 }}>
-                  <strong style={{ fontSize: 14.5 }}>
-                    {d.type === 'collecte' ? 'Mise en relation' : d.type === 'association' ? 'Association : changement ou problème' : d.type === 'suivi' ? 'Suivi de collecte (ouvert par Mana)' : 'Support'} — {d.sujet}
-                  </strong>
-                  <div className="muted">{d.email ?? d.user_id} · {fmtDateHeure(d.created_at)}</div>
-                </div>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
-                  {(nonLus.parDemande[d.id] ?? 0) > 0 && (
-                    <span className="pastille">{nonLus.parDemande[d.id]}</span>
-                  )}
-                  <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
-                </span>
-              </div>
-
-              {Object.keys(d.contenu).length > 0 && (
-                <div className="detail-lignes" style={{ marginTop: 6 }}>
-                  {Object.entries(d.contenu).filter(([cle]) => !cle.startsWith('propositions')).map(([cle, valeur]) => (
-                    <div className="ligne" key={cle}>
-                      <span style={{ textTransform: 'capitalize' }}>{cle.replace(/_/g, ' ')}</span>
-                      <strong style={{ whiteSpace: 'normal', textAlign: 'right' }}>{String(valeur)}</strong>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {(d.type === 'association' || d.type === 'collecte' || d.type === 'suivi') && d.statut !== 'traitee' && (
-                <ActionsAssociation
-                  demande={d}
-                  adminEmail={session.user.email ?? ''}
-                  onConsigner={(texte, envoi) => repondre(d, texte, envoi)}
-                  onStyliser={(genre, b) => redigerAvecStyle(genre, b)}
-                  onMajContenu={async (contenu) => {
-                    await majContenuDemande(d.id, contenu)
-                    setDemandes(await mesDemandes())
-                  }}
-                  onMessageClient={(texte) => repondre(d, texte)}
-                  onPropositions={async (associations, remarque) => {
-                    await majContenuDemande(d.id, { ...d.contenu, propositions: associations, propositions_remarque: remarque })
-                    setDemandes(await mesDemandes())
-                  }}
-                />
-              )}
-
-              <div className="row-actions" style={{ marginTop: 10 }}>
-                <button
-                  className={`btn btn-sm ${(nonLus.parDemande[d.id] ?? 0) > 0 ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={() => setOuverte(ouverte === d.id ? null : d.id)}
-                >
-                  {ouverte === d.id ? 'Fermer le fil' : 'Ouvrir le fil'}
-                </button>
-                {d.statut !== 'en_cours' && (
-                  <button className="btn btn-ghost btn-sm" onClick={() => changerStatut(d, 'en_cours')}>→ En cours</button>
-                )}
-                {d.statut !== 'traitee' && (
-                  <button className="btn btn-primary btn-sm" onClick={() => changerStatut(d, 'traitee')}>✓ Traitée</button>
-                )}
-              </div>
-
-              {ouverte === d.id && (
-                <div style={{ marginTop: 10 }}>
-                  {fil.map((m) => (
-                    <div key={m.id} style={{ background: m.auteur === 'mana' ? 'var(--sable)' : m.auteur === 'association' ? '#f3e4c6' : '#e3ebe3', borderRadius: 10, padding: '9px 12px', marginBottom: 6, fontSize: 14 }}>
-                      <div style={{ fontSize: 11.5, color: 'var(--encre-3)', marginBottom: 2 }}>
-                        {m.auteur === 'mana' ? 'Mana (vous)' : m.auteur === 'association' ? 'Association (e-mail reçu)' : 'Client'} · {fmtDateHeure(m.created_at)}
-                      </div>
-                      {m.texte}
-                    </div>
-                  ))}
-                  <Composer placeholder="Votre réponse au client…" onEnvoyer={(texte) => repondre(d, texte)} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {onglet === 'signaux' && (
-        <SignauxAdmin
-          signaux={signaux}
-          clients={clients}
-          surveillance={surveillance}
-          enCours={surveillanceEnCours}
-          onLancer={surveillerMaintenant}
-          onStatut={changerStatutSignal}
-          onOuvrirFil={(id) => {
-            setOnglet('demandes')
-            setOuverte(id)
-          }}
-        />
-      )}
-
-      {onglet === 'style' && <StyleAdmin />}
 
       {onglet === 'clients' && (
         <div>
@@ -409,10 +550,9 @@ function SignauxAdmin({
           </button>
         </div>
         <p className="muted" style={{ margin: '8px 0 0' }}>
-          Règles : un passage attendu sans bordereau 24 h après son créneau est manqué ; 1 manqué = case rouge chez le magasin, 2 = un fil de suivi s’ouvre
-          avec le magasin (bouton « Dossier » : relance de l’association et recherche de remplacement prêtes à valider), 3 d’affilée = alerte, le magasin est prévenu que Mana prend la main.
-          Relevé du mois précédent attendu le 10. Plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît, et son fil se referme.
-          Les messages et rappels sont aussi mis en file d’attente e-mail : ils partiront dès que le domaine et la clé d’envoi seront configurés (voir COURRIER.md dans le code source).
+          Un passage prévu sans bordereau 24 h après son créneau est manqué : Mana considère que l’association n’est pas passée (le magasin corrige en un clic si elle est venue).
+          1 manqué = case rouge chez le magasin ; 2 = un dossier s’ouvre avec relance et recherche de remplacement prêtes ; 3 d’affilée = alerte, le magasin est prévenu que Mana prend la main.
+          Relevé du mois précédent attendu le 10, plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît. Messages et rappels partent aussi par e-mail une fois le domaine configuré (COURRIER.md).
         </p>
         {surveillance?.erreurs.map((e, i) => (
           <div className="info-banner alerte" key={i} style={{ marginTop: 8 }}>{e.compte} : {e.erreur}</div>

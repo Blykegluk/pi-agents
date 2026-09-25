@@ -43,8 +43,8 @@ export function MaSemaine({ state, onAllerAssociations }: { state: AppState; onA
               )}
               {l.sansBordereau.map((s) => (
                 <li key={s.collecteur}>
-                  <span className="pastille-jour manque" /> Sans bordereau : {s.dates.slice(-4).map(fmtJ).join(', ')} ({s.collecteur}){' '}
-                  <button type="button" className="lien" onClick={onAllerAssociations}>Dire ce qui s’est passé</button>
+                  <span className="pastille-jour manque" /> Passages manqués : {s.dates.slice(-4).map(fmtJ).join(', ')} ({s.collecteur}){' '}
+                  <button type="button" className="lien" onClick={onAllerAssociations}>L’association est venue ? Corriger</button>
                 </li>
               ))}
               {l.releveManquant && (

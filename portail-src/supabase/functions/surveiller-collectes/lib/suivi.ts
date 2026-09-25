@@ -49,7 +49,7 @@ export function contenuSuivi(etat: AppState, signal: SignalCalcule): Record<stri
     association_email: fiche?.email ?? '',
     association_contact: [fiche?.contact, fiche?.telephone].filter(Boolean).join(' · '),
     rythme_convenu: rythme,
-    motif: `Passages sans bordereau : ${listeJours(dates)}`,
+    motif: `Passages manqués : ${listeJours(dates)}`,
     associations_en_place: m.collecteurs.map((c) => c.nom).join(', ') || 'aucune',
     signal_cle: signal.cle,
     dates,
@@ -68,12 +68,11 @@ export function messageOuverture(signal: SignalCalcule): string {
   const asso = signal.collecteur ?? 'votre association'
   return (
     `Bonjour,\n\n` +
-    `Nous n’avons pas de bordereau pour ${dates.length > 1 ? 'les passages' : 'le passage'} de ${asso} ${dates.length > 1 ? 'des' : 'du'} ${listeJours(dates)}. ` +
-    `Trois cas possibles : l’association est venue et le bordereau reste à saisir ; elle est venue mais il n’y avait rien à donner ; elle n’est pas venue.\n\n` +
-    `Vous pouvez nous le dire ici, ou en un clic dans Magasins › Associations : les cases rouges du calendrier proposent la réponse. ` +
+    `Aucun bordereau pour ${dates.length > 1 ? 'les passages' : 'le passage'} de ${asso} ${dates.length > 1 ? 'des' : 'du'} ${listeJours(dates)} : nous considérons que l’association n’est pas passée. ` +
     (estEscalade(signal)
-      ? `De notre côté, nous relançons ${asso} dès aujourd’hui et cherchons en parallèle une association de remplacement près du magasin, pour ne pas perdre les denrées. Continuez à mettre de côté et à peser ce qui est donnable.\n\n`
-      : `Si l’association n’est pas venue, nous la relançons de notre côté, vous n’avez rien à faire.\n\n`) +
+      ? `Nous la relançons dès aujourd’hui et cherchons en parallèle une association de remplacement près du magasin, pour ne pas perdre les denrées. Continuez à mettre de côté et à peser ce qui est donnable.\n\n`
+      : `Nous la relançons de notre côté : vous n’avez rien à faire.\n\n`) +
+    `Si en réalité elle est venue (bordereau à saisir, ou rien à donner ce jour-là), corrigez en un clic dans Magasins › Associations : les cases rouges du calendrier proposent la réponse.\n\n` +
     `Merci, et bonne journée.\nL’équipe Mana`
   )
 }
@@ -84,7 +83,7 @@ export function messageEscalade(signal: SignalCalcule): string {
   const asso = signal.collecteur ?? 'l’association'
   return (
     `Bonjour,\n\n` +
-    `Toujours pas de bordereau après ${dates.length} passages (${listeJours(dates)}). ` +
+    `${dates.length} passages manqués d’affilée (${listeJours(dates)}). ` +
     `Nous relançons ${asso} aujourd’hui et cherchons en parallèle une association de remplacement près du magasin, pour ne pas perdre les denrées. ` +
     `Continuez à mettre de côté et à peser ce qui est donnable : nous revenons vers vous dès que nous avons une réponse.\n\n` +
     `L’équipe Mana`

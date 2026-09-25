@@ -139,19 +139,21 @@ export default function App() {
     if (acces && !TABS_INVITE.includes(tab)) setTab('saisie')
   }, [acces, tab])
 
-  /** Ce que l'écran montre : tout, ou le seul magasin ouvert à l'invité (et sa société). */
+  /** Ce que l'écran montre : tout, une société et ses magasins, ou le seul magasin ouvert à l'invité. */
   const stateVisible = useMemo<AppState>(() => {
-    if (!acces?.magasin_id) return state
-    const magasin = state.magasins.find((m) => m.id === acces.magasin_id)
-    if (!magasin) return { ...state, societes: [], magasins: [], saisies: [], factures: [], clotures: [] }
+    if (!acces || (!acces.magasin_id && !acces.societe_id)) return state
+    const magasins = acces.magasin_id ? state.magasins.filter((m) => m.id === acces.magasin_id) : state.magasins.filter((m) => m.societeId === acces.societe_id)
+    const societeIds = new Set(acces.societe_id ? [acces.societe_id] : magasins.map((m) => m.societeId))
+    const magasinIds = new Set(magasins.map((m) => m.id))
+    if (magasins.length === 0 && societeIds.size === 0) return { ...state, societes: [], magasins: [], saisies: [], factures: [], clotures: [] }
     return {
       ...state,
-      societes: state.societes.filter((so) => so.id === magasin.societeId),
-      magasins: [magasin],
-      saisies: state.saisies.filter((sa) => sa.magasinId === magasin.id),
-      reponsesPassages: (state.reponsesPassages ?? []).filter((r) => r.magasinId === magasin.id),
-      factures: state.factures.filter((f) => f.societeId === magasin.societeId),
-      clotures: state.clotures.filter((c) => c.societeId === magasin.societeId),
+      societes: state.societes.filter((so) => societeIds.has(so.id)),
+      magasins,
+      saisies: state.saisies.filter((sa) => magasinIds.has(sa.magasinId)),
+      reponsesPassages: (state.reponsesPassages ?? []).filter((r) => magasinIds.has(r.magasinId)),
+      factures: state.factures.filter((f) => societeIds.has(f.societeId)),
+      clotures: state.clotures.filter((c) => societeIds.has(c.societeId)),
     }
   }, [state, acces])
 
@@ -661,7 +663,7 @@ export default function App() {
             onConnexion={() => setReglages(true)}
             onOuvrirAide={() => setAideOuverte(true)}
             onOuvrirMessages={() => setTab('messages')}
-            accesPartages={session && acces === null ? <AccesPartages session={session} magasins={state.magasins} /> : null}
+            accesPartages={session && acces === null ? <AccesPartages session={session} magasins={state.magasins} societes={state.societes} /> : null}
           />
         )}
         {!verrouille && tab === 'saisie' && (
@@ -730,7 +732,7 @@ export default function App() {
             {acces && (
               <p className="muted" style={{ marginTop: 8 }}>
                 <strong>Accès partagé</strong>{acces.libelle ? ` · ${acces.libelle}` : ''} — vous travaillez sur les données de{' '}
-                {acces.magasin_id ? `« ${state.magasins.find((m) => m.id === acces.magasin_id)?.nom ?? 'magasin'} »` : 'tous les magasins'} du compte qui vous a invité.
+                {acces.magasin_id ? `« ${state.magasins.find((m) => m.id === acces.magasin_id)?.nom ?? 'magasin'} »` : acces.societe_id ? `« ${state.societes.find((so) => so.id === acces.societe_id)?.raisonSociale ?? 'société'} »` : 'tout'} du compte qui vous a invité.
               </p>
             )}
             <hr className="sep" />

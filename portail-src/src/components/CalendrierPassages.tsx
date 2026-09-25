@@ -18,7 +18,7 @@ function fmtLong(j: string): string {
 
 const LIBELLE_STATUT: Record<StatutPassage, string> = {
   fait: 'bordereau enregistré',
-  manque: 'passage attendu, pas de bordereau',
+  manque: 'passage manqué (pas de bordereau)',
   en_attente: 'passage attendu, bordereau à saisir',
   a_venir: 'passage prévu',
   declare_semaine: 'semaine déclarée globalement',
@@ -110,40 +110,45 @@ export function CalendrierPassages({
           {s.rythme.source === 'inconnu'
             ? 'Précisez les jours et le créneau pour que Mana surveille les passages.'
             : s.manques > 0
-              ? `${s.manques} passage${s.manques > 1 ? 's' : ''} sans bordereau d'affilée (${s.dates.slice(-3).map(fmtCourt).join(', ')})${s.confirmes ? `, dont ${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} « pas venue »` : ''}.`
+              ? `${s.manques} passage${s.manques > 1 ? 's' : ''} manqué${s.manques > 1 ? 's' : ''} d'affilée (${s.dates.slice(-3).map(fmtCourt).join(', ')})${s.confirmes ? `, dont ${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} par le magasin` : ''}.`
               : s.dernierFait
                 ? `Dernier bordereau le ${fmtCourt(s.dernierFait)}.`
                 : 'Aucun bordereau sur les huit dernières semaines.'}
         </p>
       ))}
-      <div className="cal-grille" aria-label="Calendrier des passages des huit dernières semaines">
-        <span />
+      <div className={`cal-grille${parPeriode.size > 0 ? ' avec-compte' : ''}`} aria-label="Calendrier des passages des huit dernières semaines">
         {ENTETE.map((e, i) => (
           <span className="cal-entete" key={i}>{e}</span>
         ))}
-        <span />
-        {lundis.map((lundi) => {
+        {parPeriode.size > 0 && <span />}
+        {lundis.map((lundi, li) => {
           const periodes = parPeriode.get(lundi) ?? []
           return [
-            <span className="cal-semaine" key={`${lundi}-s`}>{fmtCourt(lundi)}</span>,
             ...Array.from({ length: 7 }, (_, i) => {
               const j = decalerJour(lundi, i)
               const { classe, titre, cliquable } = classeJour(j)
               const actif = ouvert?.date === j
-              const commun = { className: `cal-case ${classe}${j === aujourdHui ? ' aujourdhui' : ''}${actif ? ' actif' : ''}`, title: titre, key: j }
+              const numero = Number(j.slice(8, 10))
+              // Le mois s'affiche sur la toute première case et à chaque 1er du mois.
+              const etiquette = li === 0 && i === 0 ? fmtCourt(j) : numero === 1 ? fmtCourt(j) : String(numero)
+              const commun = { className: `cal-case ${classe}${j === aujourdHui ? ' aujourdhui' : ''}${actif ? ' actif' : ''}${etiquette.length > 2 ? ' mois' : ''}`, title: titre, key: j }
               return cliquable && onReponse ? (
-                <button type="button" {...commun} aria-label={titre} onClick={() => setOuvert(actif ? null : { date: j, collecteur: cliquable.collecteur })} />
+                <button type="button" {...commun} aria-label={titre} onClick={() => setOuvert(actif ? null : { date: j, collecteur: cliquable.collecteur })}>{etiquette}</button>
               ) : (
-                <span {...commun} />
+                <span {...commun}>{etiquette}</span>
               )
             }),
-            <span className="cal-compte" key={`${lundi}-c`}>
-              {periodes.map((p) => (
-                <span className={`cal-pastille ${p.statut}`} key={p.collecteur} title={`${p.collecteur} · ${p.periode!.faits}/${p.periode!.attendus} passage(s) sur la période`}>
-                  {p.periode!.faits}/{p.periode!.attendus}
-                </span>
-              ))}
-            </span>,
+            ...(parPeriode.size > 0
+              ? [
+                  <span className="cal-compte" key={`${lundi}-c`}>
+                    {periodes.map((p) => (
+                      <span className={`cal-pastille ${p.statut}`} key={p.collecteur} title={`${p.collecteur} · ${p.periode!.faits}/${p.periode!.attendus} passage(s) sur la période`}>
+                        {p.periode!.faits}/{p.periode!.attendus}
+                      </span>
+                    ))}
+                  </span>,
+                ]
+              : []),
           ]
         })}
       </div>
@@ -151,7 +156,7 @@ export function CalendrierPassages({
         <div className="cal-reponse">
           <div>
             <strong>{fmtLong(ouvert.date)} · {ouvert.collecteur}</strong>
-            <span className="muted"> — que s’est-il passé ?{ouvertReponse ? ` (réponse actuelle : ${LIBELLE_REPONSE[ouvertReponse.reponse]})` : ''}</span>
+            <span className="muted"> — compté comme manqué. L’association est venue ?{ouvertReponse ? ` (réponse actuelle : ${LIBELLE_REPONSE[ouvertReponse.reponse]})` : ''}</span>
           </div>
           <div className="row-actions" style={{ marginTop: 6 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => repondre('bordereau_a_saisir')}>Venue, bordereau à saisir</button>
@@ -161,16 +166,16 @@ export function CalendrierPassages({
             <button className="btn btn-ghost btn-sm" onClick={() => setOuvert(null)}>Annuler</button>
           </div>
           <p className="muted" style={{ margin: '6px 0 0' }}>
-            « Pas venue » déclenche la relance de l’association par Mana. « Bordereau à saisir » vous laisse trois jours.
+            Sans réponse, le passage reste manqué et Mana relance l’association. « Bordereau à saisir » vous laisse trois jours.
           </p>
         </div>
       )}
       <div className="cal-legende">
         <span className="fait">bordereau</span>
-        <span className="manque">passage sans bordereau</span>
+        <span className="manque">passage manqué</span>
         <span className="en_attente">à saisir</span>
         <span className="a_venir">prévu</span>
-        {onReponse && <span className="clic">cliquez une case rouge pour répondre</span>}
+        {onReponse && <span className="clic">cliquez une case rouge pour corriger</span>}
       </div>
     </div>
   )
