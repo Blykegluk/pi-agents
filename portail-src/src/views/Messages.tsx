@@ -99,9 +99,9 @@ export function Messages({
   const contenuFil = (d: Demande) => (
     <>
       {fil.map((m) => (
-        <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : 'moi'}`}>
+        <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : m.auteur === 'association' ? 'association' : 'moi'}`}>
           <div className="bulle-tete">
-            {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
+            {m.auteur === 'mana' ? 'Mana' : m.auteur === 'association' ? 'L’association (par e-mail)' : 'Vous'} · {fmtDateHeure(m.created_at)}
           </div>
           {m.texte}
         </div>
@@ -190,9 +190,9 @@ export function Messages({
                 <hr className="sep" />
                 <div className="messages-bulles">
                   {fil.map((m) => (
-                    <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : 'moi'}`}>
+                    <div key={m.id} className={`bulle ${m.auteur === 'mana' ? 'mana' : m.auteur === 'association' ? 'association' : 'moi'}`}>
                       <div className="bulle-tete">
-                        {m.auteur === 'mana' ? 'Mana' : 'Vous'} · {fmtDateHeure(m.created_at)}
+                        {m.auteur === 'mana' ? 'Mana' : m.auteur === 'association' ? 'L’association (par e-mail)' : 'Vous'} · {fmtDateHeure(m.created_at)}
                       </div>
                       {m.texte}
                     </div>

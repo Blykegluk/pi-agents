@@ -465,8 +465,17 @@ export async function pdfFacture(facture: Facture, societe: Societe) {
   doc.setFontSize(9)
   for (const l of facture.detail) {
     const lines = doc.splitTextToSize(t(`• ${l}`), 182)
+    // Réseau de plusieurs dizaines de magasins : le détail continue sur la page suivante.
+    if (y + lines.length * 4.4 > 262) {
+      doc.addPage()
+      y = 20
+    }
     doc.text(lines, 14, y)
     y += lines.length * 4.4 + 1.5
+  }
+  if (y > 225) {
+    doc.addPage()
+    y = 20
   }
 
   y += 6

@@ -11,6 +11,7 @@ import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence, resumePassages } from '../lib/annuaire'
 import { CalendrierPassages } from '../components/CalendrierPassages'
+import { ImportMagasins } from '../components/ImportMagasins'
 import { LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
@@ -84,6 +85,7 @@ export function MagasinsView({
   // Raccourci « Associations » : ouvre la collecte du magasin, amène à l'étape Association, et
   // selon le mode ouvre directement la demande de changement ou le formulaire d'ajout.
   const [focusAssociation, setFocusAssociation] = useState<Record<string, number>>({})
+  const [importOuvert, setImportOuvert] = useState(false)
   const [focusMode, setFocusMode] = useState<Record<string, ModeAssociation>>({})
   function ouvrirAssociations(magasinId: string, mode: ModeAssociation = 'liste') {
     setCollecteOuverte(magasinId)
@@ -378,6 +380,14 @@ export function MagasinsView({
         <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
           + Ajouter une société
         </button>
+      )}
+      {!invite && !importOuvert && (
+        <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => setImportOuvert(true)}>
+          ⬆ Importer des magasins depuis un fichier CSV
+        </button>
+      )}
+      {!invite && importOuvert && (
+        <ImportMagasins state={state} onSaveSociete={onSaveSociete} onSaveMagasin={onSaveMagasin} onFermer={() => setImportOuvert(false)} />
       )}
       {accesPartages}
       </div>

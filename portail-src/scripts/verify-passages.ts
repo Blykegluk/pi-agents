@@ -9,6 +9,7 @@ import { listeJours } from '../src/lib/suivi.ts'
 import { aFaire, santeReseau } from '../src/lib/reseau.ts'
 import { messageRappels, rappelsDuJour } from '../src/lib/rappels.ts'
 import { signauxResolution } from '../src/lib/resolution.ts'
+import { frequenceDepuisTexte, interpreterCSV, lireCSV, preparerImport, MODELE_CSV } from '../src/lib/importMagasins.ts'
 
 let echecs = 0
 function ok(nom: string, cond: boolean, detail = '') {
@@ -212,6 +213,20 @@ const s2 = signauxResolution(etat, [contact8j], actifs, le25)
 egal('remplaçante n° 1 sans réponse 9 jours : passer à la n° 2', [s2.length, s2[0]?.type, s2[0]?.detail.prochaine], [1, 'remplacement_sans_reponse', 'Contacter la remplaçante n° 2 : Restos'])
 const retenue = { ...contact8j, contenu: { ...contact8j.contenu, retenue: { nom: 'Banque Alimentaire' } } }
 ok('remplaçante retenue : boucle terminée', signauxResolution(etat, [retenue], actifs, le25).length === 0)
+
+console.log('— Import CSV —')
+egal('séparateur ; détecté, guillemets gérés', lireCSV('a;b\n"x;y";2\n').lignes, [['x;y', '2']])
+egal('séparateur , détecté', lireCSV('a,b\n1,2\n').lignes, [['1', '2']])
+const csv = interpreterCSV(MODELE_CSV)
+egal('modèle : 2 lignes, colonnes reconnues', [csv.lignes.length, csv.colonnesInconnues.length, csv.colonnesReconnues.includes('magasin')], [2, 0, true])
+const planCSV = preparerImport(csv.lignes, etat, new Date('2026-09-25T06:00:00.000Z'))
+egal('modèle : 1 société nouvelle, 2 magasins à créer, 0 erreur', [planCSV.societes.length, planCSV.societes[0].nouvelle, planCSV.magasins.length, planCSV.erreurs.length], [1, true, 2, 0])
+egal('CA et marge lus sur la première ligne de la société', [planCSV.societes[0].societe.caHT, planCSV.societes[0].societe.margePct, planCSV.societes[0].margeParDefaut], [12000000, 31, false])
+egal('association et rythme mappés', [planCSV.magasins[0].magasin.collecteurs[0].nom, planCSV.magasins[0].magasin.collecteurs[0].frequence, planCSV.magasins[0].magasin.collecteurs[0].plage, planCSV.magasins[1].magasin.collecteurs[0].frequence], ['Banque Alimentaire de Paris', 'Quotidienne', 'Fin de journée (17 h – 20 h)', '2 à 3 fois par semaine'])
+egal('fréquence libre → Autre', frequenceDepuisTexte('tous les 15 jours'), { frequence: 'Autre', frequenceAutre: 'tous les 15 jours' })
+const csvExistant = interpreterCSV('societe;siren;magasin;association\nAEJB;852200534;Léon Blum;Le panier du lien\nAEJB;852200534;Bastille;\n;;Sans société;\nX;123;Mauvais siren;')
+const planExistant = preparerImport(csvExistant.lignes, etat)
+egal('société existante reconnue par SIREN, Léon Blum déjà présent, Bastille à créer, 2 erreurs', [planExistant.societes[0].nouvelle, planExistant.magasins[0].dejaPresent, planExistant.magasins[1].dejaPresent, planExistant.erreurs.length], [false, true, false, 2])
 
 console.log(echecs === 0 ? '\nTout est conforme.' : `\n${echecs} écart(s).`)
 process.exit(echecs === 0 ? 0 : 1)
