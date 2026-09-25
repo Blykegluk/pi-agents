@@ -111,11 +111,8 @@ export function ImportBordereaux({
 
   return (
     <div className="card">
-      <h3>Smart upload — vos bordereaux</h3>
-      <p className="muted" style={{ margin: '0 0 10px' }}>
-        Glissez ici un ou plusieurs bordereaux photographiés (une journée, une semaine, un mois) : chaque photo est
-        archivée puis lue, vous corrigez ce qui doit l’être, un seul clic enregistre tout.
-      </p>
+      <h3>Déposer des bordereaux</h3>
+      <p className="muted" style={{ margin: '0 0 10px' }}>Une ou plusieurs photos : Mana les lit, vous vérifiez, un clic enregistre tout.</p>
       <label
         className={`zone-depot ${survol ? 'survol' : ''} ${actif ? '' : 'inactive'}`}
         onDragOver={(e) => { e.preventDefault(); if (actif) setSurvol(true) }}
@@ -137,7 +134,7 @@ export function ImportBordereaux({
         ) : (
           <>
             <strong>Glissez vos bordereaux ici, ou cliquez pour les choisir</strong>
-            <span className="muted">Un ou plusieurs à la fois · JPG, PNG · depuis le téléphone, prenez la photo directement.</span>
+            <span className="muted">JPG ou PNG · depuis le téléphone, prenez la photo directement</span>
           </>
         )}
       </label>

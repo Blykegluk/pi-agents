@@ -34,9 +34,7 @@ export function Reseau({ state, compact = false, onOuvrirMagasin }: { state: App
       {!compact && (
         <>
           <h3>Réseau — santé des collectes</h3>
-          <p className="muted" style={{ margin: '2px 0 10px' }}>
-            Cette semaine, magasin par magasin : passages prévus et bordereaux reçus, passages manqués d’affilée, relevés, signaux. Les magasins à surveiller sont en tête.
-          </p>
+          <p className="muted" style={{ margin: '2px 0 10px' }}>Cette semaine, magasin par magasin. Ceux à surveiller en tête.</p>
           <div className="impact reseau-tuiles">
             <div className="tuile">
               <strong>{t.enCollecte}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{t.magasins}</span></strong>
@@ -123,9 +121,7 @@ export function Reseau({ state, compact = false, onOuvrirMagasin }: { state: App
         </table>
       </div>
       {!compact && (
-        <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>
-          Un passage prévu sans bordereau 24 h après son créneau est manqué ; 3 d’affilée, Mana prend la main. Détail et réponses en un clic dans Magasins › Associations.
-        </p>
+        <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>3 passages manqués d’affilée : Mana prend la main.</p>
       )}
     </div>
   )

@@ -86,10 +86,7 @@ export function ScanBordereau({
   return (
     <div className="card">
       <h3>Scanner le bordereau signé</h3>
-      <p className="muted" style={{ margin: '0 0 10px' }}>
-        Photographiez le bordereau à la fin du passage : Mana lit les colis, le poids des fruits &amp; légumes et
-        l’association, puis vous propose la saisie. Vous validez avant enregistrement.
-      </p>
+      <p className="muted" style={{ margin: '0 0 10px' }}>Mana lit colis, poids et association. Vous validez.</p>
 
       <label className="btn btn-primary btn-block" style={{ cursor: 'pointer', marginBottom: 8 }}>
         {etape === 'encours' ? 'Lecture en cours…' : '📷 Photographier ou choisir une photo'}
@@ -164,9 +161,6 @@ export function ScanBordereau({
             </ul>
           )}
 
-          <p className="muted" style={{ margin: '10px 0 0', fontSize: 12.5 }}>
-            Le bordereau ne porte pas le montant de démarque : il reste à saisir depuis votre back-office.
-          </p>
 
           <button
             className="btn btn-ambre btn-block"

@@ -155,8 +155,8 @@ export function Messages({
   const synthese = demandes.length > 0 && (
     <div className={`info-banner${totalNonLus > 0 ? '' : ' vert'}`} style={{ marginBottom: 12 }}>
       {totalNonLus > 0
-        ? <><strong>{totalNonLus} nouveau{totalNonLus > 1 ? 'x' : ''} message{totalNonLus > 1 ? 's' : ''}</strong> de Mana, en tête de liste. Les suivis de collecte et les rappels sont là pour vous informer : vous n’avez rien à répondre, sauf si quelque chose est faux.</>
-        : <>Rien de nouveau. Les suivis et rappels sont là pour vous informer : vous n’avez rien à répondre, sauf si quelque chose est faux.</>}
+        ? <><strong>{totalNonLus} nouveau{totalNonLus > 1 ? 'x' : ''} message{totalNonLus > 1 ? 's' : ''}</strong>, en tête de liste. Les suivis et rappels n’attendent pas de réponse.</>
+        : <>Rien de nouveau. Les suivis et rappels n’attendent pas de réponse.</>}
     </div>
   )
 
@@ -188,7 +188,7 @@ export function Messages({
       <div className="messages">
         <h2>Messages</h2>
         <p className="muted" style={{ marginTop: -6, marginBottom: 14 }}>
-          Vos échanges avec l’équipe Mana. Avant d’écrire, la réponse est peut-être déjà dans{' '}
+          Une question ? Voyez d’abord{' '}
           <button className="amt" onClick={onOuvrirAide}>
             les questions fréquentes
           </button>
@@ -266,7 +266,7 @@ export function Messages({
     <div className="messages">
       <h2>Messages</h2>
       <p className="muted" style={{ marginTop: -6, marginBottom: 14 }}>
-        Vos échanges avec l’équipe Mana. Avant d’écrire, la réponse est peut-être déjà dans{' '}
+        Une question ? Voyez d’abord{' '}
         <button className="amt" onClick={onOuvrirAide}>
           les questions fréquentes
         </button>

@@ -5,11 +5,12 @@ import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordere
 import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
 import { pdfBordereau, pdfContratService } from '../lib/pdf'
-import { Collecte, EnteteCollecte, avancementCollecte, type ModeAssociation } from './Collecte'
+import { Collecte, EnteteCollecte, GuideEquipe, avancementCollecte } from './Collecte'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence, resumePassages } from '../lib/annuaire'
-import { CalendrierPassages } from '../components/CalendrierPassages'
+import { AssociationsMagasin, useDemandes, type DerniersMessages } from '../components/AssociationsMagasin'
+import type { Demande } from '../lib/cloud'
 import { ImportMagasins } from '../components/ImportMagasins'
 import { LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
@@ -75,43 +76,35 @@ export function MagasinsView({
     const total = ms.reduce((t, m) => t + avancementCollecte(m).total, 0)
     return { faites, total, nb: ms.length }
   }
-  // Seule la collecte encore en mise en place s'ouvre d'elle-même ; une collecte terminée reste repliée
-  // et se rouvre à la demande (bouton « Collecte » ou carte Associations).
-  const [collecteOuverte, setCollecteOuverte] = useState<string | null>(() => {
+  // Sous la carte Associations, un panneau à la demande : la mise en place d'un magasin qui n'est pas
+  // terminée (les cinq étapes), ou le guide de l'équipe (tri, pesée, bordereaux) une fois tout en place.
+  const [panneau, setPanneau] = useState<{ magasinId: string; type: 'miseEnPlace' | 'guide' } | null>(() => {
     const enCours = magasins.find((m) => avancementCollecte(m).faites < avancementCollecte(m).total)
-    return enCours?.id ?? null
+    return enCours && enCours.collecteurs.length === 0 ? { magasinId: enCours.id, type: 'miseEnPlace' } : null
   })
-  // Raccourci « Associations » : ouvre la collecte du magasin, amène à l'étape Association, et
-  // selon le mode ouvre directement la demande de changement ou le formulaire d'ajout.
-  const [focusAssociation, setFocusAssociation] = useState<Record<string, number>>({})
   const [importOuvert, setImportOuvert] = useState(false)
-  const [focusMode, setFocusMode] = useState<Record<string, ModeAssociation>>({})
-  function montrerCollecte() {
-    window.setTimeout(() => document.getElementById('collecte-ouverte')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+  function ouvrirPanneau(p: { magasinId: string; type: 'miseEnPlace' | 'guide' } | null) {
+    setPanneau(p)
+    if (p) window.setTimeout(() => document.getElementById('panneau-magasin')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
-  function ouvrirCollecte(magasinId: string | null) {
-    setCollecteOuverte(magasinId)
-    if (magasinId) montrerCollecte()
-  }
-  function ouvrirAssociations(magasinId: string, mode: ModeAssociation = 'liste') {
-    ouvrirCollecte(magasinId)
-    setFocusMode((f) => ({ ...f, [magasinId]: mode }))
-    setFocusAssociation((f) => ({ ...f, [magasinId]: Date.now() }))
-  }
-  // Une seule colonne, pleine largeur : Associations (et la collecte du magasin ouvert juste
-  // en dessous), puis la société et ses magasins, puis les accès partagés.
+  const { demandes, derniers, recharger } = useDemandes(session)
   const magasinsAffiches = magasins.filter((m) => !societeActive || m.societeId === societeActive.id)
-  const magasinOuvert = magasinsAffiches.find((m) => m.id === collecteOuverte)
+  const magasinOuvert = magasinsAffiches.find((m) => m.id === panneau?.magasinId)
   const hub = (
     <HubAssociations
       magasins={magasinsAffiches}
+      societes={societes}
+      session={session}
       saisies={state.saisies}
       reponses={state.reponsesPassages ?? []}
+      demandes={demandes}
+      derniers={derniers}
       onReponse={onReponsePassage}
-      onGerer={(id) => ouvrirAssociations(id, 'liste')}
-      onChanger={(id) => ouvrirAssociations(id, 'changement')}
-      onAjouter={(id) => ouvrirAssociations(id, 'ajout')}
-      onReprendre={(id) => ouvrirCollecte(id)}
+      onSaveMagasin={onSaveMagasin}
+      onDemandeEnvoyee={recharger}
+      onConnexion={onConnexion}
+      onOuvrirMessages={onOuvrirMessages}
+      onMiseEnPlace={(id) => ouvrirPanneau({ magasinId: id, type: 'miseEnPlace' })}
     />
   )
 
@@ -146,7 +139,7 @@ export function MagasinsView({
           onSaveMagasin(m)
           setEdition(null)
           // Parcours fluide : un nouveau magasin s'ouvre directement sur sa mise en place
-          if (nouveau) setCollecteOuverte(m.id)
+          if (nouveau) ouvrirPanneau({ magasinId: m.id, type: 'miseEnPlace' })
         }}
       />
     )
@@ -218,31 +211,35 @@ export function MagasinsView({
       )}
       <div className="magasins-pile">
       {magasinsAffiches.length > 0 && hub}
-      {magasinOuvert && (
-        <div className="card" id="collecte-ouverte">
+      {magasinOuvert && panneau && (
+        <div className="card" id="panneau-magasin">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <EnteteCollecte magasin={magasinOuvert} titre={`Collecte — ${magasinOuvert.nom}`} />
+              {panneau.type === 'miseEnPlace' ? (
+                <EnteteCollecte magasin={magasinOuvert} titre={`Mise en place — ${magasinOuvert.nom}`} />
+              ) : (
+                <h3 style={{ margin: 0 }}>Guide de l’équipe — {magasinOuvert.nom}</h3>
+              )}
             </div>
-            <button className="btn btn-ghost btn-sm" style={{ flex: 'none' }} onClick={() => setCollecteOuverte(null)} title="Replier la collecte">
-              ✕ Fermer
-            </button>
+            <button className="btn btn-ghost btn-sm" style={{ flex: 'none' }} onClick={() => setPanneau(null)}>✕ Fermer</button>
           </div>
           <div style={{ height: 14 }} />
-          <Collecte
-            key={magasinOuvert.id}
-            state={state}
-            session={session}
-            magasinIdFixe={magasinOuvert.id}
-            sansEntete
-            onSaveMagasin={onSaveMagasin}
-            onAllerSaisie={onAllerSaisie}
-            onConnexion={onConnexion}
-            onOuvrirAide={onOuvrirAide}
-            onOuvrirMessages={onOuvrirMessages}
-            focusAssociation={focusAssociation[magasinOuvert.id]}
-            focusMode={focusMode[magasinOuvert.id]}
-          />
+          {panneau.type === 'miseEnPlace' ? (
+            <Collecte
+              key={magasinOuvert.id}
+              state={state}
+              session={session}
+              magasinIdFixe={magasinOuvert.id}
+              sansEntete
+              onSaveMagasin={onSaveMagasin}
+              onAllerSaisie={onAllerSaisie}
+              onConnexion={onConnexion}
+              onOuvrirAide={onOuvrirAide}
+              onOuvrirMessages={onOuvrirMessages}
+            />
+          ) : (
+            <GuideEquipe magasin={magasinOuvert} societe={societes.find((so) => so.id === magasinOuvert.societeId)} />
+          )}
         </div>
       )}
       {societes.filter((s) => !societeActive || s.id === societeActive.id).map((s) => {
@@ -267,7 +264,7 @@ export function MagasinsView({
               ) : (
                 <div className="info-banner" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
                   <span style={{ flex: 1, minWidth: 220 }}>
-                    <strong>Contrat de service à signer.</strong> Sans abonnement : 30 % de la réduction d’impôt acquise, facturée sur le réel. Il faut le signer avant la première facture.
+                    <strong>Contrat à signer.</strong> Sans abonnement : 30 % de la réduction obtenue.
                   </span>
                   <button className="btn btn-primary btn-sm" onClick={() => (session ? setContratPour(s) : onConnexion())}>
                     {session ? 'Lire et signer' : 'Se connecter pour signer'}
@@ -328,7 +325,6 @@ export function MagasinsView({
 
             {sesMagasins.map((m) => {
               const av = avancementCollecte(m)
-              const ouverte = collecteOuverte === m.id
               return (
                 <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -342,18 +338,17 @@ export function MagasinsView({
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => ouvrirCollecte(ouverte ? null : m.id)}>
-                        {ouverte ? '▾ Collecte' : '▸ Collecte'} · {av.faites}/{av.total} étape{av.total > 1 ? 's' : ''}
-                      </button>
+                      {av.faites < av.total ? (
+                        <button className="btn btn-sm btn-ambre" onClick={() => ouvrirPanneau({ magasinId: m.id, type: 'miseEnPlace' })}>
+                          Mise en place · {av.faites}/{av.total}
+                        </button>
+                      ) : (
+                        <button className="btn btn-sm btn-ghost" onClick={() => ouvrirPanneau({ magasinId: m.id, type: 'guide' })} title="Tri, pesée, bordereaux : de quoi former l’équipe">
+                          Guide de l’équipe
+                        </button>
+                      )}
                       {!invite && (
                         <>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            title={m.collecteurs.length > 0 ? 'Modifier, ajouter ou changer d’association' : 'Enregistrer une association'}
-                            onClick={() => ouvrirAssociations(m.id)}
-                          >
-                            {m.collecteurs.length > 0 ? 'Associations' : '+ Association'}
-                          </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
                             Modifier le magasin
                           </button>
@@ -405,76 +400,65 @@ export function MagasinsView({
   )
 }
 
-/**
- * Carte « Associations » : l'état des associations de chaque magasin, et les trois gestes
- * courants sans dérouler la mise en place de la collecte — gérer, demander un changement à Mana,
- * ajouter. Un magasin dont la collecte n'est pas terminée propose de reprendre là où il en est.
- */
+/** La carte Associations : pour chaque magasin, qui collecte, le calendrier des passages et ce qui est en cours avec Mana. */
 function HubAssociations({
   magasins,
+  societes,
+  session,
   saisies,
   reponses,
+  demandes,
+  derniers,
   onReponse,
-  onGerer,
-  onChanger,
-  onAjouter,
-  onReprendre,
+  onSaveMagasin,
+  onDemandeEnvoyee,
+  onConnexion,
+  onOuvrirMessages,
+  onMiseEnPlace,
 }: {
   magasins: Magasin[]
+  societes: Societe[]
+  session: Session | null
   saisies: Saisie[]
   reponses: ReponsePassage[]
+  demandes: Demande[]
+  derniers: DerniersMessages
   onReponse?: (r: Omit<ReponsePassage, 'id' | 'le' | 'par'>) => void
-  onGerer: (magasinId: string) => void
-  onChanger: (magasinId: string) => void
-  onAjouter: (magasinId: string) => void
-  onReprendre: (magasinId: string) => void
+  onSaveMagasin: (m: Magasin) => void
+  onDemandeEnvoyee: () => Promise<void>
+  onConnexion: () => void
+  onOuvrirMessages: () => void
+  onMiseEnPlace: (magasinId: string) => void
 }) {
   return (
     <div className="card hub-associations">
       <h3>Associations</h3>
-      <p className="muted" style={{ margin: '2px 0 4px' }}>
-        Qui collecte, à quel rythme, et si tout va bien. Un passage manqué, une association qui ne répond plus :
-        demandez un changement, Mana gère la relation et vous répond dans Messages.
-      </p>
       {magasins.map((m) => {
         const av = avancementCollecte(m)
         return (
-          <div key={m.id} style={{ borderTop: '1px solid var(--trait-doux)', paddingTop: 10, marginTop: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: 14.5 }}>{m.nom}</strong>
+          <div key={m.id} className="hub-magasin">
+            <div className="hub-magasin-tete">
+              <strong>{m.nom}</strong>
               {av.faites < av.total && (
-                <button className="btn btn-ambre btn-sm" onClick={() => onReprendre(m.id)}>
-                  Reprendre la mise en place · {av.faites}/{av.total}
+                <button className="btn btn-ambre btn-sm" onClick={() => onMiseEnPlace(m.id)}>
+                  Terminer la mise en place · {av.faites}/{av.total}
                 </button>
               )}
             </div>
-            {m.collecteurs.length === 0 ? (
-              <p className="muted" style={{ margin: '6px 0 8px' }}>Aucune association enregistrée pour ce magasin.</p>
-            ) : (
-              m.collecteurs.map((c, i) => (
-                <div className="facture-ligne" key={i} style={{ marginTop: 6 }}>
-                  <div className="infos">
-                    <strong>{c.nom}</strong>
-                    <small>{[resumePassages(c), c.contact, c.telephone].filter(Boolean).join(' · ') || 'coordonnées à compléter'}</small>
-                  </div>
-                  <span className={LIBELLES_ELIGIBILITE[c.eligibilite ?? 'inconnue'].classe} style={{ flex: 'none' }}>
-                    {LIBELLES_ELIGIBILITE[c.eligibilite ?? 'inconnue'].texte}
-                  </span>
-                </div>
-              ))
-            )}
-            {m.collecteurs.length > 0 && <CalendrierPassages magasin={m} saisies={saisies} reponses={reponses} onReponse={onReponse} />}
-            <div className="row-actions" style={{ marginTop: 8 }}>
-              {m.collecteurs.length > 0 && (
-                <>
-                  <button className="btn btn-primary btn-sm" onClick={() => onChanger(m.id)}>
-                    Demander un changement à Mana
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => onGerer(m.id)}>Gérer</button>
-                </>
-              )}
-              <button className="btn btn-ghost btn-sm" onClick={() => onAjouter(m.id)}>+ Ajouter une association</button>
-            </div>
+            <AssociationsMagasin
+              magasin={m}
+              societe={societes.find((so) => so.id === m.societeId)}
+              session={session}
+              saisies={saisies}
+              reponses={reponses}
+              demandes={demandes}
+              derniers={derniers}
+              onReponse={onReponse}
+              onSaveMagasin={onSaveMagasin}
+              onDemandeEnvoyee={onDemandeEnvoyee}
+              onConnexion={onConnexion}
+              onOuvrirMessages={onOuvrirMessages}
+            />
           </div>
         )
       })}

@@ -151,16 +151,15 @@ export function Calendrier({
         })}
       </div>
       <div className="cal-legende">
-        <span><i className="cal-point" /> bordereau signé enregistré ce jour (la preuve du passage)</span>
-        <span><i className="cal-fond" /> jour couvert par un relevé de démarque (la valeur déclarée)</span>
+        <span><i className="cal-point" /> bordereau</span>
+        <span><i className="cal-fond" /> couvert par un relevé</span>
       </div>
       {sansValeur > 0 && (
         <div className="cal-alertes">
           {sansValeur > 0 && (
             <p>
-              <strong>{sansValeur} jour{sansValeur > 1 ? 's' : ''} avec bordereau signé sans relevé de démarque.</strong>{' '}
-              Le passage est prouvé mais sa valeur n’est pas encore déclarée : <Jours liste={joursSansValeur} />
-              Enregistrez le relevé de la période dans la carte « Relevé de démarque » ci-dessous.
+              <strong>{sansValeur} bordereau{sansValeur > 1 ? 'x' : ''} sans relevé :</strong> <Jours liste={joursSansValeur} />
+              Ajoutez le relevé de la période ci-dessous.
             </p>
           )}
           {onSignaler && (
@@ -178,7 +177,7 @@ export function Calendrier({
                   }
                 }}
               >
-                {signalement === 'fait' ? '✓ Signalé à l’assistance Mana' : signalement === 'envoi' ? 'Envoi…' : 'Ce message ne vous semble pas juste ? Signaler à l’assistance'}
+                {signalement === 'fait' ? '✓ Signalé à l’assistance Mana' : signalement === 'envoi' ? 'Envoi…' : 'Signaler une erreur'}
               </button>
               {signalement === 'fait' && <span className="muted" style={{ fontSize: 12.5 }}>L’équipe Mana vérifie et vous répond dans Messages.</span>}
               {signalement === 'erreur' && <span className="muted" style={{ fontSize: 12.5, color: 'var(--rouge)' }}>Envoi impossible, réessayez.</span>}
@@ -187,7 +186,7 @@ export function Calendrier({
         </div>
       )}
       {sansValeur === 0 && (parJour.size > 0 || couverts.size > 0) && (
-        <p className="muted cal-ok">Chaque bordereau du mois est couvert par un relevé : rien à signaler. Les passages manqués, eux, se lisent dans Magasins › Associations.</p>
+        <p className="muted cal-ok">Tous les bordereaux du mois ont leur relevé.</p>
       )}
     </div>
   )

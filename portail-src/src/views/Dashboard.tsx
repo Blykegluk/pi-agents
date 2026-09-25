@@ -94,14 +94,12 @@ export function Dashboard({ state, exercice, societeId }: { state: AppState; exe
 
       {a.plafondAtteint && (
         <div className="info-banner vert" style={{ marginTop: 10 }}>
-          <strong>Plafond fiscal atteint — vos prochains dons ne sont plus facturés.</strong> Vous pouvez continuer
-          à documenter vos dons (conformité, impact) ; le compteur repart au 1<sup>er</sup> jour de l’exercice suivant.
+          <strong>Plafond fiscal atteint :</strong> les prochains dons ne sont plus facturés.
         </div>
       )}
       {a.alerteCA && !a.plafondAtteint && (
         <div className="info-banner alerte" style={{ marginTop: 10 }}>
-          Volume de dons inhabituel par rapport au CA déclaré (&gt; 2,5 % du CA) — un justificatif complémentaire
-          sera demandé. Semaines concernées marquées au registre.
+          Dons supérieurs à 2,5 % du CA : un justificatif complémentaire sera demandé.
         </div>
       )}
 
@@ -201,16 +199,9 @@ export function Dashboard({ state, exercice, societeId }: { state: AppState; exe
           </div>
           {a.semainesSansReleve.length > 0 && (
             <div className="info-banner" style={{ margin: '10px 0 0' }}>
-              <strong>En attente du relevé de démarque : {a.estimationAttente.nbSemaines} semaine{a.estimationAttente.nbSemaines > 1 ? 's' : ''}, {a.estimationAttente.nbBordereaux} bordereau{a.estimationAttente.nbBordereaux > 1 ? 'x' : ''}</strong>{' '}
-              ({a.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine}`).join(', ')}). Ces bordereaux prouvent les passages mais n’ont pas encore de valeur : ils ne comptent ni dans la réduction ni dans la commission ci-dessus.
-              {a.estimationAttente.methode !== 'aucune' ? (
-                <>
-                  {' '}Estimation indicative en attendant : base ≈ {fmtEUR(a.estimationAttente.base, 2)}, commission ≈ {fmtEUR(a.estimationAttente.commission, 2)} HT
-                  ({a.estimationAttente.methode === 'historique' ? `${fmtEUR(a.estimationAttente.parBordereau, 0)} PV HT par bordereau, d’après vos relevés passés` : `gisement estimé à la mise en place`}). Le relevé fait foi : ajoutez-le dans Saisie.
-                </>
-              ) : (
-                <> Aucune base d’estimation : ajoutez le relevé dans Saisie.</>
-              )}
+              <strong>{a.estimationAttente.nbBordereaux} bordereau{a.estimationAttente.nbBordereaux > 1 ? 'x' : ''} sans relevé</strong>{' '}
+              ({a.semainesSansReleve.map((x) => `${x.magasinNom} ${x.semaine}`).join(', ')}) : pas encore comptés ci-dessus.
+              {a.estimationAttente.methode !== 'aucune' ? <> Estimation : base ≈ {fmtEUR(a.estimationAttente.base, 0)}.</> : null} Ajoutez le relevé dans Saisie.
             </div>
           )}
           {a.datePlafondEstimee && (
@@ -220,9 +211,6 @@ export function Dashboard({ state, exercice, societeId }: { state: AppState; exe
             </div>
           )}
         </div>
-        <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
-          La facturation s’arrête automatiquement quand vos dons ne génèrent plus de réduction.
-        </p>
       </div>
 
       <hr className="sep" />

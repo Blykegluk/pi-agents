@@ -25,7 +25,7 @@ export function MaSemaine({ state, onAllerAssociations }: { state: AppState; onA
     <div className="card ma-semaine">
       <h3>Aujourd’hui</h3>
       {rienAFaire ? (
-        <p className="muted" style={{ margin: '2px 0 0' }}>Aucun passage prévu aujourd’hui et rien en attente : tout est à jour.</p>
+        <p className="muted" style={{ margin: '2px 0 0' }}>Rien à faire aujourd’hui.</p>
       ) : (
         actifs.map((l) => (
           <div key={l.magasin.id} style={{ marginTop: 6 }}>
@@ -33,7 +33,7 @@ export function MaSemaine({ state, onAllerAssociations }: { state: AppState; onA
             <ul className="ma-semaine-liste">
               {l.aujourdHui.map((p, i) => (
                 <li key={`a${i}`}>
-                  <span className="pastille-jour prevu" /> Passage prévu : <strong>{p.collecteur}</strong>{p.creneau ? `, ${p.creneau.toLowerCase()}` : ''}. Pesez, faites signer, saisissez le bordereau.
+                  <span className="pastille-jour prevu" /> Passage prévu : <strong>{p.collecteur}</strong>{p.creneau ? `, ${p.creneau.toLowerCase()}` : ''}.
                 </li>
               ))}
               {l.aSaisir.length > 0 && (

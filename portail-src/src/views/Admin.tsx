@@ -494,7 +494,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           {aFaire.length === 0 ? (
             <p className="muted" style={{ margin: '4px 0 0' }}>Rien en attente : aucune nouvelle demande, aucun message non lu, aucun signal ouvert.</p>
           ) : (
-            <p className="muted" style={{ margin: '2px 0 6px' }}>Du plus pressant au moins pressant. Chaque ligne s’ouvre sur son dossier, avec les mails prêts à relire.</p>
+            <p className="muted" style={{ margin: '2px 0 6px' }}>Du plus pressant au moins pressant.</p>
           )}
           {aFaire.map((l) => (
             <div className="afaire-ligne" key={l.cle}>
@@ -548,7 +548,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
         <div className="card">
           <h3>Documents LAB (éditeur de Mana)</h3>
           <p className="muted" style={{ margin: '0 0 8px' }}>
-            LAB détient des sociétés clientes : la facturation intra-groupe doit s’appuyer sur une convention de prestations au prix de marché. Une par société, à signer une fois.
+            Une convention intra-groupe par société cliente détenue par LAB, à signer une fois.
           </p>
           <div className="row-actions">
             {societes.map((so) => (
@@ -694,9 +694,7 @@ function SignauxAdmin({
           </button>
         </div>
         <p className="muted" style={{ margin: '8px 0 0' }}>
-          Un passage prévu sans bordereau 24 h après son créneau est manqué : Mana considère que l’association n’est pas passée (le magasin corrige en un clic si elle est venue).
-          1 manqué = case rouge chez le magasin ; 2 = un dossier s’ouvre avec relance et recherche de remplacement prêtes ; 3 d’affilée = alerte, le magasin est prévenu que Mana prend la main.
-          Relevé du mois précédent attendu le 10, plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît. Messages et rappels partent aussi par e-mail une fois le domaine configuré (COURRIER.md).
+          Sans bordereau 24 h après le créneau, le passage est manqué. 2 d’affilée : un dossier s’ouvre. 3 : alerte, Mana prend la main.
         </p>
         {surveillance?.erreurs.map((e, i) => (
           <div className="info-banner alerte" key={i} style={{ marginTop: 8 }}>{e.compte} : {e.erreur}</div>
@@ -780,7 +778,7 @@ function AutonomieReponses({ traites, demandes, onOuvrirDossier }: { traites: Br
     <div className="card">
       <h3>Réponses aux clients</h3>
       <p className="muted" style={{ margin: '2px 0 10px' }}>
-        À chaque message d’un client, Mana prépare une réponse dans le dossier. Vous la validez, la corrigez ou l’écartez ; vos corrections servent d’exemples aux réponses suivantes.
+        Mana prépare une réponse à chaque message. Vos corrections lui apprennent votre façon de répondre.
       </p>
       <div className="impact reseau-tuiles">
         <div className="tuile"><strong>{valides.length}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{SEUIL_NOMBRE}</span></strong><span>réponses validées récemment</span></div>
@@ -871,8 +869,7 @@ function StyleAdmin() {
       <div className="card">
         <h3>Règles de style</h3>
         <p className="muted" style={{ margin: '2px 0 8px' }}>
-          Ce que « ✨ Appliquer mon style » suit quand il réécrit un mail, avec vos cinq dernières corrections du même genre en exemple.
-          Écrivez-les vous-même, ou déduisez-les de vos corrections et relisez.
+          Ce que suit « ✨ Appliquer mon style ». Écrivez-les, ou déduisez-les de vos corrections.
         </p>
         <textarea rows={10} value={regles} onChange={(e) => setRegles(e.target.value)} placeholder={'• Tutoyer les associations que nous connaissons déjà\n• Deux paragraphes maximum\n• Toujours proposer un créneau d’appel…'} style={{ width: '100%', fontFamily: 'inherit', lineHeight: 1.45 }} />
         <div className="row-actions" style={{ marginTop: 8 }}>
