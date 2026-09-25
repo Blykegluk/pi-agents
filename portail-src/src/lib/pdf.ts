@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf'
 import type { Collecteur, Facture, Magasin, Societe } from '../types'
 import { fmtDate, fmtDateHeure, fmtEUR, fmtNum, fmtPct, montantEnLettres, pdfSafe } from './format'
-import { weekLabel } from './iso'
+import { mondayOfWeek, weekLabel } from './iso'
 import { baseDeLaSaisie, type AggSociete } from './selectors'
 import { coutEmballes, coutFL, kgDetournes } from './calc'
 import { libelleMois, moisDeLaSemaine } from './facturation'
@@ -1079,7 +1079,24 @@ export async function pdfRecuFiscal(agg: AggSociete, exercice: number, collecteu
   doc.text(t(`Soit, en toutes lettres : ${montantEnLettres(valeur)}`), 14, y, { maxWidth: 182 })
   y += 8
   doc.setFontSize(9.5)
-  doc.text(t(`Période au cours de laquelle les dons ont été effectués : du 01/01/${exercice} au 31/12/${exercice}.`), 14, y)
+  // Période réelle des dons : du premier au dernier enlèvement (bordereau daté, sinon semaine de la saisie), bornée à l'exercice.
+  const bornes = saisies.reduce<{ debut: Date | null; fin: Date | null }>(
+    (acc, s) => {
+      const lundi = mondayOfWeek(s.semaine)
+      const dimanche = new Date(lundi)
+      dimanche.setUTCDate(lundi.getUTCDate() + 6)
+      const d = s.jour ? new Date(`${s.jour}T00:00:00Z`) : s.releveDu ? new Date(`${s.releveDu}T00:00:00Z`) : lundi
+      const f = s.jour ? new Date(`${s.jour}T00:00:00Z`) : s.releveAu ? new Date(`${s.releveAu}T00:00:00Z`) : dimanche
+      return { debut: !acc.debut || d < acc.debut ? d : acc.debut, fin: !acc.fin || f > acc.fin ? f : acc.fin }
+    },
+    { debut: null, fin: null },
+  )
+  const borneMin = new Date(Date.UTC(exercice, 0, 1))
+  const borneMax = new Date(Date.UTC(exercice, 11, 31))
+  const debutPeriode = bornes.debut && bornes.debut > borneMin ? bornes.debut : borneMin
+  const finPeriode = bornes.fin && bornes.fin < borneMax ? bornes.fin : borneMax
+  const jj = (d: Date) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
+  doc.text(t(`Période au cours de laquelle les dons ont été effectués : du ${jj(debutPeriode)} au ${jj(finPeriode)} (exercice ${exercice}).`), 14, y)
   y += 6
 
   // --- Date et signature ---

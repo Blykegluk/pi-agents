@@ -164,6 +164,8 @@ ok('JAB : contrat non signé', types.includes('contrat_non_signe:jab'))
 ok('AEJB : pas de signal contrat', !types.includes('contrat_non_signe:aejb'))
 ok('Nouveau : mise en place inachevée (créé il y a 41 jours)', types.includes('mise_en_place_incomplete:neuf'))
 ok('Léon Blum : relevé d’août présent, pas de retard', !types.includes('releve_en_retard:lb'))
+const etatSansAout: AppState = { ...etat, saisies: etat.saisies.filter((s) => s.id !== 'rel') }
+ok('collecte démarrée le 12 septembre : pas de relevé d’août attendu', !calculerSignaux(etatSansAout, new Date('2026-09-25T06:00:00.000Z')).some((s) => s.type === 'releve_en_retard'))
 const signauxOct = calculerSignaux(etat, new Date('2026-10-12T06:00:00.000Z'))
 ok('le 12 octobre : relevé de septembre en retard', signauxOct.some((s) => s.type === 'releve_en_retard' && s.magasinId === 'lb'))
 ok('pas de signal plafond (base très en dessous)', !types.some((t) => t.startsWith('plafond')))

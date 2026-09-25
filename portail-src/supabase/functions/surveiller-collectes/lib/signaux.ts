@@ -218,9 +218,12 @@ function signauxMagasin(etat: AppState, m: Magasin, maintenant: Date): SignalCal
   }
 
   // Relevé de démarque du mois précédent, pour les magasins qui en saisissent.
+  // Relevé du mois précédent : attendu seulement si des bordereaux ont eu lieu ce mois-là
+  // (une collecte qui démarre en septembre n'a pas de relevé d'août à fournir).
   const releves = saisies.filter((s) => s.origine === 'releve')
   const mois = moisAttendu(maintenant)
-  if (mois && releves.length > 0 && !releves.some((s) => releveCouvre(s, mois))) {
+  const activiteCeMois = mois ? bordereaux.some((b) => b.jour!.startsWith(mois)) : false
+  if (mois && activiteCeMois && releves.length > 0 && !releves.some((s) => releveCouvre(s, mois))) {
     const [y, mm] = mois.split('-').map(Number)
     out.push({
       cle: `releve_en_retard:${m.id}:${mois}`,
