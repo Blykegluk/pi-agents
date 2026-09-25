@@ -52,8 +52,8 @@ export function Consolide({ aggs, exercice }: { aggs: AggSociete[]; exercice: nu
           <strong>{fmtEUR(totalReduction - totalCommissions, 2)}</strong>
         </div>
         <div className="ligne">
-          <span>Avantage réel par rapport à la destruction (IS à 25 %)</span>
-          <Amount titre="Avantage réel du groupe" lignes={[...aggs.map((a) => `${denomination(a.societe)} : ${fmtEUR(a.resultat.avantageReel, 2)}`), `= ${fmtEUR(totalAvantage, 2)}`, 'Le plafond s’apprécie société par société ; la mère impute les réductions des filiales en intégration fiscale.']}>
+          <span>Résultat net pour la société, après impôt (IS à 25 %)</span>
+          <Amount titre="Résultat net du groupe, après impôt" lignes={[...aggs.map((a) => `${denomination(a.societe)} : ${fmtEUR(a.resultat.avantageReel, 2)}`), `= ${fmtEUR(totalAvantage, 2)}`, 'Le plafond s’apprécie société par société ; la mère impute les réductions des filiales en intégration fiscale.']}>
             <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(totalAvantage, 2)}</strong>
           </Amount>
         </div>
@@ -186,14 +186,14 @@ export function Dashboard({ state, exercice, societeId }: { state: AppState; exe
             <strong className="montant-serif" style={{ fontSize: 16 }}>{fmtEUR(r.reductionIS - r.factureMana, 2)}</strong>
           </div>
           <div className="ligne">
-            <span>Avantage réel par rapport à la destruction (IS à 25 %)</span>
+            <span>Résultat net pour la société, après impôt (IS à 25 %)</span>
             <Amount
-              titre="Avantage réel vs destruction"
+              titre="Résultat net pour la société"
               lignes={[
-                'Jeter est une perte déductible : l’impôt baisse déjà de 25 % du coût de revient. Donner n’est pas déductible (le don est réintégré au résultat) mais ouvre 60 % de réduction.',
-                `Avantage brut = (${fmtPct(TAUX_REDUCTION * 100, 0)} − ${fmtPct(TAUX_IS * 100, 0)}) × ${fmtEUR(r.basePlafonnee, 2)} = ${fmtEUR((TAUX_REDUCTION - TAUX_IS) * r.basePlafonnee, 2)}`,
+                'Ce que la société gagne réellement en donnant plutôt qu’en jetant, une fois l’impôt compté. Jeter est une perte déductible : l’impôt baisse déjà de 25 % du coût de revient. Donner n’est pas déductible (le don est réintégré au résultat) mais ouvre 60 % de réduction.',
+                `Gain brut = (${fmtPct(TAUX_REDUCTION * 100, 0)} − ${fmtPct(TAUX_IS * 100, 0)}) × ${fmtEUR(r.basePlafonnee, 2)} = ${fmtEUR((TAUX_REDUCTION - TAUX_IS) * r.basePlafonnee, 2)}`,
                 `Commission Mana déductible : coût réel = ${fmtPct((1 - TAUX_IS) * 100, 0)} × ${fmtEUR(r.factureMana, 2)} = ${fmtEUR((1 - TAUX_IS) * r.factureMana, 2)}`,
-                `= ${fmtEUR(r.avantageReel, 2)} — PME au taux réduit de 15 % : l’avantage est plus grand encore.`,
+                `= ${fmtEUR(r.avantageReel, 2)} — PME au taux réduit de 15 % : le résultat net est plus élevé encore.`,
               ]}
             >
               <strong>{fmtEUR(r.avantageReel, 2)}</strong>

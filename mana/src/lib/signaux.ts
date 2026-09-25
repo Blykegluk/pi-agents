@@ -83,8 +83,8 @@ function signalPassages(m: Magasin, s: SerieManquee): SignalCalcule {
     collecteur: s.collecteur,
     titre:
       n === 1
-        ? `Passage du ${fmtJour(s.dates[0])} sans bordereau · ${s.collecteur}`
-        : `${n} passages sans bordereau d'affilée${s.confirmes ? ` (${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} par le magasin)` : ''} · ${s.collecteur}`,
+        ? `Passage manqué le ${fmtJour(s.dates[0])} · ${s.collecteur}`
+        : `${n} passages manqués d'affilée${s.confirmes ? ` (${s.confirmes} confirmé${s.confirmes > 1 ? 's' : ''} par le magasin)` : ''} · ${s.collecteur}`,
     detail: {
       manques: n,
       confirmes: s.confirmes,
@@ -257,7 +257,7 @@ export const LIBELLES_NIVEAU: Record<NiveauSignal, { texte: string; classe: stri
 
 /** Ce que Mana fait ou propose pour chaque type de signal (console). */
 export const ACTIONS_SIGNAL: Record<TypeSignal, string> = {
-  passages_manques: 'Vérifier avec le magasin, relancer l’association, puis proposer un remplacement au 3e passage manqué.',
+  passages_manques: 'Relancer l’association, puis proposer un remplacement au 3e passage manqué. Le magasin corrige en un clic si l’association est en fait venue.',
   rythme_inconnu: 'Demander au magasin les jours et le créneau de passage pour activer la surveillance.',
   silence: 'Demander au magasin si la collecte a lieu et si les bordereaux sont saisis.',
   releve_en_retard: 'Rappeler au magasin d’exporter le relevé de démarque du mois.',

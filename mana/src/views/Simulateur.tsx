@@ -185,12 +185,12 @@ export function Simulateur({
             </Amount>
           </div>
           <div className="ligne">
-            <span>Avantage réel par rapport à la destruction (IS à 25 %)</span>
+            <span>Résultat net pour la société, après impôt (IS à 25 %)</span>
             <Amount
-              titre="Avantage réel vs destruction"
+              titre="Résultat net pour la société"
               lignes={[
                 `Jeter est déductible : l’impôt baisse déjà de 25 % du coût de revient. Donner n’est pas déductible (réintégration) mais ouvre 60 % de réduction.`,
-                `Avantage brut = (60 % − 25 %) × ${fmtEUR(r.basePlafonnee)} = ${fmtEUR((0.6 - 0.25) * r.basePlafonnee)}`,
+                `Gain brut = (60 % − 25 %) × ${fmtEUR(r.basePlafonnee)} = ${fmtEUR((0.6 - 0.25) * r.basePlafonnee)}`,
                 `Honoraires Mana déductibles : coût réel = 75 % × ${fmtEUR(r.factureMana)} = ${fmtEUR(0.75 * r.factureMana)}`,
                 `= ${fmtEUR(r.avantageReel)} (PME au taux réduit de 15 % : davantage)`,
               ]}

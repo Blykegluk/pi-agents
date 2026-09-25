@@ -54,8 +54,8 @@ export function rappelsDuJour(etat: AppState, maintenant = new Date()): RappelsM
         type: 'bordereau',
         magasinId: m.id,
         texte:
-          `Le passage de ${p.collecteur} d’hier (${fmtJour(hier)}) n’a pas encore de bordereau. ` +
-          `Si l’association est venue, saisissez-le dans Saisie ; si elle n’est pas venue ou n’avait rien à emporter, dites-le en un clic dans Magasins › Associations (case rouge du calendrier).`,
+          `Pas de bordereau pour le passage de ${p.collecteur} d’hier (${fmtJour(hier)}). ` +
+          `Si l’association est venue, saisissez-le dans Saisie. Sinon, rien à faire : sans bordereau, Mana compte le passage comme manqué et relance l’association.`,
       })
     }
 

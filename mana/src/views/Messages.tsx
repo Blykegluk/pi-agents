@@ -12,6 +12,23 @@ import {
 import { fmtDateHeure } from '../lib/format'
 import { Composer } from '../components/Composer'
 import { LIBELLES_STATUT } from '../components/Aide'
+
+/** Ce que chaque genre de fil attend du magasin — dit d'emblée, pour ne pas ouvrir chaque fil « au cas où ». */
+const GENRES: Record<Demande['type'], { icone: string; nom: string; attente: (d: Demande) => string }> = {
+  suivi: {
+    icone: '📋',
+    nom: 'Suivi',
+    attente: (d) =>
+      d.contenu.rappels
+        ? 'Rappels automatiques : rien à répondre. Saisissez le bordereau si l’association est venue.'
+        : 'Mana relance l’association : rien à répondre. Corrigez sur le calendrier si elle est venue.',
+  },
+  collecte: { icone: '🤝', nom: 'Mise en relation', attente: () => 'Mana cherche une association et revient vers vous ici.' },
+  association: { icone: '🔄', nom: 'Association', attente: () => 'Mana gère la relation et vous répond ici.' },
+  support: { icone: '💬', nom: 'Question', attente: () => 'Réponse de Mana dans ce fil.' },
+}
+const genreDe = (d: Demande) => GENRES[d.type] ?? GENRES.support
+const magasinDe = (d: Demande) => (typeof d.contenu.magasin === 'string' ? d.contenu.magasin : '')
 import { IconMessages } from '../components/Icons'
 import { useGrandEcran } from '../lib/ecran'
 
@@ -39,6 +56,7 @@ export function Messages({
   const [fil, setFil] = useState<Message[]>([])
   const [nouvelle, setNouvelle] = useState(false)
   const [message, setMessage] = useState('')
+  const [voirTermines, setVoirTermines] = useState(false)
   // Grand écran : liste des fils à gauche, fil ouvert à droite. Mobile : accordéon, inchangé.
   const grand = useGrandEcran()
 
@@ -57,7 +75,10 @@ export function Messages({
 
   // Le fil le plus récemment actif s'ouvre tout seul — on arrive ici pour lire.
   useEffect(() => {
-    if (!ouverte && demandes.length > 0) setOuverte(demandes[0].id)
+    if (ouverte || demandes.length === 0) return
+    const nb = (d: Demande) => nonLus.parDemande[d.id] ?? 0
+    const premier = demandes.find((d) => nb(d) > 0) ?? demandes.find((d) => d.statut !== 'traitee') ?? demandes[0]
+    setOuverte(premier.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demandes])
 
@@ -125,6 +146,42 @@ export function Messages({
     </button>
   )
 
+  // Ordre de lecture : ce qui a un message non lu, puis les fils en cours du plus récent au plus ancien ; les terminés à part.
+  const nbNonLus = (d: Demande) => nonLus.parDemande[d.id] ?? 0
+  const actifs = demandes.filter((d) => d.statut !== 'traitee').sort((a, b) => (nbNonLus(b) > 0 ? 1 : 0) - (nbNonLus(a) > 0 ? 1 : 0) || b.updated_at.localeCompare(a.updated_at))
+  const termines = demandes.filter((d) => d.statut === 'traitee').sort((a, b) => b.updated_at.localeCompare(a.updated_at))
+  const totalNonLus = actifs.reduce((t, d) => t + nbNonLus(d), 0)
+
+  const synthese = demandes.length > 0 && (
+    <div className={`info-banner${totalNonLus > 0 ? '' : ' vert'}`} style={{ marginBottom: 12 }}>
+      {totalNonLus > 0
+        ? <><strong>{totalNonLus} nouveau{totalNonLus > 1 ? 'x' : ''} message{totalNonLus > 1 ? 's' : ''}</strong> de Mana, en tête de liste. Les suivis de collecte et les rappels sont là pour vous informer : vous n’avez rien à répondre, sauf si quelque chose est faux.</>
+        : <>Rien de nouveau. Les suivis et rappels sont là pour vous informer : vous n’avez rien à répondre, sauf si quelque chose est faux.</>}
+    </div>
+  )
+
+  const carteFil = (d: Demande, ouvrir: (id: string) => void) => {
+    const nb = nbNonLus(d)
+    const estOuverte = ouverte === d.id
+    const g = genreDe(d)
+    return (
+      <button key={d.id} className={`card fil ${estOuverte ? 'ouvert' : ''}${d.statut === 'traitee' ? ' termine' : ''}`} onClick={() => ouvrir(d.id)}>
+        <span className="fil-tete">
+          <span className="fil-sujet">
+            <span className="fil-genre">{g.icone} {g.nom}{magasinDe(d) ? ` · ${magasinDe(d)}` : ''}</span>
+            {d.sujet}
+          </span>
+          {nb > 0 && <span className="pastille">{nb}</span>}
+        </span>
+        <span className="fil-attente muted">{nb > 0 ? 'Nouveau message de Mana. ' : ''}{g.attente(d)}</span>
+        <span className="fil-etat">
+          <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
+          <small className="muted">{fmtDateHeure(d.updated_at)}</small>
+        </span>
+      </button>
+    )
+  }
+
   if (grand) {
     const filOuvert = demandes.find((d) => d.id === ouverte)
     return (
@@ -143,6 +200,7 @@ export function Messages({
             {message}
           </div>
         )}
+        {synthese}
 
         <div className="messages-grille">
           <aside className="messages-col">
@@ -154,25 +212,13 @@ export function Messages({
                 Aucun échange pour l’instant.
               </div>
             )}
-            {demandes.map((d) => {
-              const nb = nonLus.parDemande[d.id] ?? 0
-              const estOuverte = ouverte === d.id
-              return (
-                <button key={d.id} className={`card fil ${estOuverte ? 'ouvert' : ''}`} onClick={() => setOuverte(d.id)}>
-                  <span className="fil-tete">
-                    <span className="fil-sujet">
-                      {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : d.type === 'suivi' ? '📋 ' : ''}
-                      {d.sujet}
-                    </span>
-                    {nb > 0 && <span className="pastille">{nb}</span>}
-                  </span>
-                  <span className="fil-etat">
-                    <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
-                    <small className="muted">{fmtDateHeure(d.updated_at)}</small>
-                  </span>
-                </button>
-              )
-            })}
+            {actifs.map((d) => carteFil(d, (id) => setOuverte(id)))}
+            {termines.length > 0 && (
+              <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 6 }} onClick={() => setVoirTermines((v) => !v)}>
+                {voirTermines ? 'Masquer les fils terminés' : `${termines.length} fil${termines.length > 1 ? 's' : ''} terminé${termines.length > 1 ? 's' : ''}`}
+              </button>
+            )}
+            {voirTermines && termines.map((d) => carteFil(d, (id) => setOuverte(id)))}
             {nouvelleDemande}
           </aside>
           <section className="card messages-fil">
@@ -180,13 +226,14 @@ export function Messages({
               <>
                 <div className="fil-tete" style={{ cursor: 'default' }}>
                   <span className="fil-sujet">
-                    {filOuvert.type === 'collecte' ? '🤝 ' : filOuvert.type === 'association' ? '🔄 ' : filOuvert.type === 'suivi' ? '📋 ' : ''}
+                    <span className="fil-genre">{genreDe(filOuvert).icone} {genreDe(filOuvert).nom}{magasinDe(filOuvert) ? ` · ${magasinDe(filOuvert)}` : ''}</span>
                     {filOuvert.sujet}
                   </span>
                   <span className="fil-etat">
                     <span className={LIBELLES_STATUT[filOuvert.statut].classe}>{LIBELLES_STATUT[filOuvert.statut].texte}</span>
                   </span>
                 </div>
+                <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>{genreDe(filOuvert).attente(filOuvert)}</p>
                 <hr className="sep" />
                 <div className="messages-bulles">
                   {fil.map((m) => (
@@ -241,14 +288,16 @@ export function Messages({
         </div>
       )}
 
-      {demandes.map((d) => {
+      {synthese}
+      {[...actifs, ...(voirTermines ? termines : [])].map((d) => {
         const nb = nonLus.parDemande[d.id] ?? 0
         const estOuverte = ouverte === d.id
+        const g = genreDe(d)
         return (
-          <div className={`card fil ${estOuverte ? 'ouvert' : ''}`} key={d.id}>
+          <div className={`card fil ${estOuverte ? 'ouvert' : ''}${d.statut === 'traitee' ? ' termine' : ''}`} key={d.id}>
             <button className="fil-tete" onClick={() => setOuverte(estOuverte ? null : d.id)}>
               <span className="fil-sujet">
-                {d.type === 'collecte' ? '🤝 ' : d.type === 'association' ? '🔄 ' : d.type === 'suivi' ? '📋 ' : ''}
+                <span className="fil-genre">{g.icone} {g.nom}{magasinDe(d) ? ` · ${magasinDe(d)}` : ''}</span>
                 {d.sujet}
               </span>
               <span className="fil-etat">
@@ -256,10 +305,16 @@ export function Messages({
                 <span className={LIBELLES_STATUT[d.statut].classe}>{LIBELLES_STATUT[d.statut].texte}</span>
               </span>
             </button>
+            {!estOuverte && <span className="fil-attente muted">{nb > 0 ? 'Nouveau message de Mana. ' : ''}{g.attente(d)}</span>}
             {estOuverte && <div style={{ marginTop: 10 }}>{contenuFil(d)}</div>}
           </div>
         )
       })}
+      {termines.length > 0 && (
+        <button className="btn btn-ghost btn-sm btn-block" style={{ marginTop: 6 }} onClick={() => setVoirTermines((v) => !v)}>
+          {voirTermines ? 'Masquer les fils terminés' : `${termines.length} fil${termines.length > 1 ? 's' : ''} terminé${termines.length > 1 ? 's' : ''}`}
+        </button>
+      )}
 
       {nouvelleDemande}
     </div>

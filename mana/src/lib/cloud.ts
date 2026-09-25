@@ -26,8 +26,11 @@ export interface Acces {
   id: string
   proprietaire: string
   email: string
-  /** Magasin autorisé ; null = tous les magasins du propriétaire (assistante). */
+  /** Magasin autorisé (responsable de magasin). */
   magasin_id: string | null
+  /** Société autorisée : tous ses magasins (dirigeant, DAF d'une filiale). */
+  societe_id: string | null
+  /** Les deux à null : tout le compte (DAF ou DG du groupe, assistante). */
   libelle: string | null
   cree_le: string
 }
@@ -74,10 +77,10 @@ export async function listerAcces(proprietaire: string): Promise<Acces[]> {
   return (data ?? []) as Acces[]
 }
 
-export async function ajouterAcces(proprietaire: string, email: string, magasinId: string | null, libelle: string): Promise<Acces> {
+export async function ajouterAcces(proprietaire: string, email: string, portee: { magasinId?: string | null; societeId?: string | null }, libelle: string): Promise<Acces> {
   const { data, error } = await supabase
     .from('mana_acces')
-    .insert({ proprietaire, email: email.trim().toLowerCase(), magasin_id: magasinId, libelle: libelle.trim() || null })
+    .insert({ proprietaire, email: email.trim().toLowerCase(), magasin_id: portee.magasinId ?? null, societe_id: portee.societeId ?? null, libelle: libelle.trim() || null })
     .select()
     .single()
   if (error) {

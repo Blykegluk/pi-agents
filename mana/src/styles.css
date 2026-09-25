@@ -1034,6 +1034,22 @@ hr.sep {
   gap: 8px;
   flex: none;
 }
+.fil-genre {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--vert);
+  margin-bottom: 1px;
+}
+.fil-attente {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.card.fil.termine { opacity: 0.7; }
 
 .bulle {
   border-radius: 12px;
@@ -1493,40 +1509,64 @@ i.cal-point {
 .calendrier-passages {
   margin-top: 8px;
 }
-.cal-grille {
+.calendrier-passages .cal-grille {
   display: grid;
-  grid-template-columns: 52px repeat(7, minmax(14px, 1fr)) auto;
-  gap: 3px;
-  align-items: center;
+  grid-template-columns: repeat(7, minmax(30px, 1fr));
+  gap: 4px;
+  align-items: stretch;
   font-size: 11px;
   max-width: 420px;
 }
-.cal-entete {
+.calendrier-passages .cal-grille.avec-compte {
+  grid-template-columns: repeat(7, minmax(30px, 1fr)) auto;
+}
+.calendrier-passages .cal-entete {
   text-align: center;
   opacity: 0.6;
   font-weight: 600;
+  padding-bottom: 2px;
 }
-.cal-semaine {
-  opacity: 0.7;
-  white-space: nowrap;
-}
-.cal-case {
-  display: block;
-  height: 16px;
-  border-radius: 4px;
+/* Une case = un jour, avec son numéro ; même boîte pour le <span> (lecture) et le <button> (réponse). */
+.calendrier-passages .cal-case {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
   background: #f1ece0;
+  color: var(--encre-3);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
 }
-.cal-case.fait { background: #2f7a55; }
-.cal-case.fait.decale { background: #6aa884; }
-.cal-case.fait.hors { background: #2f7a55; opacity: 0.55; }
-.cal-case.manque { background: var(--rouge); }
-.cal-case.en_attente { background: var(--ambre-pale); box-shadow: inset 0 0 0 1px var(--ambre); }
-.cal-case.a_venir { background: #fff; box-shadow: inset 0 0 0 1px #ddd5c0; }
-.cal-case.declare { background: #b9cbbd; }
-.cal-case.aujourdhui { outline: 2px solid var(--vert); outline-offset: 1px; }
+.calendrier-passages .cal-case.mois { font-size: 10px; letter-spacing: -0.2px; }
+.calendrier-passages .cal-case.fait { background: #2f7a55; color: #fff; }
+.calendrier-passages .cal-case.fait.decale { background: #6aa884; color: #fff; }
+.calendrier-passages .cal-case.fait.hors { background: #2f7a55; color: #fff; opacity: 0.55; }
+.calendrier-passages .cal-case.fait.sansdon { background: #e3ebe3; color: var(--vert-fonce); box-shadow: inset 0 0 0 1px #6aa884; }
+.calendrier-passages .cal-case.manque { background: var(--rouge); color: #fff; cursor: pointer; }
+.calendrier-passages .cal-case.manque.confirme { background: #b23a2c; color: #fff; }
+.calendrier-passages .cal-case.en_attente { background: var(--ambre-pale); color: var(--ambre-texte); box-shadow: inset 0 0 0 1px var(--ambre); cursor: pointer; }
+.calendrier-passages .cal-case.a_venir { background: #fff; color: var(--encre-3); box-shadow: inset 0 0 0 1px #ddd5c0; }
+.calendrier-passages .cal-case.declare { background: #b9cbbd; color: var(--vert-fonce); }
+.calendrier-passages .cal-case.ferme { background: #eee9dc; color: var(--encre-3); text-decoration: line-through; }
+.calendrier-passages .cal-case.vide { opacity: 0.55; }
+.calendrier-passages .cal-case.aujourdhui { outline: 2px solid var(--vert); outline-offset: 1px; }
+.calendrier-passages .cal-case.actif { outline: 2px solid var(--encre); outline-offset: 1px; }
+.calendrier-passages button.cal-case:hover { filter: brightness(1.08); }
 .cal-compte {
   display: flex;
   gap: 4px;
+  align-items: center;
 }
 .cal-pastille {
   font-size: 10.5px;
@@ -1575,17 +1615,7 @@ i.cal-point {
 .signal-ligne.traite, .signal-ligne.ignore { opacity: 0.6; }
 
 /* Calendrier : réponses du magasin */
-button.cal-case {
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  width: 100%;
-}
-button.cal-case:hover { filter: brightness(0.92); }
-.cal-case.actif { outline: 2px solid var(--ambre); outline-offset: 1px; }
-.cal-case.manque.confirme { background: var(--rouge); box-shadow: inset 0 0 0 2px #7a2a18; }
-.cal-case.fait.sansdon { background: #b9cbbd; box-shadow: inset 0 0 0 1px #2f7a55; }
-.cal-case.ferme { background: repeating-linear-gradient(45deg, #e6dfcd 0 3px, #f7f3e8 3px 6px); }
+.calendrier-passages button.cal-case { cursor: pointer; }
 .cal-reponse {
   margin-top: 8px;
   padding: 10px 12px;
@@ -1640,3 +1670,39 @@ button.lien {
 
 /* Réponse d'une association reçue par e-mail dans un fil */
 .bulle.association { background: #f3e4c6; }
+
+/* ---------- Console : dossiers et à faire ---------- */
+.dossier-tete {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.dossier-tete strong { display: block; line-height: 1.25; }
+.card.dossier.termine { opacity: 0.75; }
+.dossier-resume {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.dossier-resume > div { display: contents; }
+.dossier-resume .ambre { color: var(--ambre-texte); }
+.dossier-fil { margin-top: 10px; border-top: 1px solid var(--trait-doux); padding-top: 10px; }
+.afaire-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--trait-doux);
+  font-size: 14px;
+}
+.afaire-ligne:first-of-type { border-top: 0; }
+@media (max-width: 640px) {
+  .dossier-resume { grid-template-columns: 1fr; gap: 2px; }
+  .dossier-resume > div > span.muted { display: block; font-size: 12px; }
+  .dossier-resume > div > span:not(.muted) { display: block; margin-bottom: 5px; }
+  .afaire-ligne { flex-wrap: wrap; }
+}

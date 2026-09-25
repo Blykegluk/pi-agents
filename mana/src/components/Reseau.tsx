@@ -12,9 +12,9 @@ const fmtMois = (m: string) => MOIS_LONG[Number(m.slice(5, 7)) - 1]
 function Semaine({ s }: { s: SanteMagasin['semaine'] }) {
   if (s.attendus === 0) return <span className="muted">—</span>
   return (
-    <span title={`${s.faits} fait(s), ${s.manques} sans bordereau, ${s.enAttente} à saisir, ${s.aVenir} à venir`}>
+    <span title={`${s.faits} fait(s), ${s.manques} manqué(s), ${s.enAttente} à saisir, ${s.aVenir} à venir`}>
       <strong>{s.faits}</strong>/{s.attendus}
-      {s.manques > 0 && <span className="badge alerte" style={{ marginLeft: 6 }}>{s.manques} sans bordereau</span>}
+      {s.manques > 0 && <span className="badge alerte" style={{ marginLeft: 6 }}>{s.manques} manqué{s.manques > 1 ? 's' : ''}</span>}
       {s.enAttente > 0 && <span className="badge" style={{ marginLeft: 6 }}>{s.enAttente} à saisir</span>}
     </span>
   )
@@ -35,7 +35,7 @@ export function Reseau({ state, compact = false, onOuvrirMagasin }: { state: App
         <>
           <h3>Réseau — santé des collectes</h3>
           <p className="muted" style={{ margin: '2px 0 10px' }}>
-            Cette semaine, magasin par magasin : passages prévus et bordereaux reçus, séries sans bordereau, relevés, signaux. Les magasins à surveiller sont en tête.
+            Cette semaine, magasin par magasin : passages prévus et bordereaux reçus, passages manqués d’affilée, relevés, signaux. Les magasins à surveiller sont en tête.
           </p>
           <div className="impact reseau-tuiles">
             <div className="tuile">
@@ -124,7 +124,7 @@ export function Reseau({ state, compact = false, onOuvrirMagasin }: { state: App
       </div>
       {!compact && (
         <p className="muted" style={{ margin: '8px 0 0', fontSize: 12.5 }}>
-          Un passage attendu sans bordereau 24 h après son créneau compte comme manqué ; 3 d’affilée, Mana prend la main. Détail et réponses en un clic dans Magasins › Associations.
+          Un passage prévu sans bordereau 24 h après son créneau est manqué ; 3 d’affilée, Mana prend la main. Détail et réponses en un clic dans Magasins › Associations.
         </p>
       )}
     </div>

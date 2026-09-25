@@ -53,8 +53,14 @@ const URL_PORTAIL = Deno.env.get('MANA_URL_PORTAIL') ?? 'https://blykegluk.githu
 async function destinatairesMagasin(sb: SupabaseClient, compte: Compte, magasinId: string | null): Promise<string[]> {
   const emails = new Set<string>()
   if (compte.email) emails.add(compte.email.toLowerCase())
-  const { data } = await sb.from('mana_acces').select('email, magasin_id').eq('proprietaire', compte.userId)
-  for (const a of data ?? []) if (a.email && (!a.magasin_id || !magasinId || a.magasin_id === magasinId)) emails.add(String(a.email).toLowerCase())
+  const societeId = magasinId ? compte.etat.magasins.find((m) => m.id === magasinId)?.societeId ?? null : null
+  const { data } = await sb.from('mana_acces').select('email, magasin_id, societe_id').eq('proprietaire', compte.userId)
+  for (const a of data ?? []) {
+    if (!a.email) continue
+    // Portée de l'accès : un magasin, une société, ou tout le compte (les deux à null).
+    const concerne = !magasinId || (!a.magasin_id && !a.societe_id) || a.magasin_id === magasinId || (!!a.societe_id && a.societe_id === societeId)
+    if (concerne) emails.add(String(a.email).toLowerCase())
+  }
   return [...emails]
 }
 

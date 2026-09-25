@@ -132,6 +132,8 @@ export function MagasinsView({
     return (
       <FormulaireMagasin
         societe={societe}
+        societes={societes}
+        onChoisirSociete={(id) => setEdition({ ...edition, societeId: id })}
         initial={edition.magasin}
         onCancel={() => setEdition(null)}
         onSave={(m) => {
@@ -177,7 +179,7 @@ export function MagasinsView({
               const av = avancementSociete(so)
               return (
                 <option key={so.id} value={so.id}>
-                  {denomination(so)} · {av.nb} magasin{av.nb > 1 ? 's' : ''}{av.total > 0 ? ` · collecte ${av.faites}/${av.total}` : ''}
+                  {denomination(so)} · {av.nb} magasin{av.nb > 1 ? 's' : ''}
                 </option>
               )
             })}
@@ -197,11 +199,17 @@ export function MagasinsView({
                   <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'societe', societe: null })}>
                     + Société
                   </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setImportOuvert(true)} title="Plusieurs magasins d’un coup, depuis un tableur">
+                    ⬆ Importer CSV
+                  </button>
                 </>
               )}
             </div>
           )}
         </div>
+      )}
+      {!invite && importOuvert && (
+        <ImportMagasins state={state} onSaveSociete={onSaveSociete} onSaveMagasin={onSaveMagasin} onFermer={() => setImportOuvert(false)} />
       )}
       {/* Deux colonnes dès 1 100 px : la société et ses magasins à gauche, la collecte du magasin ouvert à droite.
           En dessous, `.magasins-col { display: contents }` : rien ne change par rapport au mobile. */}
@@ -317,10 +325,11 @@ export function MagasinsView({
                             {m.collecteurs.length > 0 ? 'Associations' : '+ Association'}
                           </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: m })}>
-                            Modifier
+                            Modifier le magasin
                           </button>
                           <button
                             className="btn btn-danger btn-sm"
+                            title={`Retirer le magasin ${m.nom}`}
                             onClick={() => {
                               if (confirm(`Supprimer « ${m.nom} » et ses saisies ?`)) onDeleteMagasin(m.id)
                             }}
@@ -351,15 +360,8 @@ export function MagasinsView({
               )
             })}
 
-            {!invite && <div className="row-actions" style={{ marginTop: 12 }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'magasin', societeId: s.id, magasin: null })}>
-                + Ajouter un magasin
-              </button>
-              {sesMagasins.length === 1 && (
-                <button className="btn btn-ghost btn-sm" onClick={() => ouvrirAssociations(sesMagasins[0].id)} title="Modifier, ajouter ou changer d’association">
-                  {sesMagasins[0].collecteurs.length > 0 ? 'Associations' : '+ Association'}
-                </button>
-              )}
+            {!invite && <div className="row-actions" style={{ marginTop: 12, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: 12.5 }}>Société {denomination(s)} :</span>
               <button className="btn btn-ghost btn-sm" onClick={() => setEdition({ type: 'societe', societe: s })}>
                 Modifier la société
               </button>
@@ -369,26 +371,13 @@ export function MagasinsView({
                   if (confirm(`Supprimer « ${s.raisonSociale} », ses magasins et toutes leurs saisies ?`)) onDeleteSociete(s.id)
                 }}
               >
-                Supprimer
+                Supprimer la société
               </button>
             </div>}
           </div>
         )
       })}
       {!grand && magasinsAffiches.length > 0 && hub}
-      {!invite && (
-        <button className="btn btn-primary btn-block" onClick={() => setEdition({ type: 'societe', societe: null })}>
-          + Ajouter une société
-        </button>
-      )}
-      {!invite && !importOuvert && (
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={() => setImportOuvert(true)}>
-          ⬆ Importer des magasins depuis un fichier CSV
-        </button>
-      )}
-      {!invite && importOuvert && (
-        <ImportMagasins state={state} onSaveSociete={onSaveSociete} onSaveMagasin={onSaveMagasin} onFermer={() => setImportOuvert(false)} />
-      )}
       {accesPartages}
       </div>
       {grand && magasinsAffiches.length > 0 && (
@@ -744,11 +733,16 @@ function FormulaireSociete({
 
 function FormulaireMagasin({
   societe,
+  societes = [],
+  onChoisirSociete,
   initial,
   onSave,
   onCancel,
 }: {
   societe: Societe | undefined
+  /** Toutes les sociétés du compte : à la création, le magasin se rattache à l'une d'elles. */
+  societes?: Societe[]
+  onChoisirSociete?: (societeId: string) => void
   initial: Magasin | null
   onSave: (m: Magasin) => void
   onCancel: () => void
@@ -806,6 +800,16 @@ function FormulaireMagasin({
   return (
     <div className="etroit">
       <h2>{initial ? 'Modifier le magasin' : `Nouveau magasin — ${societe.raisonSociale}`}</h2>
+      {!initial && societes.length > 1 && onChoisirSociete && (
+        <label className="field">
+          <span>Société à laquelle rattacher ce magasin</span>
+          <select value={societe.id} onChange={(e) => onChoisirSociete(e.target.value)} style={{ padding: 10 }}>
+            {societes.map((so) => (
+              <option key={so.id} value={so.id}>{so.raisonSociale}</option>
+            ))}
+          </select>
+        </label>
+      )}
       {!initial && (
         <div className="card">
           <button className="btn btn-ghost btn-block" onClick={() => setSimulateurOuvert((o) => !o)}>

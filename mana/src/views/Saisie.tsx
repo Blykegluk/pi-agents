@@ -947,7 +947,10 @@ export function SaisieView({
 
       {(bordereauxDeLaSemaine.length > 0 || relevesDeLaSemaine.length > 0) && (
         <div className="card">
-          <h3>Lignes de la semaine</h3>
+          <h3>Ce qui compose cette semaine</h3>
+          <p className="muted" style={{ margin: '2px 0 8px' }}>
+            Les bordereaux et le relevé pris en compte dans la base ci-dessus. « Ouvrir » recharge un bordereau dans le formulaire pour le relire ou le compléter.
+          </p>
           {bordereauxDeLaSemaine.map((s) => (
             <div className="facture-ligne" key={s.id}>
               <div className="infos">
@@ -971,15 +974,24 @@ export function SaisieView({
         </div>
       )}
 
-      {/* Corrections */}
-      <div className="card">
-        <label className="field" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: modeCorrection ? 10 : 0 }}>
-          <input type="checkbox" checked={modeCorrection} onChange={(e) => setModeCorrection(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--vert)' }} />
-          <span style={{ marginBottom: 0, fontWeight: 600, fontSize: 14 }}>Correction : retrancher des dons refusés par l’association ({weekLabel(semaineRecap)})</span>
-        </label>
+      {/* Corrections : rare, donc replié derrière une ligne discrète. */}
+      {(modeCorrection || corrections.length > 0 || semainePasseeCorr) && (
+      <div className="card" style={modeCorrection || corrections.length > 0 ? undefined : { padding: '10px 16px' }}>
+        {!modeCorrection && corrections.length === 0 ? (
+          <button type="button" className="lien" style={{ fontSize: 13.5 }} onClick={() => setModeCorrection(true)}>
+            Une association a refusé des produits déjà comptés cette semaine ? Enregistrer une correction
+          </button>
+        ) : (
+          <h3 style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline' }}>
+            <span>Corrections — {weekLabel(semaineRecap)}</span>
+            {modeCorrection && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setModeCorrection(false)}>Annuler</button>}
+            {!modeCorrection && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setModeCorrection(true)}>+ Correction</button>}
+          </h3>
+        )}
         {modeCorrection && (
           <>
             <div className="info-banner">
+              Une correction retire de la base des produits refusés par l’association après enregistrement (chaîne du froid, date dépassée…).
               Montants <strong>en négatif</strong> (ex. −120 € / −8 kg), sur une <strong>semaine passée</strong>, avec le
               justificatif du refus joint. Le cumul, le plafond et la prochaine facture se recalculent.
             </div>
@@ -1028,6 +1040,7 @@ export function SaisieView({
           </div>
         )}
       </div>
+      )}
       </aside>
       </div>
     </div>
