@@ -67,7 +67,7 @@ function ajouterSemaine(out: Set<string>, semaine: string) {
  * Calendrier du mois : un coup d'œil pour savoir quels jours ont un bordereau
  * (point vert, nombre si plusieurs) et quels jours sont couverts par un relevé
  * de démarque (fond sable). Un jour avec bordereau sans relevé — preuve sans
- * valeur — est signalé, comme un jour couvert par un relevé sans bordereau.
+ * valeur — est signalé. L'inverse ne l'est pas : un relevé vaut pour sa période.
  */
 export function Calendrier({
   mois,
@@ -103,31 +103,15 @@ export function Calendrier({
   const cases: (string | null)[] = [...Array(decalage).fill(null), ...Array.from({ length: nbJours }, (_, i) => `${mois}-${pad2(i + 1)}`)]
   while (cases.length % 7) cases.push(null)
 
-  // Jours attendus : ceux où une association passe (si on le sait), déjà écoulés, dans le mois affiché.
-  const passages = joursDePassage(collecteurs)
-  const attendu = (j: string) => j.startsWith(mois) && j <= aujourdhui && (!passages || passages.has(jourSemaine(j)))
+  // Un bordereau sans relevé : la preuve du passage est là, sa valeur n'est pas encore déclarée.
+  // L'inverse (un jour couvert par un relevé sans bordereau) ne dit rien : un relevé vaut pour
+  // toute sa période, pas pour un jour précis. Les passages manqués se lisent dans Magasins › Associations.
   const joursSansValeur = [...parJour.keys()].filter((j) => j.startsWith(mois) && !couverts.has(j)).sort()
-  const joursSansPreuve = [...couverts].filter((j) => attendu(j) && !parJour.has(j)).sort()
   const sansValeur = joursSansValeur.length
-  const sansPreuve = joursSansPreuve.length
-  const joursPasses = passages ? [...passages].sort().map((i) => NOMS_JOURS[i]) : null
   const libelleCourt = (j: string) => new Date(j + 'T00:00:00Z').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', timeZone: 'UTC' })
-  /** Le relevé qui couvre un jour donné, pour dire d'où vient la valeur déclarée. */
-  const releveDuJour = (j: string) => releves.find((r) => joursCouvertsParReleves([r]).has(j))
-  const periodeReleve = (r: Saisie | undefined) => {
-    if (!r) return 'un relevé'
-    if (r.releveDu && r.releveAu) return `le relevé du ${libelleCourt(r.releveDu)} au ${libelleCourt(r.releveAu)}`
-    if (r.releveMois) return `le relevé du mois ${r.releveMois}`
-    return `le relevé de la ${r.semaine}`
-  }
   /** Le message tel que le client le voit, plus les identifiants utiles à l'équipe Mana. */
   const texteAlertes = () => {
     const lignes: string[] = [`Alerte calendrier — ${titre}`]
-    if (sansPreuve > 0) {
-      const r = releveDuJour(joursSansPreuve[0])
-      lignes.push(`${sansPreuve} jour(s) sans bordereau signé alors que ${periodeReleve(r)} y déclare une valeur : ${joursSansPreuve.join(', ')}.`)
-      if (r) lignes.push(`Relevé concerné : id ${r.id}, semaine ${r.semaine}, ${r.pvEmballes} € PV HT, ${r.kgFL} kg F&L, origine ${r.origine ?? 'ancien format'}, enregistré le ${r.horodatage}.`)
-    }
     if (sansValeur > 0) lignes.push(`${sansValeur} jour(s) avec bordereau signé sans relevé : ${joursSansValeur.join(', ')}.`)
     lignes.push('Le client ne comprend pas ce message ou le juge erroné — merci de vérifier.')
     return lignes.join('\n')
@@ -170,17 +154,8 @@ export function Calendrier({
         <span><i className="cal-point" /> bordereau signé enregistré ce jour (la preuve du passage)</span>
         <span><i className="cal-fond" /> jour couvert par un relevé de démarque (la valeur déclarée)</span>
       </div>
-      {(sansValeur > 0 || sansPreuve > 0) && (
+      {sansValeur > 0 && (
         <div className="cal-alertes">
-          {sansPreuve > 0 && (
-            <p>
-              <strong>{sansPreuve} jour{sansPreuve > 1 ? 's' : ''} sans bordereau signé alors que {periodeReleve(releveDuJour(joursSansPreuve[0]))} y déclare une valeur.</strong>{' '}
-              Le relevé donne le montant des dons de ces jours, mais aucun bordereau (la preuve que l’association est passée) n’y est enregistré :{' '}
-              <Jours liste={joursSansPreuve} />
-              Cliquez un jour pour y ajouter son bordereau. Si l’association n’est pas passée ce jour-là, il n’y a rien à faire.
-              {joursPasses && <> Seuls les jours de passage prévus sont comptés ({joursPasses.join(', ')}).</>}
-            </p>
-          )}
           {sansValeur > 0 && (
             <p>
               <strong>{sansValeur} jour{sansValeur > 1 ? 's' : ''} avec bordereau signé sans relevé de démarque.</strong>{' '}
@@ -211,8 +186,8 @@ export function Calendrier({
           )}
         </div>
       )}
-      {sansValeur === 0 && sansPreuve === 0 && (parJour.size > 0 || couverts.size > 0) && (
-        <p className="muted cal-ok">Preuves et valeurs se recoupent sur ce mois : rien à signaler.</p>
+      {sansValeur === 0 && (parJour.size > 0 || couverts.size > 0) && (
+        <p className="muted cal-ok">Chaque bordereau du mois est couvert par un relevé : rien à signaler. Les passages manqués, eux, se lisent dans Magasins › Associations.</p>
       )}
     </div>
   )
