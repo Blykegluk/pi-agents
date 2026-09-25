@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe } from '../types'
+import type { AppState, CategoriePesee, Collecteur, ContratSigne, Justificatif, Magasin, ProfilBordereau, Societe, Saisie } from '../types'
 import { PROFILS_PRESETS, presetDuProfil, profilDeMagasin } from '../lib/bordereau'
 import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
@@ -10,6 +10,7 @@ import { useGrandEcran } from '../lib/ecran'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence, resumePassages } from '../lib/annuaire'
+import { CalendrierPassages } from '../components/CalendrierPassages'
 import { LIBELLES_ELIGIBILITE } from '../components/CollecteurForm'
 import { fmtDate, fmtEUR, fmtPct } from '../lib/format'
 import { Amount } from '../components/Formula'
@@ -94,6 +95,7 @@ export function MagasinsView({
   const hub = (
     <HubAssociations
       magasins={magasinsAffiches}
+      saisies={state.saisies}
       onGerer={(id) => ouvrirAssociations(id, 'liste')}
       onChanger={(id) => ouvrirAssociations(id, 'changement')}
       onAjouter={(id) => ouvrirAssociations(id, 'ajout')}
@@ -427,12 +429,14 @@ export function MagasinsView({
  */
 function HubAssociations({
   magasins,
+  saisies,
   onGerer,
   onChanger,
   onAjouter,
   onReprendre,
 }: {
   magasins: Magasin[]
+  saisies: Saisie[]
   onGerer: (magasinId: string) => void
   onChanger: (magasinId: string) => void
   onAjouter: (magasinId: string) => void
@@ -472,6 +476,7 @@ function HubAssociations({
                 </div>
               ))
             )}
+            {m.collecteurs.length > 0 && <CalendrierPassages magasin={m} saisies={saisies} />}
             <div className="row-actions" style={{ marginTop: 8 }}>
               {m.collecteurs.length > 0 && (
                 <>

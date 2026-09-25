@@ -1488,3 +1488,88 @@ i.cal-point {
   .banniere-demo { flex-direction: row; align-items: center; }
   .banniere-demo .btn { align-self: center; margin-left: auto; flex: none; }
 }
+
+/* ---------- Calendrier des passages (carte Associations) ---------- */
+.calendrier-passages {
+  margin-top: 8px;
+}
+.cal-grille {
+  display: grid;
+  grid-template-columns: 52px repeat(7, minmax(14px, 1fr)) auto;
+  gap: 3px;
+  align-items: center;
+  font-size: 11px;
+  max-width: 420px;
+}
+.cal-entete {
+  text-align: center;
+  opacity: 0.6;
+  font-weight: 600;
+}
+.cal-semaine {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.cal-case {
+  display: block;
+  height: 16px;
+  border-radius: 4px;
+  background: #f1ece0;
+}
+.cal-case.fait { background: #2f7a55; }
+.cal-case.fait.decale { background: #6aa884; }
+.cal-case.fait.hors { background: #2f7a55; opacity: 0.55; }
+.cal-case.manque { background: var(--rouge); }
+.cal-case.en_attente { background: var(--ambre-pale); box-shadow: inset 0 0 0 1px var(--ambre); }
+.cal-case.a_venir { background: #fff; box-shadow: inset 0 0 0 1px #ddd5c0; }
+.cal-case.declare { background: #b9cbbd; }
+.cal-case.aujourdhui { outline: 2px solid var(--vert); outline-offset: 1px; }
+.cal-compte {
+  display: flex;
+  gap: 4px;
+}
+.cal-pastille {
+  font-size: 10.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: #f1ece0;
+}
+.cal-pastille.fait { background: #e3ebe3; color: var(--vert-fonce); }
+.cal-pastille.manque { background: #f6ded4; color: var(--rouge); }
+.cal-pastille.en_attente { background: var(--ambre-pale); color: var(--ambre-texte); }
+.cal-legende {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 6px;
+}
+.cal-legende span::before {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  background: #f1ece0;
+}
+.cal-legende .fait::before { background: #2f7a55; }
+.cal-legende .manque::before { background: var(--rouge); }
+.cal-legende .en_attente::before { background: var(--ambre-pale); box-shadow: inset 0 0 0 1px var(--ambre); }
+.cal-legende .a_venir::before { background: #fff; box-shadow: inset 0 0 0 1px #ddd5c0; }
+
+/* ---------- Console : signaux ---------- */
+.signal-ligne {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-top: 1px solid var(--trait-doux);
+}
+.signal-ligne:first-of-type { border-top: 0; }
+.signal-ligne .corps { flex: 1; min-width: 0; }
+.signal-ligne .corps small { display: block; opacity: 0.75; margin-top: 2px; }
+.signal-ligne.traite, .signal-ligne.ignore { opacity: 0.6; }

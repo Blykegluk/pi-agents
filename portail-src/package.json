@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "verify": "node --experimental-strip-types --no-warnings scripts/verify-calc.ts"
+    "verify": "node --experimental-strip-types --no-warnings scripts/verify-calc.ts",
+    "verify:passages": "node --experimental-strip-types --no-warnings scripts/verify-passages.ts",
+    "surveillance:preparer": "sh scripts/preparer-surveillance.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

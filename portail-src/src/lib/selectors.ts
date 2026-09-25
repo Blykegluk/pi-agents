@@ -1,5 +1,6 @@
 import type { AppState, Facture, Magasin, Saisie, Societe } from '../types.ts'
 import {
+  baseDeLaSaisie,
   baseSemaine,
   co2Evite,
   coutEmballes,
@@ -35,12 +36,7 @@ export function saisiesDuMagasin(state: AppState, magasinId: string, exercice: n
     .sort((a, b) => compareWeekIds(a.semaine, b.semaine))
 }
 
-export function baseDeLaSaisie(s: Saisie): number {
-  // Lignes récentes : la valeur des pesées est figée à l'enregistrement selon le profil
-  // du bordereau (catégories valorisées au kilo). Anciennes lignes : kg F&L × coût/kg.
-  if (s.coutPeseeApplique !== undefined) return baseSemaine(s.pvEmballes, s.margePctAppliquee, 0, 0) + s.coutPeseeApplique
-  return baseSemaine(s.pvEmballes, s.margePctAppliquee, s.kgFL, s.coutKgFLApplique)
-}
+export { baseDeLaSaisie }
 
 export interface Projection {
   /** Rythme hebdomadaire moyen des 4 dernières semaines saisies (base €/semaine). */
