@@ -1637,3 +1637,6 @@ button.lien {
 .style-comparaison { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; font-size: 12.5px; }
 .style-comparaison pre { white-space: pre-wrap; font-family: inherit; background: var(--papier, #f7f3e8); border-radius: 8px; padding: 8px 10px; margin: 0; line-height: 1.4; }
 @media (max-width: 700px) { .style-comparaison { grid-template-columns: 1fr; } }
+
+/* Réponse d'une association reçue par e-mail dans un fil */
+.bulle.association { background: #f3e4c6; }

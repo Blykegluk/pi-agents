@@ -44,6 +44,63 @@ interface Compte {
 }
 
 /** Ouvre le fil de suivi avec le magasin (demande « suivi » + premier message Mana) et l'accroche au signal. */
+/** Adresse d'expédition et domaine : absents tant que le domaine n'est pas configuré. */
+const EXPEDITEUR = Deno.env.get('MANA_EXPEDITEUR') ?? ''
+const DOMAINE = EXPEDITEUR.includes('@') ? EXPEDITEUR.split('@')[1].replace(/>$/, '') : ''
+const URL_PORTAIL = Deno.env.get('MANA_URL_PORTAIL') ?? 'https://blykegluk.github.io/pi-agents/portail.html'
+
+/** Qui reçoit les e-mails d'un magasin : le compte, plus les accès partagés sur ce magasin. */
+async function destinatairesMagasin(sb: SupabaseClient, compte: Compte, magasinId: string | null): Promise<string[]> {
+  const emails = new Set<string>()
+  if (compte.email) emails.add(compte.email.toLowerCase())
+  const { data } = await sb.from('mana_acces').select('email, magasin_id').eq('proprietaire', compte.userId)
+  for (const a of data ?? []) if (a.email && (!a.magasin_id || !magasinId || a.magasin_id === magasinId)) emails.add(String(a.email).toLowerCase())
+  return [...emails]
+}
+
+/**
+ * Met un e-mail en file d'attente pour chaque destinataire. Il partira à la fin du passage
+ * si la clé Resend et l'expéditeur sont configurés ; sinon il reste « en attente » : le
+ * message est de toute façon dans Messages.
+ */
+async function enfiler(sb: SupabaseClient, compte: Compte, params: { magasinId: string | null; demandeId: string; genre: string; objet: string; corps: string; repondre?: boolean }) {
+  const destinataires = await destinatairesMagasin(sb, compte, params.magasinId)
+  if (destinataires.length === 0) return
+  const pied = `
+
+—
+Ce message est aussi dans votre espace Mana, onglet Messages : ${URL_PORTAIL}`
+  const repondreA = params.repondre && DOMAINE ? `suivi+${params.demandeId}@${DOMAINE}` : null
+  await sb.from('mana_courriels').insert(
+    destinataires.map((d) => ({ user_id: compte.userId, demande_id: params.demandeId, destinataire: d, objet: params.objet, corps: params.corps + pied, genre: params.genre, repondre_a: repondreA })),
+  )
+}
+
+/** Expédie les e-mails en attente via Resend, si le domaine est configuré. Sinon ne fait rien. */
+async function expedier(sb: SupabaseClient): Promise<{ envoyes: number; enAttente: number; actif: boolean }> {
+  const cle = Deno.env.get('RESEND_API_KEY')
+  const { data: attente } = await sb.from('mana_courriels').select('id, destinataire, objet, corps, repondre_a').eq('statut', 'en_attente').order('cree_le').limit(100)
+  const lot = attente ?? []
+  if (!cle || !EXPEDITEUR) return { envoyes: 0, enAttente: lot.length, actif: false }
+  let envoyes = 0
+  for (const c of lot) {
+    try {
+      const rep = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: EXPEDITEUR, to: [c.destinataire], subject: c.objet, text: c.corps, ...(c.repondre_a ? { reply_to: c.repondre_a } : {}) }),
+      })
+      const json = (await rep.json().catch(() => ({}))) as { id?: string; message?: string }
+      if (!rep.ok) throw new Error(json.message ?? `HTTP ${rep.status}`)
+      await sb.from('mana_courriels').update({ statut: 'envoye', envoye_le: new Date().toISOString(), id_externe: json.id ?? null }).eq('id', c.id)
+      envoyes++
+    } catch (e) {
+      await sb.from('mana_courriels').update({ statut: 'erreur', erreur: (e as Error).message }).eq('id', c.id)
+    }
+  }
+  return { envoyes, enAttente: lot.length - envoyes, actif: true }
+}
+
 async function ouvrirFil(sb: SupabaseClient, compte: Compte, signalId: string, s: SignalCalcule, maintenant: string): Promise<string> {
   const { data: d, error } = await sb
     .from('mana_demandes')
@@ -54,15 +111,17 @@ async function ouvrirFil(sb: SupabaseClient, compte: Compte, signalId: string, s
   const { error: eMsg } = await sb.from('mana_messages').insert({ demande_id: d.id, user_id: compte.userId, auteur: 'mana', texte: messageOuverture(s) })
   if (eMsg) throw new Error(`message d'ouverture : ${eMsg.message}`)
   await sb.from('mana_signaux').update({ demande_id: d.id }).eq('id', signalId)
+  await enfiler(sb, compte, { magasinId: s.magasinId ?? null, demandeId: d.id, genre: 'suivi', objet: sujetSuivi(compte.etat, s), corps: messageOuverture(s) })
   return d.id
 }
 
-async function ecrireDansFil(sb: SupabaseClient, compte: Compte, demandeId: string, texte: string, statut?: 'en_cours' | 'traitee') {
+async function ecrireDansFil(sb: SupabaseClient, compte: Compte, demandeId: string, texte: string, statut?: 'en_cours' | 'traitee', courriel?: { magasinId: string | null; objet: string; genre: string }) {
   const { error } = await sb.from('mana_messages').insert({ demande_id: demandeId, user_id: compte.userId, auteur: 'mana', texte })
   if (error) throw new Error(`message de suivi : ${error.message}`)
   const maj: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (statut) maj.statut = statut
   await sb.from('mana_demandes').update(maj).eq('id', demandeId)
+  if (courriel) await enfiler(sb, compte, { magasinId: courriel.magasinId, demandeId, genre: courriel.genre, objet: courriel.objet, corps: texte })
 }
 
 /** Rôle porté par un JWT (payload en base64url), sans en vérifier la signature : la passerelle l'a fait. */
@@ -142,7 +201,7 @@ async function synchroniser(sb: SupabaseClient, compte: Compte, calcules: Signal
         fils++
       }
       if (estEscalade(s) && prevenue !== 'escalade') {
-        await ecrireDansFil(sb, compte, demandeId, messageEscalade(s), 'en_cours')
+        await ecrireDansFil(sb, compte, demandeId, messageEscalade(s), 'en_cours', { magasinId: s.magasinId ?? null, objet: sujetSuivi(compte.etat, s), genre: 'suivi' })
         prevenue = 'escalade'
       }
       if (prevenue !== etapePrevenue) {
@@ -196,6 +255,7 @@ async function rappeler(sb: SupabaseClient, compte: Compte, maintenant: string):
     await sb.from('mana_demandes').update({ updated_at: maintenant, statut: 'en_cours' }).eq('id', demandeId)
     const { error: eR } = await sb.from('mana_rappels').insert(nouveaux.map((r) => ({ user_id: compte.userId, magasin_id: magasin.id, cle: r.cle, type: r.type, demande_id: demandeId })))
     if (eR) throw new Error(`journal des rappels : ${eR.message}`)
+    await enfiler(sb, compte, { magasinId: magasin.id, demandeId, genre: 'rappel', objet: sujetRappels(magasin), corps: messageRappels(nouveaux) })
     n += nouveaux.length
   }
   return n
@@ -266,10 +326,15 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  const courrier = await expedier(sb).catch((e) => {
+    erreurs.push({ compte: 'courrier', erreur: (e as Error).message })
+    return { envoyes: 0, enAttente: 0, actif: false }
+  })
+
   await sb
     .from('mana_surveillances')
-    .update({ terminee_le: new Date().toISOString(), comptes: comptes.length, signaux_ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels, erreurs })
+    .update({ terminee_le: new Date().toISOString(), comptes: comptes.length, signaux_ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels, courriels: courrier.envoyes, erreurs })
     .eq('id', run.id)
 
-  return Response.json({ id: run.id, declencheur, comptes, totaux: { ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels }, erreurs }, { headers: enTetes })
+  return Response.json({ id: run.id, declencheur, comptes, totaux: { ouverts: totalOuverts, nouveaux: totalNouveaux, resolus: totalResolus, rappels: totalRappels }, courrier, erreurs }, { headers: enTetes })
 })

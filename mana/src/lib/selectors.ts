@@ -296,6 +296,14 @@ export function facturesCommissionManquantes(
         ? [`Base facturable : min(cumul ; plafond) − déjà facturé (${fmtEUR(l.cumulFactureAvant, 2)}) = ${fmtEUR(l.baseFacturable, 2)}`]
         : []),
       `Commission ${commissionPct.toLocaleString('fr-FR')} % × ${fmtEUR(l.baseFacturable, 2)} = ${fmtEUR(l.montantHT, 2)} HT`,
+      // Facture consolidée : la répartition par magasin, pour le DAF d'un réseau.
+      ...(agg.magasins.length > 1
+        ? agg.magasins
+            .map((m) => [m.nom, agg.saisies.filter((s) => s.magasinId === m.id && moisDeLaSemaine(s.semaine) === l.mois).reduce((t, s) => t + baseDeLaSaisie(s), 0)] as const)
+            .filter(([, base]) => Math.abs(base) >= 0.005)
+            .sort((a, b) => b[1] - a[1])
+            .map(([nom, base]) => `dont ${nom} : ${fmtEUR(base, 2)} de dons documentés`)
+        : []),
     ]
     nouvelles.push({
       id: uid(),

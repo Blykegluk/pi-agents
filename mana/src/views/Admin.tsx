@@ -243,9 +243,9 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
               {ouverte === d.id && (
                 <div style={{ marginTop: 10 }}>
                   {fil.map((m) => (
-                    <div key={m.id} style={{ background: m.auteur === 'mana' ? 'var(--sable)' : '#e3ebe3', borderRadius: 10, padding: '9px 12px', marginBottom: 6, fontSize: 14 }}>
+                    <div key={m.id} style={{ background: m.auteur === 'mana' ? 'var(--sable)' : m.auteur === 'association' ? '#f3e4c6' : '#e3ebe3', borderRadius: 10, padding: '9px 12px', marginBottom: 6, fontSize: 14 }}>
                       <div style={{ fontSize: 11.5, color: 'var(--encre-3)', marginBottom: 2 }}>
-                        {m.auteur === 'mana' ? 'Mana (vous)' : 'Client'} · {fmtDateHeure(m.created_at)}
+                        {m.auteur === 'mana' ? 'Mana (vous)' : m.auteur === 'association' ? 'Association (e-mail reçu)' : 'Client'} · {fmtDateHeure(m.created_at)}
                       </div>
                       {m.texte}
                     </div>
@@ -400,7 +400,7 @@ function SignauxAdmin({
             <strong style={{ fontSize: 14.5 }}>Surveillance des collectes</strong>
             <div className="muted">
               {surveillance
-                ? `Dernier passage ${fmtDateHeure(surveillance.commencee_le)} (${surveillance.declencheur.startsWith('admin') ? 'lancé à la main' : 'automatique'}) · ${surveillance.comptes} compte${surveillance.comptes > 1 ? 's' : ''} · ${surveillance.signaux_ouverts} signal${surveillance.signaux_ouverts > 1 ? 'aux' : ''} vivant${surveillance.signaux_ouverts > 1 ? 's' : ''}, ${surveillance.nouveaux} nouveau${surveillance.nouveaux > 1 ? 'x' : ''}, ${surveillance.resolus} résolu${surveillance.resolus > 1 ? 's' : ''} · ${surveillance.rappels ?? 0} rappel${(surveillance.rappels ?? 0) > 1 ? 's' : ''} au magasin${surveillance.erreurs.length ? ` · ${surveillance.erreurs.length} erreur(s)` : ''}`
+                ? `Dernier passage ${fmtDateHeure(surveillance.commencee_le)} (${surveillance.declencheur.startsWith('admin') ? 'lancé à la main' : 'automatique'}) · ${surveillance.comptes} compte${surveillance.comptes > 1 ? 's' : ''} · ${surveillance.signaux_ouverts} signal${surveillance.signaux_ouverts > 1 ? 'aux' : ''} vivant${surveillance.signaux_ouverts > 1 ? 's' : ''}, ${surveillance.nouveaux} nouveau${surveillance.nouveaux > 1 ? 'x' : ''}, ${surveillance.resolus} résolu${surveillance.resolus > 1 ? 's' : ''} · ${surveillance.rappels ?? 0} rappel${(surveillance.rappels ?? 0) > 1 ? 's' : ''} au magasin · ${surveillance.courriels ?? 0} e-mail${(surveillance.courriels ?? 0) > 1 ? 's' : ''} expédié${(surveillance.courriels ?? 0) > 1 ? 's' : ''}${surveillance.erreurs.length ? ` · ${surveillance.erreurs.length} erreur(s)` : ''}`
                 : 'Aucun passage enregistré pour l’instant : le moteur tourne chaque nuit vers 5 h.'}
             </div>
           </div>
@@ -412,6 +412,7 @@ function SignauxAdmin({
           Règles : un passage attendu sans bordereau 24 h après son créneau est manqué ; 1 manqué = case rouge chez le magasin, 2 = un fil de suivi s’ouvre
           avec le magasin (bouton « Dossier » : relance de l’association et recherche de remplacement prêtes à valider), 3 d’affilée = alerte, le magasin est prévenu que Mana prend la main.
           Relevé du mois précédent attendu le 10. Plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît, et son fil se referme.
+          Les messages et rappels sont aussi mis en file d’attente e-mail : ils partiront dès que le domaine et la clé d’envoi seront configurés (voir COURRIER.md dans le code source).
         </p>
         {surveillance?.erreurs.map((e, i) => (
           <div className="info-banner alerte" key={i} style={{ marginTop: 8 }}>{e.compte} : {e.erreur}</div>

@@ -137,7 +137,8 @@ export interface Demande {
 export interface Message {
   id: string
   demande_id: string
-  auteur: 'client' | 'mana'
+  /** 'association' : réponse reçue par e-mail dans un fil de suivi (courrier entrant). */
+  auteur: 'client' | 'mana' | 'association'
   texte: string
   created_at: string
 }
@@ -358,6 +359,8 @@ export interface Surveillance {
   nouveaux: number
   resolus: number
   rappels: number
+  /** E-mails expédiés pendant ce passage (0 tant que le domaine n'est pas configuré). */
+  courriels: number
   erreurs: { compte: string; erreur: string }[]
 }
 
