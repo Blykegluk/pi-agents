@@ -9,6 +9,12 @@ import {
   majStatutDemande,
   mesDemandes,
   messagesDe,
+  listerSignaux,
+  majStatutSignal,
+  derniereSurveillance,
+  lancerSurveillance,
+  type Signal,
+  type Surveillance,
   type ClientAdmin,
   type Demande,
   type Message,
@@ -20,6 +26,7 @@ import { aggParSociete } from '../lib/selectors'
 import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { exerciceCourant } from '../lib/demo'
+import { ACTIONS_SIGNAL, LIBELLES_NIVEAU, type TypeSignal } from '../lib/signaux'
 
 /**
  * Console administrateur Mana : demandes entrantes (mise en relation, support)
@@ -30,7 +37,10 @@ import { pdfConventionIntraGroupe } from '../lib/pdf'
 export function Admin({ session, nonLus, onLu, societes = [] }: { session: Session; nonLus: NonLus; onLu: () => void
   societes?: Societe[]
 }) {
-  const [onglet, setOnglet] = useState<'demandes' | 'clients'>('demandes')
+  const [onglet, setOnglet] = useState<'demandes' | 'signaux' | 'clients'>('demandes')
+  const [signaux, setSignaux] = useState<Signal[]>([])
+  const [surveillance, setSurveillance] = useState<Surveillance | null>(null)
+  const [surveillanceEnCours, setSurveillanceEnCours] = useState(false)
   const [demandes, setDemandes] = useState<Demande[]>([])
   const [clients, setClients] = useState<ClientAdmin[]>([])
   const [ouverte, setOuverte] = useState<string | null>(null)
@@ -44,6 +54,14 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
       const [d, c] = await Promise.all([mesDemandes(), listerClients()])
       setDemandes(d)
       setClients(c)
+      // Les signaux ont leurs propres tables : une erreur là ne doit pas cacher les demandes.
+      try {
+        const [sg, sv] = await Promise.all([listerSignaux(), derniereSurveillance()])
+        setSignaux(sg)
+        setSurveillance(sv)
+      } catch (e) {
+        setErreur((e as Error).message)
+      }
     } catch (e) {
       setErreur((e as Error).message)
     }
@@ -63,6 +81,28 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
   }, [ouverte])
 
   const nouvelles = useMemo(() => demandes.filter((d) => d.statut === 'nouvelle').length, [demandes])
+  const alertes = useMemo(() => signaux.filter((s) => s.statut === 'ouvert' && s.niveau === 'alerte').length, [signaux])
+  const aTraiter = useMemo(() => signaux.filter((s) => s.statut === 'ouvert').length, [signaux])
+
+  async function changerStatutSignal(s: Signal, statut: 'ouvert' | 'traite' | 'ignore') {
+    await majStatutSignal(s.id, statut)
+    setSignaux(await listerSignaux())
+  }
+
+  async function surveillerMaintenant() {
+    setSurveillanceEnCours(true)
+    try {
+      setErreur('')
+      await lancerSurveillance()
+      const [sg, sv] = await Promise.all([listerSignaux(), derniereSurveillance()])
+      setSignaux(sg)
+      setSurveillance(sv)
+    } catch (e) {
+      setErreur((e as Error).message)
+    } finally {
+      setSurveillanceEnCours(false)
+    }
+  }
 
   async function repondre(d: Demande, texte: string) {
     if (!texte.trim()) return
@@ -106,6 +146,9 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
       <div className="chips">
         <button className={`chip ${onglet === 'demandes' ? 'active' : ''}`} onClick={() => setOnglet('demandes')}>
           Demandes{nonLus.total > 0 ? ` (${nonLus.total} non lu${nonLus.total > 1 ? 's' : ''})` : nouvelles > 0 ? ` (${nouvelles} nouvelle${nouvelles > 1 ? 's' : ''})` : ''}
+        </button>
+        <button className={`chip ${onglet === 'signaux' ? 'active' : ''}`} onClick={() => setOnglet('signaux')}>
+          Signaux{aTraiter > 0 ? ` (${aTraiter}${alertes > 0 ? `, ${alertes} alerte${alertes > 1 ? 's' : ''}` : ''})` : ''}
         </button>
         <button className={`chip ${onglet === 'clients' ? 'active' : ''}`} onClick={() => setOnglet('clients')}>
           Clients ({clients.length})
@@ -188,6 +231,17 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
         </div>
       )}
 
+      {onglet === 'signaux' && (
+        <SignauxAdmin
+          signaux={signaux}
+          clients={clients}
+          surveillance={surveillance}
+          enCours={surveillanceEnCours}
+          onLancer={surveillerMaintenant}
+          onStatut={changerStatutSignal}
+        />
+      )}
+
       {onglet === 'clients' && (
         <div>
           {clients.length === 0 && <div className="card empty">Aucun client synchronisé pour l’instant.</div>}
@@ -245,6 +299,120 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+const ORDRE_NIVEAU = { alerte: 0, attention: 1, info: 2 } as const
+const ORDRE_STATUT = { ouvert: 0, traite: 1, ignore: 2, resolu: 3 } as const
+
+function fmtJourCourt(j: string): string {
+  const [y, m, d] = j.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
+
+/** Ce que le détail d'un signal a d'utile à lire, en une ligne. */
+function resumeDetail(s: Signal): string {
+  const d = s.detail
+  const morceaux: string[] = []
+  if (Array.isArray(d.dates) && d.dates.length) morceaux.push(`passages : ${(d.dates as string[]).map(fmtJourCourt).join(', ')}`)
+  if (typeof d.dernierBordereau === 'string') morceaux.push(`dernier bordereau : ${fmtJourCourt(d.dernierBordereau)}`)
+  if (typeof d.rythme === 'string') morceaux.push(`rythme compris : ${d.rythme}`)
+  if (typeof d.part === 'number') morceaux.push(`${d.part} % du plafond (${fmtEUR(Number(d.base))} sur ${fmtEUR(Number(d.plafond))})`)
+  if (typeof d.jours === 'number') morceaux.push(`${d.jours} jours`)
+  if (typeof d.joursDepuisCreation === 'number') morceaux.push(`magasin créé il y a ${d.joursDepuisCreation} jours`)
+  if (typeof d.note === 'string') morceaux.push(d.note)
+  return morceaux.join(' · ')
+}
+
+/**
+ * Onglet Signaux de la console : ce que la surveillance nocturne a relevé, par client,
+ * du plus urgent au plus anodin. Semaine 1 du plan : la liste et son état ; les dossiers
+ * de résolution (mails prêts, associations de remplacement) arrivent ensuite.
+ */
+function SignauxAdmin({
+  signaux,
+  clients,
+  surveillance,
+  enCours,
+  onLancer,
+  onStatut,
+}: {
+  signaux: Signal[]
+  clients: ClientAdmin[]
+  surveillance: Surveillance | null
+  enCours: boolean
+  onLancer: () => void
+  onStatut: (s: Signal, statut: 'ouvert' | 'traite' | 'ignore') => void
+}) {
+  const emailDe = new Map(clients.map((c) => [c.user_id, c.email ?? c.user_id]))
+  const nomMagasin = (s: Signal) => {
+    const etat = clients.find((c) => c.user_id === s.user_id)?.etat
+    return etat?.magasins.find((m) => m.id === s.magasin_id)?.nom ?? etat?.societes.find((so) => so.id === s.societe_id)?.raisonSociale ?? ''
+  }
+  const tries = [...signaux].sort(
+    (a, b) => ORDRE_STATUT[a.statut] - ORDRE_STATUT[b.statut] || ORDRE_NIVEAU[a.niveau] - ORDRE_NIVEAU[b.niveau] || b.mis_a_jour_le.localeCompare(a.mis_a_jour_le),
+  )
+  const parClient = new Map<string, Signal[]>()
+  for (const s of tries) parClient.set(s.user_id, [...(parClient.get(s.user_id) ?? []), s])
+
+  return (
+    <div>
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <div>
+            <strong style={{ fontSize: 14.5 }}>Surveillance des collectes</strong>
+            <div className="muted">
+              {surveillance
+                ? `Dernier passage ${fmtDateHeure(surveillance.commencee_le)} (${surveillance.declencheur.startsWith('admin') ? 'lancé à la main' : 'automatique'}) · ${surveillance.comptes} compte${surveillance.comptes > 1 ? 's' : ''} · ${surveillance.signaux_ouverts} signal${surveillance.signaux_ouverts > 1 ? 'aux' : ''} vivant${surveillance.signaux_ouverts > 1 ? 's' : ''}, ${surveillance.nouveaux} nouveau${surveillance.nouveaux > 1 ? 'x' : ''}, ${surveillance.resolus} résolu${surveillance.resolus > 1 ? 's' : ''}${surveillance.erreurs.length ? ` · ${surveillance.erreurs.length} erreur(s)` : ''}`
+                : 'Aucun passage enregistré pour l’instant : le moteur tourne chaque nuit vers 5 h.'}
+            </div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onLancer} disabled={enCours}>
+            {enCours ? 'Surveillance en cours…' : 'Lancer maintenant'}
+          </button>
+        </div>
+        <p className="muted" style={{ margin: '8px 0 0' }}>
+          Règles : un passage attendu sans bordereau 24 h après son créneau est manqué ; 1 manqué = à vérifier avec le magasin, 2 = relancer l’association,
+          3 d’affilée = alerte et remplacement à proposer. Relevé du mois précédent attendu le 10. Plafond signalé à 80 %. Un signal se résout de lui-même quand la cause disparaît.
+        </p>
+        {surveillance?.erreurs.map((e, i) => (
+          <div className="info-banner alerte" key={i} style={{ marginTop: 8 }}>{e.compte} : {e.erreur}</div>
+        ))}
+      </div>
+
+      {parClient.size === 0 && <div className="card empty">Aucun signal vivant : tout est en ordre.</div>}
+      {[...parClient.entries()].map(([userId, liste]) => (
+        <div className="card" key={userId}>
+          <strong style={{ fontSize: 14.5, overflowWrap: 'anywhere' }}>{emailDe.get(userId) ?? userId}</strong>
+          {liste.map((s) => (
+            <div className={`signal-ligne ${s.statut}`} key={s.id}>
+              <span className={LIBELLES_NIVEAU[s.niveau].classe} style={{ flex: 'none', marginTop: 2 }}>{LIBELLES_NIVEAU[s.niveau].texte}</span>
+              <div className="corps">
+                <div>
+                  <strong>{s.titre}</strong>
+                  {nomMagasin(s) && !s.titre.includes(nomMagasin(s)) ? <span className="muted"> · {nomMagasin(s)}</span> : null}
+                </div>
+                {resumeDetail(s) && <small>{resumeDetail(s)}</small>}
+                <small>
+                  {ACTIONS_SIGNAL[s.type as TypeSignal] ?? ''} Ouvert {fmtDateHeure(s.ouvert_le)}
+                  {s.statut !== 'ouvert' && s.traite_le ? ` · ${s.statut === 'traite' ? 'traité' : 'ignoré'} par ${s.traite_par ?? 'Mana'} le ${fmtDateHeure(s.traite_le)}` : ''}
+                </small>
+              </div>
+              <div className="row-actions" style={{ flex: 'none', marginTop: 0 }}>
+                {s.statut === 'ouvert' ? (
+                  <>
+                    <button className="btn btn-ghost btn-sm" onClick={() => onStatut(s, 'traite')}>Traité</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => onStatut(s, 'ignore')}>Ignorer</button>
+                  </>
+                ) : (
+                  <button className="btn btn-ghost btn-sm" onClick={() => onStatut(s, 'ouvert')}>Rouvrir</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }

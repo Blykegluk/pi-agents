@@ -295,6 +295,89 @@ export async function trouverAssociations(params: { adresse: string; magasin?: s
   return { associations: data.associations, remarque: data.remarque ?? '' }
 }
 
+// ---------- Surveillance : signaux calculés chaque nuit (fonction surveiller-collectes) ----------
+
+export type NiveauSignal = 'info' | 'attention' | 'alerte'
+export type StatutSignal = 'ouvert' | 'traite' | 'ignore' | 'resolu'
+
+export interface Signal {
+  id: string
+  user_id: string
+  cle: string
+  type: string
+  niveau: NiveauSignal
+  societe_id: string | null
+  magasin_id: string | null
+  collecteur: string | null
+  titre: string
+  detail: Record<string, unknown>
+  statut: StatutSignal
+  ouvert_le: string
+  mis_a_jour_le: string
+  resolu_le: string | null
+  traite_le: string | null
+  traite_par: string | null
+  note: string | null
+}
+
+/** Signaux vivants (non résolus) : les miens, ceux des comptes où je suis invité, ou tous pour Mana (RLS). */
+export async function listerSignaux(): Promise<Signal[]> {
+  const { data, error } = await supabase
+    .from('mana_signaux')
+    .select('*')
+    .is('resolu_le', null)
+    .order('mis_a_jour_le', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Signal[]
+}
+
+/** Mana marque un signal traité ou ignoré (ou le rouvre). Le moteur le résoudra de lui-même quand la cause disparaîtra. */
+export async function majStatutSignal(id: string, statut: Exclude<StatutSignal, 'resolu'>, note?: string): Promise<void> {
+  const { data: u } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('mana_signaux')
+    .update({
+      statut,
+      traite_le: statut === 'ouvert' ? null : new Date().toISOString(),
+      traite_par: statut === 'ouvert' ? null : (u.user?.email ?? null),
+      ...(note !== undefined ? { note } : {}),
+    })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export interface Surveillance {
+  id: string
+  commencee_le: string
+  terminee_le: string | null
+  declencheur: string
+  comptes: number
+  signaux_ouverts: number
+  nouveaux: number
+  resolus: number
+  erreurs: { compte: string; erreur: string }[]
+}
+
+export async function derniereSurveillance(): Promise<Surveillance | null> {
+  const { data, error } = await supabase.from('mana_surveillances').select('*').order('commencee_le', { ascending: false }).limit(1).maybeSingle()
+  if (error) throw new Error(error.message)
+  return (data as Surveillance | null) ?? null
+}
+
+/** Lance le moteur tout de suite (admin) au lieu d'attendre le passage nocturne. */
+export async function lancerSurveillance(): Promise<{ totaux: { ouverts: number; nouveaux: number; resolus: number }; erreurs: { compte: string; erreur: string }[] }> {
+  const { data, error } = await supabase.functions.invoke<{ totaux?: { ouverts: number; nouveaux: number; resolus: number }; erreurs?: { compte: string; erreur: string }[]; erreur?: string }>(
+    'surveiller-collectes',
+    { body: { declencheur: 'console' } },
+  )
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (!data?.totaux) throw new Error(data?.erreur ?? 'Surveillance impossible.')
+  return { totaux: data.totaux, erreurs: data.erreurs ?? [] }
+}
+
 export async function connexion(email: string, motDePasse: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password: motDePasse })
   if (!error) return null
