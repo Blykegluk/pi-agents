@@ -100,8 +100,8 @@ ok('aucun calendrier sans bordereau du tout', calendrierPassages(leonBlum, [], {
 
 // Tolérance : bordereau daté du lendemain d'un jour attendu, jour non attendu lui-même.
 const hebdo: Magasin = { ...leonBlum, id: 'h', collecteurs: [{ nom: 'Restos', contact: '', frequence: 'Hebdomadaire', jours: 'mercredi', plage: 'Matin (7 h – 10 h)' }] }
-const cal3 = calendrierPassages(hebdo, [saisie('h', '2026-09-17', 'Restos')], { du: '2026-09-14', au: '2026-09-20', maintenant: new Date('2026-09-25T06:00:00.000Z') })
-egal('mercredi 16 couvert par le bordereau du jeudi 17 (décalé)', [cal3.passages[0].statut, cal3.passages[0].decale], ['fait', true])
+const cal3 = calendrierPassages(hebdo, [saisie('h', '2026-09-09', 'Restos'), saisie('h', '2026-09-17', 'Restos')], { du: '2026-09-07', au: '2026-09-20', maintenant: new Date('2026-09-25T06:00:00.000Z') })
+egal('mercredi 9 fait, mercredi 16 couvert par le bordereau du jeudi 17 (décalé)', cal3.passages.map((p) => [p.statut, !!p.decale]), [['fait', false], ['fait', true]])
 
 // Rythme au compte : 2 par semaine, 1 seul bordereau la semaine 38, semaine 39 en cours.
 const compte: Magasin = { ...leonBlum, id: 'c', collecteurs: [{ nom: 'Linkee', contact: '', frequence: '2 à 3 fois par semaine', jours: '' }] }
