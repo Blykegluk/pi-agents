@@ -372,7 +372,7 @@ function SignauxAdmin({
             <strong style={{ fontSize: 14.5 }}>Surveillance des collectes</strong>
             <div className="muted">
               {surveillance
-                ? `Dernier passage ${fmtDateHeure(surveillance.commencee_le)} (${surveillance.declencheur.startsWith('admin') ? 'lancé à la main' : 'automatique'}) · ${surveillance.comptes} compte${surveillance.comptes > 1 ? 's' : ''} · ${surveillance.signaux_ouverts} signal${surveillance.signaux_ouverts > 1 ? 'aux' : ''} vivant${surveillance.signaux_ouverts > 1 ? 's' : ''}, ${surveillance.nouveaux} nouveau${surveillance.nouveaux > 1 ? 'x' : ''}, ${surveillance.resolus} résolu${surveillance.resolus > 1 ? 's' : ''}${surveillance.erreurs.length ? ` · ${surveillance.erreurs.length} erreur(s)` : ''}`
+                ? `Dernier passage ${fmtDateHeure(surveillance.commencee_le)} (${surveillance.declencheur.startsWith('admin') ? 'lancé à la main' : 'automatique'}) · ${surveillance.comptes} compte${surveillance.comptes > 1 ? 's' : ''} · ${surveillance.signaux_ouverts} signal${surveillance.signaux_ouverts > 1 ? 'aux' : ''} vivant${surveillance.signaux_ouverts > 1 ? 's' : ''}, ${surveillance.nouveaux} nouveau${surveillance.nouveaux > 1 ? 'x' : ''}, ${surveillance.resolus} résolu${surveillance.resolus > 1 ? 's' : ''} · ${surveillance.rappels ?? 0} rappel${(surveillance.rappels ?? 0) > 1 ? 's' : ''} au magasin${surveillance.erreurs.length ? ` · ${surveillance.erreurs.length} erreur(s)` : ''}`
                 : 'Aucun passage enregistré pour l’instant : le moteur tourne chaque nuit vers 5 h.'}
             </div>
           </div>

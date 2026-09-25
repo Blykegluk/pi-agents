@@ -7,5 +7,5 @@ cd "$(dirname "$0")/.."
 dest=supabase/functions/surveiller-collectes
 mkdir -p "$dest/lib"
 cp src/types.ts "$dest/types.ts"
-for f in calc iso passages signaux suivi; do cp "src/lib/$f.ts" "$dest/lib/$f.ts"; done
-echo "Modules copiés dans $dest (types, calc, iso, passages, signaux, suivi)."
+for f in calc iso passages signaux suivi rappels; do cp "src/lib/$f.ts" "$dest/lib/$f.ts"; done
+echo "Modules copiés dans $dest (types, calc, iso, passages, signaux, suivi, rappels)."

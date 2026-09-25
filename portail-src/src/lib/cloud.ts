@@ -357,6 +357,7 @@ export interface Surveillance {
   signaux_ouverts: number
   nouveaux: number
   resolus: number
+  rappels: number
   erreurs: { compte: string; erreur: string }[]
 }
 
