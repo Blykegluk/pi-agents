@@ -19,6 +19,11 @@ import {
   ecrireParametre,
   redigerAvecStyle,
   deduireRegles,
+  listerBrouillonsReponse,
+  preparerReponse,
+  majBrouillonReponse,
+  remplacerBrouillonsEnAttente,
+  type BrouillonReponse,
   type Redaction,
   type Signal,
   type Surveillance,
@@ -35,6 +40,7 @@ import { fmtDateHeure, fmtEUR, fmtNum } from '../lib/format'
 import { LIBELLES_STATUT } from '../components/Aide'
 import { exerciceCourant } from '../lib/demo'
 import { ACTIONS_SIGNAL, LIBELLES_NIVEAU, type TypeSignal } from '../lib/signaux'
+import { ECART_LEGER, SEUIL_NOMBRE, SEUIL_TAUX, ecartTextes } from '../lib/ecart'
 
 /**
  * Console administrateur Mana. Quatre entrées : ce qu'il y a à faire aujourd'hui,
@@ -104,6 +110,72 @@ function ResumeDossier({ d }: { d: Demande }) {
   )
 }
 
+const CONFIANCE: Record<BrouillonReponse['confiance'], { texte: string; classe: string }> = {
+  haute: { texte: 'Prête à envoyer', classe: 'badge vert' },
+  moyenne: { texte: 'À relire', classe: 'badge' },
+  basse: { texte: 'À vérifier', classe: 'badge alerte' },
+}
+
+/**
+ * La réponse que Mana a préparée au dernier message du client : on la relit, on la corrige au
+ * besoin, on l'envoie. Ce qui part est comparé à ce qui était proposé ; c'est de là que Mana
+ * apprend, et c'est ce taux qui ouvre l'envoi autonome.
+ */
+function ReponsePreparee({ brouillon, onValider, onAutreVersion, onEcarter }: {
+  brouillon: BrouillonReponse
+  onValider: (texte: string) => Promise<void>
+  onAutreVersion: (consigne: string) => Promise<void>
+  onEcarter: () => Promise<void>
+}) {
+  const [texte, setTexte] = useState(brouillon.texte)
+  const [consigne, setConsigne] = useState('')
+  const [etat, setEtat] = useState<'repos' | 'envoi' | 'regeneration'>('repos')
+  const [erreur, setErreur] = useState('')
+  useEffect(() => setTexte(brouillon.texte), [brouillon.id, brouillon.texte])
+  const modifie = texte.trim() !== brouillon.texte.trim()
+  const conf = CONFIANCE[brouillon.confiance]
+  const agir = async (quoi: 'envoi' | 'regeneration', f: () => Promise<void>) => {
+    setEtat(quoi)
+    setErreur('')
+    try {
+      await f()
+    } catch (e) {
+      setErreur((e as Error).message)
+    } finally {
+      setEtat('repos')
+    }
+  }
+  return (
+    <div className="reponse-preparee">
+      <div className="reponse-preparee-tete">
+        <strong>Réponse préparée par Mana</strong>
+        <span className={conf.classe}>{conf.texte}</span>
+      </div>
+      <blockquote className="reponse-preparee-client">{brouillon.message_client}</blockquote>
+      {brouillon.a_valider && brouillon.raison && <p className="reponse-preparee-raison">À vérifier : {brouillon.raison}</p>}
+      <textarea rows={Math.min(14, Math.max(5, texte.split('\n').length + 1))} value={texte} onChange={(e) => setTexte(e.target.value)} />
+      <div className="row-actions" style={{ marginTop: 8 }}>
+        <button className="btn btn-primary btn-sm" disabled={etat !== 'repos' || !texte.trim()} onClick={() => agir('envoi', () => onValider(texte))}>
+          {etat === 'envoi' ? 'Envoi…' : modifie ? '✓ Envoyer ma version' : '✓ Valider et envoyer'}
+        </button>
+        <button className="btn btn-ghost btn-sm" disabled={etat !== 'repos'} onClick={() => agir('regeneration', () => onAutreVersion(consigne))}>
+          {etat === 'regeneration' ? 'Rédaction…' : '↻ Autre version'}
+        </button>
+        <button className="btn btn-ghost btn-sm" disabled={etat !== 'repos'} onClick={() => agir('envoi', onEcarter)}>Écarter</button>
+      </div>
+      <input
+        type="text"
+        className="reponse-preparee-consigne"
+        value={consigne}
+        onChange={(e) => setConsigne(e.target.value)}
+        placeholder="Indication pour une autre version (facultatif) : plus court, proposer un appel, rappeler le délai…"
+      />
+      {modifie && <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>Votre correction sera retenue : Mana s’en sert pour les prochaines réponses.</p>}
+      {erreur && <p className="muted" style={{ margin: '6px 0 0', color: 'var(--rouge)' }}>{erreur}</p>}
+    </div>
+  )
+}
+
 export function Admin({ session, nonLus, onLu, societes = [] }: { session: Session; nonLus: NonLus; onLu: () => void
   societes?: Societe[]
 }) {
@@ -117,6 +189,8 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
   const [fil, setFil] = useState<Message[]>([])
   const [erreur, setErreur] = useState('')
   const [filtreDossiers, setFiltreDossiers] = useState<'actifs' | 'termines'>('actifs')
+  const [brouillons, setBrouillons] = useState<{ enAttente: BrouillonReponse[]; traites: BrouillonReponse[] }>({ enAttente: [], traites: [] })
+  const [preparation, setPreparation] = useState<Record<string, 'en_cours' | string>>({})
   const exercice = exerciceCourant()
 
   async function recharger() {
@@ -125,6 +199,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
       const [d, c] = await Promise.all([mesDemandes(), listerClients()])
       setDemandes(d)
       setClients(c)
+      listerBrouillonsReponse().then(setBrouillons).catch(() => {})
       // Les signaux ont leurs propres tables : une erreur là ne doit pas cacher les demandes.
       try {
         const [sg, sv] = await Promise.all([listerSignaux(), derniereSurveillance()])
@@ -162,8 +237,15 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
     const lignes: Ligne[] = []
     const parDemande = new Map(demandes.map((d) => [d.id, d]))
     const nomDossier = (d: Demande) => `${genreDemande(d)} · ${texteDe(d.contenu.magasin) || d.sujet}${texteDe(d.contenu.association_concernee) ? ` (${texteDe(d.contenu.association_concernee)})` : ''}`
+    const prets = new Set(brouillons.enAttente.map((b) => b.demande_id))
+    for (const b of brouillons.enAttente) {
+      const d = parDemande.get(b.demande_id)
+      if (!d || lignes.some((l) => l.demandeId === d.id)) continue
+      const conf = CONFIANCE[b.confiance]
+      lignes.push({ cle: `r:${b.id}`, rang: b.confiance === 'haute' ? 0.2 : 0.3, badge: { texte: conf.texte, classe: conf.classe }, texte: `Réponse préparée à valider — ${nomDossier(d)}`, demandeId: d.id })
+    }
     for (const d of demandes) {
-      if (d.statut === 'traitee') continue
+      if (d.statut === 'traitee' || prets.has(d.id)) continue
       const nb = nonLu(d)
       if (d.statut === 'nouvelle') lignes.push({ cle: `n:${d.id}`, rang: 0, badge: { texte: 'Nouveau', classe: 'badge alerte' }, texte: `Nouvelle demande — ${nomDossier(d)}`, demandeId: d.id })
       else if (nb > 0) lignes.push({ cle: `m:${d.id}`, rang: 1, badge: { texte: `${nb} non lu${nb > 1 ? 's' : ''}`, classe: 'badge' }, texte: `${nb > 1 ? 'Messages reçus' : 'Message reçu'} — ${nomDossier(d)}`, demandeId: d.id })
@@ -182,7 +264,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
       })
     }
     return lignes.sort((a, b) => a.rang - b.rang)
-  }, [demandes, signaux, nonLus])
+  }, [demandes, signaux, nonLus, brouillons])
 
   async function changerStatutSignal(s: Signal, statut: 'ouvert' | 'traite' | 'ignore') {
     await majStatutSignal(s.id, statut)
@@ -204,9 +286,13 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
     }
   }
 
-  async function repondre(d: Demande, texte: string, envoi?: EnvoiConsigne) {
+  async function repondre(d: Demande, texte: string, envoi?: EnvoiConsigne, alaMain = false) {
     if (!texte.trim()) return
     await envoyerMessage(d.id, d.user_id, 'mana', texte)
+    if (alaMain) {
+      await remplacerBrouillonsEnAttente(d.id).catch(() => {})
+      listerBrouillonsReponse().then(setBrouillons).catch(() => {})
+    }
     if (d.statut === 'nouvelle') await majStatutDemande(d.id, 'en_cours')
     if (envoi) {
       // Le style s'apprend de ce qui est parti ; la boucle de résolution, de ce qui a été envoyé à qui et quand.
@@ -226,6 +312,33 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
   async function changerStatut(d: Demande, statut: Demande['statut']) {
     await majStatutDemande(d.id, statut)
     setDemandes(await mesDemandes())
+  }
+
+  const brouillonDe = useMemo(() => {
+    const m = new Map<string, BrouillonReponse>()
+    for (const b of brouillons.enAttente) if (!m.has(b.demande_id)) m.set(b.demande_id, b)
+    return m
+  }, [brouillons])
+
+  async function validerReponse(d: Demande, b: BrouillonReponse, texte: string) {
+    const t = texte.trim()
+    const ecart = ecartTextes(b.texte, t)
+    await repondre(d, t)
+    await majBrouillonReponse(b.id, { statut: ecart === 0 ? 'envoye' : 'corrige', texte_envoye: t, ecart: Math.round(ecart * 1000) / 1000 })
+    // Même journal que les mails : l'onglet Style montre proposé / envoyé et en déduit des règles.
+    await enregistrerRedaction('reponse_client', { a: '', objet: d.sujet, corps: b.texte }, { a: '', objet: d.sujet, corps: t }, d.id).catch(() => {})
+    setBrouillons(await listerBrouillonsReponse())
+  }
+
+  async function demanderReponse(d: Demande, consigne = '') {
+    setPreparation((p) => ({ ...p, [d.id]: 'en_cours' }))
+    try {
+      const b = await preparerReponse(d.id, consigne)
+      setBrouillons(await listerBrouillonsReponse())
+      setPreparation((p) => ({ ...p, [d.id]: b ? '' : 'Le dernier message du dossier n’est pas celui du client : rien à préparer.' }))
+    } catch (e) {
+      setPreparation((p) => ({ ...p, [d.id]: (e as Error).message }))
+    }
   }
 
   function ouvrirDossier(id: string) {
@@ -271,6 +384,28 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
 
         <ResumeDossier d={d} />
 
+        {brouillonDe.get(d.id) ? (
+          <ReponsePreparee
+            key={brouillonDe.get(d.id)!.id}
+            brouillon={brouillonDe.get(d.id)!}
+            onValider={(texte) => validerReponse(d, brouillonDe.get(d.id)!, texte)}
+            onAutreVersion={(consigne) => demanderReponse(d, consigne)}
+            onEcarter={async () => {
+              await majBrouillonReponse(brouillonDe.get(d.id)!.id, { statut: 'ecarte' })
+              setBrouillons(await listerBrouillonsReponse())
+            }}
+          />
+        ) : (
+          (nb > 0 || d.statut === 'nouvelle' || (filOuvert && fil.length > 0 && fil[fil.length - 1].auteur === 'client')) && (
+            <div className="row-actions" style={{ marginTop: 10, alignItems: 'center' }}>
+              <button className="btn btn-ghost btn-sm" disabled={preparation[d.id] === 'en_cours'} onClick={() => demanderReponse(d)}>
+                {preparation[d.id] === 'en_cours' ? 'Mana rédige…' : '✨ Préparer une réponse'}
+              </button>
+              {preparation[d.id] && preparation[d.id] !== 'en_cours' && <span className="muted" style={{ fontSize: 12.5 }}>{preparation[d.id]}</span>}
+            </div>
+          )
+        )}
+
         {(d.type === 'association' || d.type === 'collecte' || (d.type === 'suivi' && !c.rappels)) && d.statut !== 'traitee' && (
           <ActionsAssociation
             demande={d}
@@ -311,7 +446,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
               </div>
             ))}
             {fil.length === 0 && <p className="muted">Aucun message pour l’instant.</p>}
-            <Composer placeholder="Votre message au client…" onEnvoyer={(texte) => repondre(d, texte)} />
+            <Composer placeholder="Votre message au client…" onEnvoyer={(texte) => repondre(d, texte, undefined, true)} />
           </div>
         )}
       </div>
@@ -344,7 +479,7 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
           Clients ({clients.length})
         </button>
         <button className={`chip ${onglet === 'style' ? 'active' : ''}`} onClick={() => setOnglet('style')}>
-          Style
+          Réponses &amp; style
         </button>
         {societes.length > 0 && (
           <button className={`chip ${onglet === 'documents' ? 'active' : ''}`} onClick={() => setOnglet('documents')}>
@@ -398,7 +533,16 @@ export function Admin({ session, nonLus, onLu, societes = [] }: { session: Sessi
         />
       )}
 
-      {onglet === 'style' && <StyleAdmin />}
+      {onglet === 'style' && (
+        <>
+          <AutonomieReponses
+            traites={brouillons.traites}
+            demandes={demandes}
+            onOuvrirDossier={ouvrirDossier}
+          />
+          <StyleAdmin />
+        </>
+      )}
 
       {onglet === 'documents' && societes.length > 0 && (
         <div className="card">
@@ -594,6 +738,81 @@ function SignauxAdmin({
           ))}
         </div>
       ))}
+    </div>
+  )
+}
+
+/**
+ * Apprentissage et autonomie des réponses aux clients : combien de réponses préparées ont été
+ * envoyées sans retouche notable, et l'interrupteur de l'envoi autonome, qui ne s'ouvre qu'au-delà
+ * du seuil. Même règle que la fonction preparer-reponse, qui la revérifie avant chaque envoi.
+ */
+function AutonomieReponses({ traites, demandes, onOuvrirDossier }: { traites: BrouillonReponse[]; demandes: Demande[]; onOuvrirDossier: (id: string) => void }) {
+  const [actif, setActif] = useState(false)
+  const [enregistrement, setEnregistrement] = useState(false)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    lireParametre<{ actif?: boolean }>('reponse_auto').then((p) => setActif(!!p?.actif)).catch(() => {})
+  }, [])
+  const valides = traites.filter((b) => b.statut === 'envoye' || b.statut === 'corrige').slice(0, SEUIL_NOMBRE)
+  const legers = valides.filter((b) => b.statut === 'envoye' || Number(b.ecart ?? 1) <= ECART_LEGER).length
+  const telsQuels = valides.filter((b) => b.statut === 'envoye').length
+  const taux = valides.length ? legers / valides.length : 0
+  const seuilAtteint = valides.length >= SEUIL_NOMBRE && taux >= SEUIL_TAUX
+  const autos = traites.filter((b) => b.statut === 'auto').slice(0, 10)
+  const sujet = (id: string) => demandes.find((d) => d.id === id)?.sujet ?? 'dossier'
+  const pct = (x: number) => `${Math.round(x * 100)} %`
+
+  async function basculer(v: boolean) {
+    setEnregistrement(true)
+    setErreur('')
+    try {
+      await ecrireParametre('reponse_auto', { actif: v })
+      setActif(v)
+    } catch (e) {
+      setErreur((e as Error).message)
+    } finally {
+      setEnregistrement(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Réponses aux clients</h3>
+      <p className="muted" style={{ margin: '2px 0 10px' }}>
+        À chaque message d’un client, Mana prépare une réponse dans le dossier. Vous la validez, la corrigez ou l’écartez ; vos corrections servent d’exemples aux réponses suivantes.
+      </p>
+      <div className="impact reseau-tuiles">
+        <div className="tuile"><strong>{valides.length}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{SEUIL_NOMBRE}</span></strong><span>réponses validées récemment</span></div>
+        <div className="tuile"><strong>{telsQuels}</strong><span>envoyées telles quelles</span></div>
+        <div className="tuile"><strong style={{ color: seuilAtteint ? 'var(--vert)' : undefined }}>{valides.length ? pct(taux) : '—'}</strong><span>sans retouche notable (seuil {pct(SEUIL_TAUX)})</span></div>
+        <div className="tuile"><strong>{traites.filter((b) => b.statut === 'auto').length}</strong><span>envoyées seules par Mana</span></div>
+      </div>
+      <label className="field" style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 12, opacity: seuilAtteint || actif ? 1 : 0.6 }}>
+        <input type="checkbox" checked={actif} disabled={enregistrement || (!seuilAtteint && !actif)} onChange={(e) => basculer(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: 'var(--vert)' }} />
+        <span style={{ marginBottom: 0 }}>
+          <strong>Laisser Mana répondre seul aux messages simples</strong>
+          <span className="muted" style={{ display: 'block', fontSize: 13, fontWeight: 400 }}>
+            {seuilAtteint
+              ? 'Seulement les réponses que Mana juge sûres (confiance haute, aucune décision à prendre). Tout le reste attend votre validation, comme aujourd’hui.'
+              : `Disponible après ${SEUIL_NOMBRE} réponses validées, dont ${pct(SEUIL_TAUX)} sans retouche notable (écart de moins de ${pct(ECART_LEGER)} du texte). Il en manque ${Math.max(0, SEUIL_NOMBRE - valides.length)}${valides.length >= SEUIL_NOMBRE ? ', et le taux est encore trop bas' : ''}.`}
+            {actif && !seuilAtteint ? ' Activé, mais suspendu tant que le seuil n’est pas atteint : Mana revérifie avant chaque envoi.' : ''}
+          </span>
+        </span>
+      </label>
+      {erreur && <p className="muted" style={{ color: 'var(--rouge)' }}>{erreur}</p>}
+      {autos.length > 0 && (
+        <>
+          <div style={{ fontWeight: 700, fontSize: 13.5, margin: '10px 0 4px' }}>Dernières réponses envoyées seules</div>
+          {autos.map((b) => (
+            <div className="afaire-ligne" key={b.id}>
+              <span className="muted" style={{ flex: 'none', fontSize: 12.5 }}>{b.traite_le ? fmtDateHeure(b.traite_le) : ''}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>{sujet(b.demande_id)} — « {(b.texte_envoye ?? b.texte).slice(0, 90)}… »</span>
+              <button className="btn btn-ghost btn-sm" onClick={() => onOuvrirDossier(b.demande_id)}>Relire</button>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }

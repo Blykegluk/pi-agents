@@ -9,3 +9,7 @@ mkdir -p "$dest/lib"
 cp src/types.ts "$dest/types.ts"
 for f in calc iso passages signaux suivi rappels resolution; do cp "src/lib/$f.ts" "$dest/lib/$f.ts"; done
 echo "Modules copiés dans $dest (types, calc, iso, passages, signaux, suivi, rappels, resolution)."
+
+# La fonction preparer-reponse lit la même FAQ que l'application.
+cp src/lib/faq.ts supabase/functions/preparer-reponse/faq.ts
+echo "FAQ copiée dans supabase/functions/preparer-reponse."

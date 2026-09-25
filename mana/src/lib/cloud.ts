@@ -465,6 +465,68 @@ export async function redigerAvecStyle(genre: string, brouillon: Brouillon): Pro
   return { a: brouillon.a, objet: r.objet, corps: r.corps }
 }
 
+// ---------- Réponses préparées aux messages des clients ----------
+
+export interface BrouillonReponse {
+  id: string
+  demande_id: string
+  message_id: string | null
+  user_id: string
+  message_client: string
+  texte: string
+  confiance: 'haute' | 'moyenne' | 'basse'
+  a_valider: boolean
+  raison: string
+  statut: 'propose' | 'envoye' | 'corrige' | 'ecarte' | 'remplace' | 'auto'
+  texte_envoye: string | null
+  ecart: number | null
+  modele: string | null
+  cree_le: string
+  traite_le: string | null
+  traite_par: string | null
+}
+
+/** Les réponses en attente, et les dernières traitées (pour mesurer la qualité et l'autonomie). */
+export async function listerBrouillonsReponse(limiteTraites = 60): Promise<{ enAttente: BrouillonReponse[]; traites: BrouillonReponse[] }> {
+  const [attente, traites] = await Promise.all([
+    supabase.from('mana_brouillons_reponse').select('*').eq('statut', 'propose').order('cree_le', { ascending: false }),
+    supabase.from('mana_brouillons_reponse').select('*').in('statut', ['envoye', 'corrige', 'auto', 'ecarte']).order('traite_le', { ascending: false }).limit(limiteTraites),
+  ])
+  if (attente.error) throw new Error(attente.error.message)
+  if (traites.error) throw new Error(traites.error.message)
+  return { enAttente: (attente.data ?? []) as BrouillonReponse[], traites: (traites.data ?? []) as BrouillonReponse[] }
+}
+
+/** Demande (ou redemande) une réponse préparée pour le dernier message client d'un dossier. */
+export async function preparerReponse(demandeId: string, consigne?: string): Promise<BrouillonReponse | null> {
+  const { data, error } = await supabase.functions.invoke<{ brouillon?: BrouillonReponse; ignore?: string; erreur?: string }>('preparer-reponse', { body: { demandeId, consigne } })
+  if (error) {
+    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+    throw new Error(detail?.erreur ?? error.message)
+  }
+  if (data?.erreur) throw new Error(data.erreur)
+  return data?.brouillon ?? null
+}
+
+export async function majBrouillonReponse(id: string, patch: Partial<Pick<BrouillonReponse, 'statut' | 'texte_envoye' | 'ecart'>>): Promise<void> {
+  const { data: u } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('mana_brouillons_reponse')
+    .update({ ...patch, traite_le: new Date().toISOString(), traite_par: u.user?.email ?? null })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+/** Une réponse écrite à la main rend caduques les propositions en attente sur le dossier. */
+export async function remplacerBrouillonsEnAttente(demandeId: string): Promise<void> {
+  const { data: u } = await supabase.auth.getUser()
+  await supabase
+    .from('mana_brouillons_reponse')
+    .update({ statut: 'remplace', traite_le: new Date().toISOString(), traite_par: u.user?.email ?? null })
+    .eq('demande_id', demandeId)
+    .eq('statut', 'propose')
+}
+
 /** Déduit des règles de style des dernières corrections (à relire et enregistrer par l'équipe). */
 export async function deduireRegles(): Promise<string> {
   const exemples = await listerRedactions(12)
