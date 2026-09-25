@@ -1,3 +1,4 @@
+import { MaSemaine } from '../components/MaSemaine'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import type { AppState, Justificatif, Saisie } from '../types'
@@ -511,6 +512,8 @@ export function SaisieView({
   return (
     <div className="saisie">
       <h2>Saisie</h2>
+
+      <MaSemaine state={state} onAllerAssociations={onAllerCollecte} />
 
       {/* Barre figée : on voit toujours pour quel magasin on saisit, même en bas de page. */}
       <div className="barre-magasins">
