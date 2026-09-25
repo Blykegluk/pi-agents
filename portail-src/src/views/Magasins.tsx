@@ -6,7 +6,6 @@ import { ContratModal } from '../components/ContratModal'
 import { VERSION_CONTRAT } from '../lib/contrat'
 import { pdfBordereau, pdfContratService } from '../lib/pdf'
 import { Collecte, EnteteCollecte, avancementCollecte, type ModeAssociation } from './Collecte'
-import { useGrandEcran } from '../lib/ecran'
 import { Simulateur } from './Simulateur'
 import { plafondAnnuel, SUCCESS_FEE_PCT } from '../lib/calc'
 import { libelleFrequence, resumePassages } from '../lib/annuaire'
@@ -87,16 +86,22 @@ export function MagasinsView({
   const [focusAssociation, setFocusAssociation] = useState<Record<string, number>>({})
   const [importOuvert, setImportOuvert] = useState(false)
   const [focusMode, setFocusMode] = useState<Record<string, ModeAssociation>>({})
-  function ouvrirAssociations(magasinId: string, mode: ModeAssociation = 'liste') {
+  function montrerCollecte() {
+    window.setTimeout(() => document.getElementById('collecte-ouverte')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+  }
+  function ouvrirCollecte(magasinId: string | null) {
     setCollecteOuverte(magasinId)
+    if (magasinId) montrerCollecte()
+  }
+  function ouvrirAssociations(magasinId: string, mode: ModeAssociation = 'liste') {
+    ouvrirCollecte(magasinId)
     setFocusMode((f) => ({ ...f, [magasinId]: mode }))
     setFocusAssociation((f) => ({ ...f, [magasinId]: Date.now() }))
   }
-  // Sur grand écran, la colonne de droite montre la carte Associations de la société, ou la collecte
-  // du magasin explicitement ouvert.
-  const grand = useGrandEcran()
+  // Une seule colonne, pleine largeur : Associations (et la collecte du magasin ouvert juste
+  // en dessous), puis la société et ses magasins, puis les accès partagés.
   const magasinsAffiches = magasins.filter((m) => !societeActive || m.societeId === societeActive.id)
-  const magasinAside = grand ? magasinsAffiches.find((m) => m.id === collecteOuverte) : undefined
+  const magasinOuvert = magasinsAffiches.find((m) => m.id === collecteOuverte)
   const hub = (
     <HubAssociations
       magasins={magasinsAffiches}
@@ -106,7 +111,7 @@ export function MagasinsView({
       onGerer={(id) => ouvrirAssociations(id, 'liste')}
       onChanger={(id) => ouvrirAssociations(id, 'changement')}
       onAjouter={(id) => ouvrirAssociations(id, 'ajout')}
-      onReprendre={(id) => setCollecteOuverte(id)}
+      onReprendre={(id) => ouvrirCollecte(id)}
     />
   )
 
@@ -211,10 +216,35 @@ export function MagasinsView({
       {!invite && importOuvert && (
         <ImportMagasins state={state} onSaveSociete={onSaveSociete} onSaveMagasin={onSaveMagasin} onFermer={() => setImportOuvert(false)} />
       )}
-      {/* Deux colonnes dès 1 100 px : la société et ses magasins à gauche, la collecte du magasin ouvert à droite.
-          En dessous, `.magasins-col { display: contents }` : rien ne change par rapport au mobile. */}
-      <div className="magasins-grille">
-      <div className="magasins-col">
+      <div className="magasins-pile">
+      {magasinsAffiches.length > 0 && hub}
+      {magasinOuvert && (
+        <div className="card" id="collecte-ouverte">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <EnteteCollecte magasin={magasinOuvert} titre={`Collecte — ${magasinOuvert.nom}`} />
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ flex: 'none' }} onClick={() => setCollecteOuverte(null)} title="Replier la collecte">
+              ✕ Fermer
+            </button>
+          </div>
+          <div style={{ height: 14 }} />
+          <Collecte
+            key={magasinOuvert.id}
+            state={state}
+            session={session}
+            magasinIdFixe={magasinOuvert.id}
+            sansEntete
+            onSaveMagasin={onSaveMagasin}
+            onAllerSaisie={onAllerSaisie}
+            onConnexion={onConnexion}
+            onOuvrirAide={onOuvrirAide}
+            onOuvrirMessages={onOuvrirMessages}
+            focusAssociation={focusAssociation[magasinOuvert.id]}
+            focusMode={focusMode[magasinOuvert.id]}
+          />
+        </div>
+      )}
       {societes.filter((s) => !societeActive || s.id === societeActive.id).map((s) => {
         const sesMagasins = magasins.filter((m) => m.societeId === s.id)
         return (
@@ -312,7 +342,7 @@ export function MagasinsView({
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => setCollecteOuverte(ouverte ? null : m.id)}>
+                      <button className={`btn btn-sm ${ouverte ? 'btn-primary' : av.faites < av.total ? 'btn-ambre' : 'btn-ghost'}`} onClick={() => ouvrirCollecte(ouverte ? null : m.id)}>
                         {ouverte ? '▾ Collecte' : '▸ Collecte'} · {av.faites}/{av.total} étape{av.total > 1 ? 's' : ''}
                       </button>
                       {!invite && (
@@ -340,22 +370,6 @@ export function MagasinsView({
                       )}
                     </div>
                   </div>
-                  {ouverte && !grand && (
-                    <div className="collecte-integree">
-                      <Collecte
-                        state={state}
-                        session={session}
-                        magasinIdFixe={m.id}
-                        onSaveMagasin={onSaveMagasin}
-                        onAllerSaisie={onAllerSaisie}
-                        onConnexion={onConnexion}
-                        onOuvrirAide={onOuvrirAide}
-                        onOuvrirMessages={onOuvrirMessages}
-                        focusAssociation={focusAssociation[m.id]}
-                        focusMode={focusMode[m.id]}
-                      />
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -377,42 +391,7 @@ export function MagasinsView({
           </div>
         )
       })}
-      {!grand && magasinsAffiches.length > 0 && hub}
       {accesPartages}
-      </div>
-      {grand && magasinsAffiches.length > 0 && (
-        <aside className="magasins-col">
-          {magasinAside ? (
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 10 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <EnteteCollecte magasin={magasinAside} titre={`Collecte — ${magasinAside.nom}`} />
-                </div>
-                <button className="btn btn-ghost btn-sm" style={{ flex: 'none' }} onClick={() => setCollecteOuverte(null)} title="Replier la collecte">
-                  ✕ Fermer
-                </button>
-              </div>
-              <div style={{ height: 14 }} />
-              <Collecte
-                key={magasinAside.id}
-                state={state}
-                session={session}
-                magasinIdFixe={magasinAside.id}
-                sansEntete
-                onSaveMagasin={onSaveMagasin}
-                onAllerSaisie={onAllerSaisie}
-                onConnexion={onConnexion}
-                onOuvrirAide={onOuvrirAide}
-                onOuvrirMessages={onOuvrirMessages}
-                focusAssociation={focusAssociation[magasinAside.id]}
-                focusMode={focusMode[magasinAside.id]}
-              />
-            </div>
-          ) : (
-            hub
-          )}
-        </aside>
-      )}
       </div>
       {contratPour && session && (
         <ContratModal
