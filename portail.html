@@ -1,20 +1,12 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#F8F3E9" />
-    <title>Mana — Portail</title>
-    <link rel="icon" href="./brand/favicon.svg" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:wght@400;500;600;700&display=swap" />
-    <script type="module" crossorigin src="./assets/portail-D_SZKu4j.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/portail-C05Y9Ao9.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<meta charset="utf-8">
+<title>Mana a déménagé</title>
+<meta name="robots" content="noindex">
+<script>
+  // Ancienne adresse de Mana : on renvoie vers la nouvelle, page et paramètres compris.
+  var page = location.pathname.split('/').pop() || 'index.html'
+  location.replace('https://blykegluk.github.io/mana/' + page + location.search + location.hash)
+</script>
+<meta http-equiv="refresh" content="0; url=https://blykegluk.github.io/mana/">
+<p>Mana a déménagé : <a href="https://blykegluk.github.io/mana/portail.html">blykegluk.github.io/mana</a></p>
